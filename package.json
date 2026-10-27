@@ -17,6 +17,7 @@
     "test": "node --test test/*.test.mjs",
     "vendor:pixel": "node scripts/vendor-pixel.mjs",
     "goldens:pilot": "node scripts/make-goldens.mjs pilot",
+    "goldens:v1": "node scripts/make-goldens.mjs v1",
     "goldens:fish": "cd ../fish. && node_modules/.bin/vite-node ../pixelforge/scripts/make-goldens.mjs fish"
   },
   "engines": { "node": ">=20" }

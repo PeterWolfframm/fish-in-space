@@ -2,6 +2,7 @@
 //
 //   node scripts/make-goldens.mjs pilot          (imports ~/Code/yeswar/web directly)
 //   cd ~/Code/fish. && node_modules/.bin/vite-node ~/Code/pixelforge/scripts/make-goldens.mjs fish
+//   node scripts/make-goldens.mjs v1             (the frozen v1 plants, from this repo; run once)
 //
 // Run once when a port is made or re-synced; the parity test then holds the port to it.
 
@@ -47,7 +48,12 @@ if (kind === 'pilot') {
     };
   }
   write('fish', out);
+} else if (kind === 'v1') {
+  // Not from a game: the frozen v1 generators, rendered from this repo's own src/gen.
+  const { waterplantGoldens, plantGoldens } = await import('../test/golden-cases.mjs');
+  write('waterplant', waterplantGoldens(await import('../src/gen/waterplant.js')));
+  write('plant', plantGoldens(await import('../src/gen/plant.js')));
 } else {
-  console.error('usage: make-goldens.mjs pilot|fish');
+  console.error('usage: make-goldens.mjs pilot|fish|v1');
   process.exit(2);
 }

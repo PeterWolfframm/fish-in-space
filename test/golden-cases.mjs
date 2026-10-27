@@ -32,3 +32,42 @@ export const pilotKey = (c) => `${c.seed}|${c.side}|${c.figure}|${c.expr}|${c.fr
 export const AVATAR_SEEDS = ['pilot:MAGIC', 'pilot:VIPER', 'pilot:GUEST', 'a', 'b', 'c', 'd', 'e'];
 
 export const FISH_SEEDS = Array.from({ length: 80 }, (_, i) => `fish-${i}`);
+
+// ---------- v1 freeze ----------
+//
+// The pixelforge-native v1 generators (tank plants, garden plants) have no game to be held to, so
+// they are held to themselves: fingerprints rendered once from the v1 code before v2 existed.
+// `npm run goldens:v1` writes test/fixtures/{waterplant,plant}.json; test/v1-frozen.test.mjs
+// compares. A diff there means a v1 algorithm changed — which it must not.
+
+export const V1_SEEDS = Array.from({ length: 40 }, (_, i) => `v1-${i}`);
+
+/** Every frame of every case, keyed `seed|frame` (tank plants) or `seed|size|t` (garden plants). */
+export function waterplantGoldens({ waterplantTraits, drawWaterplant, SWAY_FRAMES }) {
+  const out = {};
+  const forms = waterplantTraits.fieldById('form').choices.map((c) => c.id);
+  const genomes = [
+    ...V1_SEEDS.map((s) => [s, waterplantTraits.fromSeed(s)]),
+    ...forms.map((form) => [`form:${form}`, { ...waterplantTraits.fromSeed(form), form, rarity: 'myth', glow: 'tips', bubbles: 'yes' }]),
+  ];
+  for (const [key, g] of genomes) for (let f = 0; f < SWAY_FRAMES; f++) out[`${key}|${f}`] = fingerprint(drawWaterplant(g, f));
+  return out;
+}
+
+export function plantGoldens({ plantTraits, drawPlant }) {
+  const out = {};
+  const forms = plantTraits.fieldById('form').choices.map((c) => c.id);
+  const genomes = [
+    ...V1_SEEDS.map((s) => [s, plantTraits.fromSeed(s)]),
+    ...forms.map((form) => [`form:${form}`, { ...plantTraits.fromSeed(form), form, rarity: 'myth', glow: 'crystal' }]),
+  ];
+  for (const [key, g] of genomes) {
+    for (const size of [16, 32]) {
+      for (let i = 0; i < 16; i++) {
+        const t = i / 15;
+        out[`${key}|${size}|${i}`] = fingerprint(drawPlant(g, t, size));
+      }
+    }
+  }
+  return out;
+}
