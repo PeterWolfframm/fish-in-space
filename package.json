@@ -1,0 +1,23 @@
+{
+  "name": "pixelforge",
+  "version": "0.1.0",
+  "description": "Procedural pixel-art generator for Burn-Through pilots, fish. fish and tank plants, and plantasia plants",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./pixel/*": "./src/pixel/*",
+    "./gen/*": "./src/gen/*",
+    "./registry": "./src/gen/registry.js",
+    "./png": "./src/png.js"
+  },
+  "bin": { "forge": "cli/forge.mjs" },
+  "scripts": {
+    "app": "echo 'open http://localhost:8017/app/' && python3 -m http.server 8017",
+    "forge": "node cli/forge.mjs",
+    "test": "node --test test/*.test.mjs",
+    "vendor:pixel": "node scripts/vendor-pixel.mjs",
+    "goldens:pilot": "node scripts/make-goldens.mjs pilot",
+    "goldens:fish": "cd ../fish. && node_modules/.bin/vite-node ../pixelforge/scripts/make-goldens.mjs fish"
+  },
+  "engines": { "node": ">=20" }
+}

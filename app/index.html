@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pixelforge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top">
+    <h1>pixel<span>forge</span></h1>
+    <nav id="kinds" class="kinds" aria-label="Generator"></nav>
+  </header>
+
+  <main class="layout">
+    <section class="stage panel">
+      <div class="preview-wrap" id="previewWrap">
+        <canvas id="preview" aria-label="Sprite preview"></canvas>
+      </div>
+      <div class="row">
+        <label>Anim <select id="anim"></select></label>
+        <button id="play" class="btn" type="button">Pause</button>
+        <label class="grow" id="growWrap" hidden>Growth <input id="grow" type="range" min="0" max="1" step="0.01" value="1"><output id="growOut">100%</output></label>
+      </div>
+      <div class="strip" id="strip" aria-label="Frames"></div>
+
+      <div class="row">
+        <label class="wide">Seed <input id="seed" type="text" spellcheck="false" autocomplete="off"></label>
+        <button id="reroll" class="btn primary" type="button" title="New seed (R)">Re-roll</button>
+      </div>
+      <div class="row">
+        <label class="wide">Code <input id="code" type="text" spellcheck="false" autocomplete="off"></label>
+        <button id="copy" class="btn" type="button">Copy</button>
+      </div>
+      <div class="row" id="options"></div>
+
+      <div class="row exports">
+        <label>Scale <select id="scale"><option>1</option><option selected>4</option><option>8</option><option>16</option></select></label>
+        <label class="check"><input id="bgExport" type="checkbox"> background</label>
+        <button id="dlFrame" class="btn" type="button">PNG</button>
+        <button id="dlSheet" class="btn" type="button">Sheet</button>
+        <button id="dlJson" class="btn" type="button">JSON</button>
+      </div>
+    </section>
+
+    <section class="traits panel">
+      <div class="panel-head">
+        <h2>Traits</h2>
+        <span class="hint">🔒 keeps a trait through re-rolls</span>
+      </div>
+      <div id="traits"></div>
+    </section>
+
+    <section class="gallery panel">
+      <div class="panel-head">
+        <h2>Gallery</h2>
+        <span class="hint" id="breedHint">shift-click two to breed</span>
+        <button id="breed" class="btn" type="button" disabled>Breed</button>
+        <button id="shuffle" class="btn" type="button">Shuffle</button>
+      </div>
+      <div id="grid" class="grid"></div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
