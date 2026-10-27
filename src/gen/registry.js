@@ -7,13 +7,39 @@
 //     frame(genome, animId, i) → IndexedImage,         {w, h, data, palette}
 //     at?(genome, t) → IndexedImage,                   continuous anims: any t in 0..1
 //     breed?(a, b, seed), normalize?(g), options? }
+//
+// v2 generators (src/v2/) add: version: 2, family, sizes: [{id, w, h}], sizeField, anchor,
+// sizeOf(genome) → {w, h} (a genome's own canvas: size classes at constant pixel density, so
+// sprites may be wider than tall), fromCode(code) (also takes the family's v1 codes).
+//
+// v1 IS FROZEN. src/gen/** holds the historic algorithms and must keep drawing exactly what it
+// draws today (test/parity.test.mjs, test/v1-frozen.test.mjs). New work goes in src/v2/.
 
 import pilot from './pilot.js';
 import fish from './fish.js';
 import waterplant from './waterplant.js';
 import plant, { plant32 } from './plant.js';
+import pilot2 from '../v2/pilot/index.js';
+import fish2 from '../v2/fish/index.js';
+import waterplant2 from '../v2/waterplant/index.js';
+import plant2 from '../v2/plant/index.js';
 
-export const GENERATORS = [pilot, fish, waterplant, plant, plant32];
+const v1 = (gen, family) => ({ ...gen, version: 1, family });
+
+export const GENERATORS = [
+  v1(pilot, 'pilot'),
+  v1(fish, 'fish'),
+  v1(waterplant, 'waterplant'),
+  v1(plant, 'plant'),
+  v1(plant32, 'plant'),
+  pilot2,
+  fish2,
+  waterplant2,
+  plant2,
+];
+
+/** A genome's canvas: its own size class for v2, the generator's one size for v1. */
+export const sizeOf = (gen, genome) => (gen.sizeOf ? gen.sizeOf(genome) : gen.size);
 
 export const generator = (id) => GENERATORS.find((g) => g.id === id) ?? null;
 
@@ -26,7 +52,7 @@ export function breedWith(gen, a, b, seed, rate = 0.08) {
 
 /** The genome a shareable code describes, or null if it is not one of this generator's codes. */
 export function fromCode(gen, code) {
-  const decoded = gen.traits.decode(code);
+  const decoded = gen.fromCode ? gen.fromCode(code) : gen.traits.decode(code);
   if (!decoded) return null;
   return gen.normalize ? gen.normalize({ ...decoded, seed: String(code).trim().toLowerCase() }) : decoded;
 }

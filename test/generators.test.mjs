@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GENERATORS, generator, breedWith, fromCode } from '../src/gen/registry.js';
+import { GENERATORS, generator, breedWith, fromCode, sizeOf } from '../src/gen/registry.js';
 import { fingerprint } from './golden-cases.mjs';
 import { drawWaterplant, SWAY_FRAMES, waterplantTraits } from '../src/gen/waterplant.js';
 import { drawPlant, plantStages, plantTraits, STAGE_T } from '../src/gen/plant.js';
@@ -11,7 +11,7 @@ import { drawPlant, plantStages, plantTraits, STAGE_T } from '../src/gen/plant.j
 const SEEDS = Array.from({ length: 40 }, (_, i) => `t-${i}`);
 const drawn = (img) => img.data.reduce((n, v) => n + (v ? 1 : 0), 0);
 
-test('every generator draws every anim at its declared size, from seed and from code', () => {
+test('every generator draws every anim at its genome\'s size, from seed and from code', () => {
   for (const gen of GENERATORS) {
     for (const seed of SEEDS.slice(0, 8)) {
       const g = gen.fromSeed(seed);
@@ -21,8 +21,8 @@ test('every generator draws every anim at its declared size, from seed and from 
       for (const anim of gen.anims) {
         for (let i = 0; i < anim.frames; i++) {
           const img = gen.frame(g, anim.id, i);
-          assert.equal(img.w, gen.size.w, `${gen.id} width`);
-          assert.equal(img.h, gen.size.h, `${gen.id} height`);
+          assert.equal(img.w, sizeOf(gen, g).w, `${gen.id} width`);
+          assert.equal(img.h, sizeOf(gen, g).h, `${gen.id} height`);
           assert.ok(drawn(img) > 0, `${gen.id} ${anim.id}[${i}] draws something`);
         }
       }

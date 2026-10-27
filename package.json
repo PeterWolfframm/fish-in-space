@@ -7,6 +7,7 @@
   "exports": {
     "./pixel/*": "./src/pixel/*",
     "./gen/*": "./src/gen/*",
+    "./v2/*": "./src/v2/*",
     "./registry": "./src/gen/registry.js",
     "./png": "./src/png.js"
   },

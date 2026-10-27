@@ -1,8 +1,11 @@
 // The pixelforge app: pick a generator, roll or edit a genome, watch it animate, breed from a
 // gallery, export PNGs, sheets and JSON. Written once against the generator contract in
 // src/gen/registry.js, so a new generator shows up here without touching this file.
+//
+// Generators are grouped by family with a v1 | v2 switch (v1 is the frozen historic version);
+// v2 sprites have size classes, so every canvas is sized from the image it shows.
 
-import { GENERATORS, generator, breedWith, fromCode } from '../src/gen/registry.js';
+import { GENERATORS, generator, breedWith, fromCode, sizeOf } from '../src/gen/registry.js';
 import { toCanvas, toSheet } from '../src/pixel/blit.js';
 
 const $ = (id) => document.getElementById(id);
@@ -21,7 +24,10 @@ const state = {
   gallery: [],
   selected: -1,
   parents: [],
+  forceSize: null, // a v2 size class forced onto every roll, or null for the rolled one
 };
+
+const FAMILY_LABEL = { pilot: 'Pilots', fish: 'Fish', waterplant: 'Tank plants', plant: 'Garden plants' };
 
 // ---------- helpers ----------
 
@@ -79,15 +85,19 @@ function setGenome(genome, { seed = state.seed, gallery = false } = {}) {
   else markGallery();
 }
 
+/** A genome with the forced size class, if one is forced. */
+const sized = (genome) => (state.forceSize && state.gen.sizeField ? { ...genome, [state.gen.sizeField]: state.forceSize } : genome);
+
 /** A fresh genome from `seed`, keeping every locked trait. */
 function roll(seed) {
-  const fresh = state.gen.fromSeed(seed, state.opts);
+  const fresh = sized(state.gen.fromSeed(seed, state.opts));
   if (state.genome) for (const id of state.locks) fresh[id] = state.genome[id];
   setGenome(fresh, { seed });
 }
 
 function selectGenerator(id, { code = null } = {}) {
   state.gen = generator(id) ?? GENERATORS[0];
+  state.forceSize = null;
   state.locks.clear();
   state.opts = {};
   state.anim = state.gen.anims[0];
@@ -95,10 +105,12 @@ function selectGenerator(id, { code = null } = {}) {
   state.growth = null;
   state.parents = [];
   state.selected = -1;
-  for (const b of $('kinds').children) b.setAttribute('aria-pressed', String(b.dataset.id === state.gen.id));
+  for (const b of $('kinds').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.id === state.gen.id));
   $('previewWrap').style.background = state.gen.bg;
   $('anim').replaceChildren(...state.gen.anims.map((a) => new Option(`${a.label ?? a.id} (${a.frames})`, a.id)));
   $('growWrap').hidden = !state.gen.at;
+  $('sizeWrap').hidden = !state.gen.sizes;
+  $('size').replaceChildren(new Option('as rolled', ''), ...(state.gen.sizes ?? []).map((s) => new Option(`${s.id} (${s.w}×${s.h})`, s.id)));
   renderOptions();
   state.gallery = gallerySeeds(randomSeed());
   const decoded = code ? fromCode(state.gen, code) : null;
@@ -112,19 +124,32 @@ function selectGenerator(id, { code = null } = {}) {
 const gallerySeeds = (base) =>
   Array.from({ length: GALLERY }, (_, i) => {
     const seed = `${base}-${i}`;
-    return { seed, genome: state.gen.fromSeed(seed, state.opts) };
+    return { seed, genome: sized(state.gen.fromSeed(seed, state.opts)) };
   });
 
 // ---------- rendering ----------
 
+/** One group per family: its name, then a button per version (v1 is the frozen original). */
 function renderKinds() {
-  $('kinds').replaceChildren(...GENERATORS.map((g) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.dataset.id = g.id;
-    b.innerHTML = `${g.label} <small>${g.game}</small>`;
-    b.addEventListener('click', () => selectGenerator(g.id));
-    return b;
+  const families = [...new Set(GENERATORS.map((g) => g.family ?? g.id))];
+  $('kinds').replaceChildren(...families.map((family) => {
+    const box = document.createElement('div');
+    box.className = 'family';
+    box.setAttribute('role', 'group');
+    const name = document.createElement('span');
+    name.textContent = FAMILY_LABEL[family] ?? family;
+    box.append(name);
+    for (const g of GENERATORS.filter((x) => (x.family ?? x.id) === family)) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.id = g.id;
+      b.textContent = `v${g.version ?? 1}${g.version === 2 ? '' : g.size.w !== GENERATORS.find((x) => x.family === family).size.w ? ` ${g.size.w}px` : ''}`;
+      b.title = `${g.label} (${g.game})${g.version === 1 ? ' — frozen original' : ''}`;
+      // Switching version keeps the creature: v2 remasters a v1 code.
+      b.addEventListener('click', () => selectGenerator(g.id, { code: state.genome && state.gen.family === g.family ? g.traits.encode(state.genome) : null }));
+      box.append(b);
+    }
+    return box;
   }));
 }
 
@@ -149,7 +174,7 @@ function renderOptions() {
 }
 
 function previewScale() {
-  const { w, h } = state.gen.size;
+  const { w, h } = sizeOf(state.gen, state.genome);
   return Math.max(1, Math.floor(384 / Math.max(w, h)));
 }
 
@@ -167,7 +192,7 @@ function drawPreview() {
 }
 
 function renderStrip() {
-  const { w, h } = state.gen.size;
+  const { w, h } = sizeOf(state.gen, state.genome);
   const scale = Math.max(1, Math.floor(56 / Math.max(w, h)));
   $('strip').replaceChildren(...Array.from({ length: state.anim.frames }, (_, i) => {
     const c = canvasOf(state.gen.frame(state.genome, state.anim.id, i), scale, state.gen.bg);
@@ -245,8 +270,6 @@ function renderTraits() {
 }
 
 function renderGallery() {
-  const { w, h } = state.gen.size;
-  const scale = Math.max(1, Math.floor(88 / Math.max(w, h)));
   const anim = state.gen.anims[0];
   // Plants show grown in the gallery; everything else its first frame.
   const thumbFrame = anim.id === 'stages' ? anim.frames - 1 : 0;
@@ -254,7 +277,8 @@ function renderGallery() {
     const cell = document.createElement('div');
     cell.className = 'cell';
     cell.style.background = state.gen.bg;
-    cell.append(canvasOf(state.gen.frame(entry.genome, anim.id, thumbFrame), scale));
+    const img = state.gen.frame(entry.genome, anim.id, thumbFrame);
+    cell.append(canvasOf(img, Math.max(1, Math.floor(88 / Math.max(img.w, img.h)))));
     const tag = document.createElement('span');
     tag.className = 'tag';
     tag.textContent = entry.label ?? '';
@@ -319,6 +343,12 @@ function wire() {
     renderStrip();
     drawPreview();
   });
+  $('size').addEventListener('change', () => {
+    state.forceSize = $('size').value || null;
+    if (state.forceSize) setGenome(sized(state.genome));
+    state.gallery = state.gallery.map((e) => ({ ...e, genome: sized(e.genome) }));
+    renderGallery();
+  });
   $('play').addEventListener('click', () => {
     state.playing = !state.playing;
     if (state.playing) state.growth = null;
@@ -362,7 +392,8 @@ function wire() {
       code: codeOf(state.genome),
       seed: state.seed,
       genome: state.genome,
-      size: state.gen.size,
+      version: state.gen.version ?? 1,
+      size: sizeOf(state.gen, state.genome),
       anims: state.gen.anims,
     };
     download(`${fileBase()}.json`, JSON.stringify(data, null, 2), 'application/json');
