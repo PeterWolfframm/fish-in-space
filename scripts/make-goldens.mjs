@@ -3,6 +3,7 @@
 //   node scripts/make-goldens.mjs pilot          (imports ~/Code/yeswar/web directly)
 //   cd ~/Code/fish. && node_modules/.bin/vite-node ~/Code/pixelforge/scripts/make-goldens.mjs fish
 //   node scripts/make-goldens.mjs v1             (the frozen v1 plants, from this repo; run once)
+//   node scripts/make-goldens.mjs v2             (v2 codes before new options were appended)
 //
 // Run once when a port is made or re-synced; the parity test then holds the port to it.
 
@@ -53,7 +54,11 @@ if (kind === 'pilot') {
   const { waterplantGoldens, plantGoldens } = await import('../test/golden-cases.mjs');
   write('waterplant', waterplantGoldens(await import('../src/gen/waterplant.js')));
   write('plant', plantGoldens(await import('../src/gen/plant.js')));
+} else if (kind === 'v2') {
+  // v2 codes as they were before new options were appended (see test/v2-compat.test.mjs).
+  const { v2Goldens } = await import('../test/golden-cases.mjs');
+  write('v2', v2Goldens(await import('../src/gen/registry.js')));
 } else {
-  console.error('usage: make-goldens.mjs pilot|fish|v1');
+  console.error('usage: make-goldens.mjs pilot|fish|v1|v2');
   process.exit(2);
 }

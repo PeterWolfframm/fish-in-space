@@ -2,23 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>pixelforge</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>pixel art generator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="app.css">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script>
+    /* Set the theme before first paint. app.js keeps this in sync when the switch is used. */
+    (function () {
+      try {
+        var saved = localStorage.getItem('pixelforge.theme');
+        var theme = saved === 'light' || saved === 'dark'
+          ? saved
+          : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="built.css">
 </head>
 <body>
   <header class="top">
-    <h1>pixel<span>forge</span></h1>
+    <div class="brand">
+      <h1>pixel art generator</h1>
+      <p>for some reason, specialed in fish!</p>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Views">
+      <a href="#" data-view="forge">Forge</a>
+      <a href="#swipe" data-view="swipe">Swipe</a>
+      <a href="#likes" data-view="likes">My likes</a>
+      <a href="#admin" data-view="admin" hidden>Admin</a>
+    </nav>
+    <div class="tools">
+      <div class="theme" role="group" aria-label="Appearance">
+        <button type="button" data-theme-choice="light">Light</button>
+        <button type="button" data-theme-choice="dark">Dark</button>
+      </div>
+      <div class="account">
+        <button id="acctChip" class="chip-btn" type="button" aria-haspopup="dialog">…</button>
+        <div id="acctSheet" class="acct-sheet panel" role="dialog" aria-label="Account" hidden></div>
+      </div>
+    </div>
     <nav id="kinds" class="kinds" aria-label="Generator"></nav>
   </header>
 
-  <main class="layout">
+  <main class="layout view" id="forge">
     <section class="stage panel">
       <div class="preview-wrap" id="previewWrap">
         <canvas id="preview" aria-label="Sprite preview"></canvas>
       </div>
+      <div class="scores" id="scores" aria-live="polite"></div>
       <div class="row">
         <label>Anim <select id="anim"></select></label>
         <label id="sizeWrap" hidden>Size <select id="size"></select></label>
@@ -35,7 +67,12 @@
         <label class="wide">Code <input id="code" type="text" spellcheck="false" autocomplete="off"></label>
         <button id="copy" class="btn" type="button">Copy</button>
       </div>
+      <div class="row" id="nameRow" hidden><span id="fishName" class="fish-name"></span><span id="fishGenes" class="fish-genes"></span></div>
       <div class="row" id="options"></div>
+      <div class="row" id="styleRow">
+        <label id="lookWrap" title="Force one look on every roll">Look <select id="look"><option value="auto">as rolled</option><option value="lit">lit</option><option value="comic">comic</option><option value="clean">clean</option></select></label>
+        <label title="Render each roll in the style a model likes best (the creature stays the same)">Beautify <select id="beautify"><option value="off">off</option><option value="public">public</option><option value="personal">personal</option><option value="blend">blend</option></select></label>
+      </div>
 
       <div class="row exports">
         <label>Scale <select id="scale"><option>1</option><option selected>4</option><option>8</option><option>16</option></select></label>
@@ -62,6 +99,80 @@
         <button id="shuffle" class="btn" type="button">Shuffle</button>
       </div>
       <div id="grid" class="grid"></div>
+    </section>
+  </main>
+
+  <main class="view swipe" id="swipe" hidden>
+    <div class="deck-bar">
+      <button id="filterBtn" class="chip-btn" type="button" aria-haspopup="dialog" aria-expanded="false">Filters ▾</button>
+      <span class="deck-bar-summary" id="deckSummary"></span>
+    </div>
+    <div class="sheet-backdrop" id="filterBackdrop" hidden></div>
+    <div class="filter-sheet panel" id="filterSheet" hidden>
+      <header><h2>Filters</h2><button class="btn ghost" id="filterClose" type="button" aria-label="Close filters">✕</button></header>
+      <label class="filter-row">Kind <select id="deckKind"></select></label>
+      <label class="filter-row compare-row"><input id="deckCompare" type="checkbox"> Compare every algorithm &amp; look of the same creature</label>
+      <div class="filter-row"><span class="filter-label">Deck</span><div class="seg" id="deckMode" role="group" aria-label="Deck"></div></div>
+      <div class="filter-row"><span class="filter-label">Look</span><div class="seg" id="deckLook" role="group" aria-label="Look"></div></div>
+    </div>
+    <div class="deck-wrap">
+      <div class="deck" id="deck" aria-live="polite">
+        <p class="deck-empty" id="deckEmpty">Rolling…</p>
+      </div>
+      <div class="notes-sheet panel" id="notes" hidden></div>
+    </div>
+    <div class="deck-actions">
+      <button id="undo" class="round small" type="button" title="Undo (U)" aria-label="Undo">↺</button>
+      <button id="nope" class="round nope" type="button" title="Pass (←)" aria-label="Pass">✕</button>
+      <button id="like" class="round like" type="button" title="Approve (→)" aria-label="Approve">♥</button>
+      <button id="noteBtn" class="round feedback" type="button" title="Feedback (N, or drag up)" aria-label="Feedback" aria-expanded="false">✎<span class="round-label">Feedback</span></button>
+    </div>
+    <p class="deck-keys">← pass · → like · N feedback · U undo</p>
+    <p class="deck-status" id="deckStatus"></p>
+    <div class="toast" id="deckToast" role="status"></div>
+  </main>
+
+  <main class="view likes" id="likes" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>My likes</h2><span class="hint">hover to play</span></div>
+      <nav class="filter-chips" id="likeKinds" aria-label="Filter by kind"></nav>
+      <p class="hint" id="likesEmpty">Nothing liked yet. Swipe right on a sprite you like.</p>
+      <div class="like-grid" id="likeGrid"></div>
+    </div>
+  </main>
+
+  <main class="view admin" id="admin" hidden>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Public model</h2><span class="hint" id="adminStatus"></span>
+        <button id="adminRetrain" class="btn primary" type="button">Retrain now</button>
+      </div>
+      <div id="adminModel"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>People</h2></div>
+      <ul class="people" id="adminPeople"></ul>
+    </section>
+    <section class="panel admin-swipes">
+      <div class="panel-head">
+        <h2>Swipes</h2><span class="hint" id="adminCount"></span>
+        <button id="adminReload" class="btn" type="button">Reload</button>
+        <button id="adminCsv" class="btn" type="button">CSV</button>
+        <button id="adminTxt" class="btn" type="button">TXT</button>
+      </div>
+      <div class="row">
+        <label>User <select id="fUser"></select></label>
+        <label>Kind <select id="fKind"></select></label>
+        <label>Verdict <select id="fVerdict"><option value="">all</option><option value="approve">♥ approve</option><option value="pass">✕ pass</option></select></label>
+        <label class="check"><input id="fNotes" type="checkbox"> with notes</label>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th></th><th>Who</th><th>Sprite</th><th>Notes</th><th>Pub / You</th><th>When</th></tr></thead>
+          <tbody id="adminRows"></tbody>
+        </table>
+      </div>
+      <button id="adminMore" class="btn" type="button" hidden>Show more</button>
     </section>
   </main>
 

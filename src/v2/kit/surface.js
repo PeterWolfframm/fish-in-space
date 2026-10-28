@@ -13,7 +13,8 @@
 
 import { Grid } from '../../pixel/grid.js';
 import { shade } from '../../pixel/color.js';
-import { hueRamp } from './ramp.js';
+import { hueRamp, toHsl } from './ramp.js';
+import { styleHex, inkOf } from './style.js';
 
 const norm = (x, y, z) => {
   const l = Math.hypot(x, y, z) || 1;
@@ -37,9 +38,12 @@ export function lightOf(nx, ny, nz) {
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export class Surface {
-  constructor(w, h) {
+  /** `style`: a resolved style (kit/style.js `styleOf`), or null for v2's default look. */
+  constructor(w, h, style = null) {
     this.w = w;
     this.h = h;
+    this.style = style;
+    this.anchorHue = null;
     const n = w * h;
     this.mat = new Int16Array(n).fill(-1);
     this.v = new Float32Array(n);
@@ -53,9 +57,23 @@ export class Surface {
 
   /**
    * A material: a hue-shifted ramp around `hex`. `alpha` < 255 for membranes. `outline`: the
-   * colour its outline takes (default: a deep shade of its darkest step).
+   * colour its outline takes (default: a deep shade of its darkest step). `keepHue` keeps a
+   * natural colour (soil, skin, sky) out of a style's palette harmony.
    */
-  material(hex, { steps = 5, alpha = 255, outline = null, ...ramp } = {}) {
+  material(hex, { steps = 5, alpha = 255, outline = null, keepHue = false, ...ramp } = {}) {
+    const st = this.style;
+    if (st) {
+      // The first colourful material anchors the harmony; the rest snap to its hue family.
+      const [h, sat] = toHsl(hex);
+      if (!keepHue && this.anchorHue == null && sat >= 0.08) this.anchorHue = h;
+      hex = styleHex(hex, st, keepHue ? null : this.anchorHue);
+      ramp.shift = (ramp.shift ?? 24) * st.shift;
+      if (st.steps && steps > st.steps) {
+        if (ramp.base != null) ramp.base = Math.round((ramp.base * (st.steps - 1)) / (steps - 1));
+        steps = st.steps;
+      }
+      if (st.outline === 'ink') outline = inkOf(hex);
+    }
     const colors = hueRamp(hex, { steps, ...ramp });
     this.mats.push({ hex, ramp: colors, alpha, outline: outline ?? shade(colors[0], 0.62) });
     return this.mats.length - 1;
@@ -88,6 +106,17 @@ export class Surface {
 
   filled(x, y) {
     return this.inside(x, y) && (this.mat[this.idx(x, y)] >= 0 || this.fixed[this.idx(x, y)] >= 0);
+  }
+
+  /** Light for a normal under this surface's style (the module `lightOf` when unstyled). */
+  lightAt(nx, ny, nz) {
+    const st = this.style;
+    if (!st) return lightOf(nx, ny, nz);
+    const L = st.light ?? LIGHT;
+    const d = nx * L[0] + ny * L[1] + nz * L[2];
+    let v = 0.5 + (d - L[2]) * 1.05;
+    if (d > 0.96) v += 0.12;
+    return clamp01(0.5 + (v - 0.5) * st.gain);
   }
 
   /** Paint one shaded pixel. */
@@ -182,7 +211,7 @@ export class Surface {
         const gy = (hgt(x, y + 1) - hgt(x, y - 1)) / 2;
         let [nx, ny, nz] = norm(-gx, -gy, 1);
         if (flat) [nx, ny, nz] = norm(nx * (1 - flat), ny * (1 - flat), nz + flat * 2);
-        let v = lightOf(nx, ny, nz) + bias;
+        let v = this.lightAt(nx, ny, nz) + bias;
         if (light) v = light(sx, sy, v, dd);
         this.set(sx, sy, mat, clamp01(v), id);
       }
@@ -211,7 +240,7 @@ export class Surface {
         const z = Math.sqrt(Math.max(0, 1 - a * a));
         n = norm(nx * a, ny * a, z + 0.15);
       }
-      let v = lightOf(...n) + bias;
+      let v = this.lightAt(...n) + bias;
       if (light) v = light(u, a, v);
       const m = typeof mat === 'function' ? mat(u, a) : mat;
       if (m == null || m < 0) return;
@@ -308,6 +337,17 @@ export class Surface {
   render({ dither = 0.1, outline = true, seams = true, despeckle = true } = {}) {
     const { w, h } = this;
     const n = w * h;
+    const st = this.style;
+    let ink = false;
+    let bold = false;
+    if (st) {
+      if (st.dither != null) dither = st.dither;
+      if (st.outline === 'none') outline = false;
+      else if (st.outline === 'ink') outline = ink = true;
+      else if (st.outline === 'bold') bold = outline;
+      if (st.rim) this.rimLight();
+      if (st.steps) for (let i = 0; i < n; i++) this.dt[i] = Math.max(-1, Math.min(1, this.dt[i]));
+    }
     const tone = new Int8Array(n).fill(-1);
     const dithered = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
@@ -396,7 +436,7 @@ export class Surface {
           if (this.mat[i] >= 0 || this.fixed[i] >= 0) continue;
           let pick = -1;
           let lit = false;
-          for (const [dx, dy, l] of [[0, -1, false], [1, 0, false], [-1, 0, true], [0, 1, true]]) {
+          for (const [dx, dy, l] of bold ? BOLD_NB : OUTLINE_NB) {
             const xx = x + dx;
             const yy = y + dy;
             if (!this.inside(xx, yy)) continue;
@@ -412,12 +452,32 @@ export class Surface {
       }
       for (const [x, y, m, lit] of out) {
         const mm = this.mats[m];
-        g.px(x, y, col(lit ? shade(mm.outline, 1.25) : mm.outline, 255));
+        const hex = ink ? mm.outline : bold ? shade(mm.outline, 0.72) : lit ? shade(mm.outline, 1.25) : mm.outline;
+        g.px(x, y, col(hex, 255));
       }
     }
     return g.out();
   }
+
+  /** A bright rim on the silhouette's edges that face the light (it wraps round from behind). */
+  rimLight() {
+    const L = this.style?.light ?? LIGHT;
+    const toward = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => dx * L[0] + dy * L[1] > 0.2);
+    const open = (x, y) => x >= 0 && y >= 0 && x < this.w && y < this.h && !this.filled(x, y);
+    const lit = [];
+    for (let y = 0; y < this.h; y++) {
+      for (let x = 0; x < this.w; x++) {
+        const i = this.idx(x, y);
+        if (this.mat[i] < 0 || this.mats[this.mat[i]].alpha < 255) continue;
+        if (toward.some(([dx, dy]) => open(x + dx, y + dy))) lit.push(i);
+      }
+    }
+    for (const i of lit) this.v[i] = Math.max(this.v[i], 0.86);
+  }
 }
+
+const OUTLINE_NB = [[0, -1, false], [1, 0, false], [-1, 0, true], [0, 1, true]];
+const BOLD_NB = [...OUTLINE_NB, [1, -1, false], [-1, -1, false], [1, 1, true], [-1, 1, true]];
 
 /**
  * Walk a stroke, calling `plot(x, y, u, a, nx, ny)` for each covered pixel sample: `u` 0..1 along,

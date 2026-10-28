@@ -12,6 +12,11 @@ const V1_OF = { fish: 'fish', waterplant: 'waterplant', plant: 'plant', pilot: '
 const SEEDS = Array.from({ length: 6 }, (_, i) => `v2-${i}`);
 const drawn = (img) => img.data.reduce((n, v) => n + (v ? 1 : 0), 0);
 
+/** The v1 this v2 remasters. */
+function v1Of(gen) {
+  return generator(V1_OF[gen.family]);
+}
+
 /** The silhouette's bounding box. */
 function bbox(img) {
   let x0 = img.w;
@@ -60,7 +65,7 @@ test('every v2 size × anim draws at sizeOf(genome)', () => {
 
 test('v2 codes round-trip, and v1 codes of the same family remaster', () => {
   for (const gen of V2) {
-    const old = generator(V1_OF[gen.family]);
+      const old = v1Of(gen);
     for (const seed of SEEDS) {
       const g = gen.fromSeed(seed);
       const code = gen.traits.encode(g);

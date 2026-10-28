@@ -17,8 +17,8 @@ one motion. Only touch the renderer when a channel does not exist yet.
 - **Never edit `src/gen/**`.** That is v1. It is frozen, and goldens hold it byte for byte
   (`test/parity.test.mjs`, `test/v1-frozen.test.mjs`). Never edit `src/pixel/**`: it is vendored.
 - **v2 only.** If the asset names a v1 generator (`fish`, `pilot`, `waterplant`, `plant`,
-  `plant32`), do not add the anim there. Say it is frozen and offer the v2 equivalent
-  (`fish2`, `pilot2`, `waterplant2`, `plant2`).
+  `plant32`), do not add the anim there. Say it is frozen and offer the current generator
+  (`fish2` or `fish3`, `pilot2`, `waterplant2`, `plant3`). `plant2` is the lit remaster.
 - **Loops close.** In a looping anim, phase `p` runs over [0, 1) and frame `frames` must equal
   frame 0. Use `sin/cos(2π·p·n)` with whole `n`, `bump(p)`, `during(p, at, len)`, or advance a
   phase channel (`wave`, `wind`, `flutter`, `bubbles`, `sheen`, `sweep`, `phase`) by whole
@@ -38,6 +38,8 @@ one motion. Only touch the renderer when a channel does not exist yet.
 | tank plants | `src/v2/waterplant/index.js` (`waterplant2`) | `plant` | `src/v2/waterplant/draw.js` |
 | garden plants | `src/v2/plant/index.js` (`plant2`) | `plant` | `src/v2/plant/draw.js` |
 | pilots | `src/v2/pilot/index.js` (`pilot2`) | `pilot` | `src/v2/pilot/draw.js` |
+| fish v3 | `src/v3/fish/index.js` (`fish3`) | `fish3` | `src/v3/fish/draw.js` (motions in `src/v3/fish/motions.js`; per-frame fixes via the `fish-keys` skill) |
+| garden plants v3 | `src/v3/plant/index.js` (`plant3`) | `plant3` | `src/v3/plant/draw.js` (motions in `src/v3/plant/motions.js`; a bad frame is a row in `src/v3/plant/keys.js`) |
 
 - Channels (name, rest value, meaning): `CHANNELS` in `src/v2/anim/rig.js`. **Read it first.**
 - Motions: `src/v2/anim/motions.js`. Fish: `swim hover dart turnRound blink pulse sheen bob eat`.

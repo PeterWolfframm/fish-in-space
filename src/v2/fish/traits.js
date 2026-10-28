@@ -5,6 +5,7 @@
 
 import { defineTraits } from '../../pixel/traits.js';
 import { fishTraits } from '../../gen/fish/genome.js';
+import { STYLE_FIELDS } from '../kit/style.js';
 
 const opts = (...pairs) => pairs.map(([id, label]) => ({ id, label }));
 const isRare = (set) => set.rarity === 'rare' || set.rarity === 'myth';
@@ -31,6 +32,10 @@ export const fish2Traits = defineTraits({
     { id: 'finLength', label: 'Fin length', group: 'fins', salt: 544, choices: opts(['short', 'Short'], ['normal', 'Normal'], ['long', 'Long'], ['flowing', 'Flowing']), weights: [20, 50, 22, 8], default: 'normal', volatility: 1.2 },
     { id: 'barbels', label: 'Barbels', group: 'face', salt: 560, choices: opts(['none', 'None'], ['short', 'Short'], ['long', 'Long']), weights: [88, 8, 4] },
     { id: 'lure', label: 'Lure', group: 'rare', salt: 576, choices: opts(['none', 'None'], ['lure', 'Glowing lure']), weights: [70, 30], when: isRare, gateHint: 'needs a rare fish' },
+    { id: 'eyeStyle', label: 'Eye style', group: 'face', salt: 592, choices: opts(['round', 'Round'], ['cute', 'Cute'], ['slit', 'Slit pupil']), weights: [64, 22, 14] },
+    { id: 'gradient', label: 'Body tone', group: 'skin', salt: 608, choices: opts(['none', 'Even'], ['fade', 'Tail fade'], ['counter', 'Countershaded']), weights: [56, 20, 24] },
+    { id: 'finEdge', label: 'Fin edges', group: 'fins', salt: 624, choices: opts(['none', 'Plain'], ['light', 'Pale rim'], ['dark', 'Dark rim']), weights: [62, 22, 16] },
+    ...STYLE_FIELDS,
   ],
 });
 
@@ -39,3 +44,9 @@ export function fromV1Code(code) {
   const v1 = fishTraits.decode(code);
   return v1 ? fish2Traits.normalize(v1) : null;
 }
+
+/**
+ * The code a drawing seeds its randomness from: the fields this kind had before options were
+ * appended, so a new field only changes what it draws and never reshuffles the rest.
+ */
+export const identityCode = (set) => fish2Traits.encode(set).slice(0, 24);

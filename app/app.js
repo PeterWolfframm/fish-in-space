@@ -2,11 +2,21 @@
 // gallery, export PNGs, sheets and JSON. Written once against the generator contract in
 // src/gen/registry.js, so a new generator shows up here without touching this file.
 //
-// Generators are grouped by family with a v1 | v2 switch (v1 is the frozen historic version);
+// Generators are grouped by family (frozen v1, lit v2, and fish v3).
 // v2 sprites have size classes, so every canvas is sized from the image it shows.
+//
+// Beside the Forge: Swipe (swipe.js), My likes (likes.js) and Admin (admin.js), the pixelgen
+// views that teach models what looks good; the Forge can render its rolls the way they like.
 
 import { GENERATORS, generator, breedWith, fromCode, sizeOf } from '../src/gen/registry.js';
 import { toCanvas, toSheet } from '../src/pixel/blit.js';
+import { hasStyle } from '../src/pixelgen/features.js';
+import { startSession, mountAccount, onAuth, isAdmin } from './auth.js';
+import { call, on as onPixelgen } from './pixelgen.js';
+import { canvasOf } from './sprites.js';
+import { mountSwipe, showSwipe } from './swipe.js';
+import { mountLikes, showLikes } from './likes.js';
+import { mountAdmin, showAdmin } from './admin.js';
 
 const $ = (id) => document.getElementById(id);
 const GALLERY = 24;
@@ -25,29 +35,36 @@ const state = {
   selected: -1,
   parents: [],
   forceSize: null, // a v2 size class forced onto every roll, or null for the rolled one
+  look: 'auto', // a v2 look forced onto every roll, or 'auto' for the rolled one
+  beautify: 'off', // which model restyles rolls: off | public | personal | blend
+  view: 'forge',
 };
+try {
+  Object.assign(state, JSON.parse(localStorage.getItem('pixelforge.forge')) ?? {});
+} catch {}
+const savePrefs = () => {
+  try {
+    localStorage.setItem('pixelforge.forge', JSON.stringify({ look: state.look, beautify: state.beautify }));
+  } catch {}
+};
+const VIEWS = { forge: null, swipe: showSwipe, likes: showLikes, admin: showAdmin };
 
 const FAMILY_LABEL = { pilot: 'Pilots', fish: 'Fish', waterplant: 'Tank plants', plant: 'Garden plants' };
+
+/** Button text: `v1`, `v1 32px` (the second plant), `v2`, `v3`. */
+function kindButtonLabel(g) {
+  if ((g.version ?? 1) === 1) {
+    const first = GENERATORS.find((x) => x.family === g.family && (x.version ?? 1) === 1);
+    if (first && g.size.w !== first.size.w) return `v1 ${g.size.w}px`;
+  }
+  return `v${g.version ?? 1}`;
+}
 
 // ---------- helpers ----------
 
 const randomSeed = () => Math.random().toString(36).slice(2, 8);
 const codeOf = (genome) => state.gen.traits.encode(genome);
 const normalize = (genome) => (state.gen.normalize ? state.gen.normalize(genome) : state.gen.traits.normalize(genome));
-
-/** An image on a canvas at `scale`, optionally on the generator's background colour. */
-function canvasOf(img, scale, bg = null) {
-  const art = toCanvas(img, scale);
-  if (!bg) return art;
-  const out = document.createElement('canvas');
-  out.width = art.width;
-  out.height = art.height;
-  const ctx = out.getContext('2d');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, out.width, out.height);
-  ctx.drawImage(art, 0, 0);
-  return out;
-}
 
 function frameImage(genome = state.genome, i = state.frame) {
   if (state.growth != null && state.gen.at) return state.gen.at(genome, state.growth);
@@ -67,7 +84,9 @@ const pngBlob = (canvas) => new Promise((resolve) => canvas.toBlob(resolve, 'ima
 const fileBase = () => `${state.gen.id}-${codeOf(state.genome)}`;
 
 function writeHash() {
-  history.replaceState(null, '', `#${state.gen.id}/${codeOf(state.genome)}`);
+  const hash = `#${state.gen.id}/${codeOf(state.genome)}`;
+  document.querySelector('[data-view="forge"]').href = hash;
+  if (state.view === 'forge') history.replaceState(null, '', hash);
 }
 
 // ---------- setting the genome ----------
@@ -77,22 +96,80 @@ function setGenome(genome, { seed = state.seed, gallery = false } = {}) {
   state.seed = seed;
   $('seed').value = seed ?? '';
   $('code').value = codeOf(state.genome);
+  showName();
   writeHash();
   renderTraits();
   renderStrip();
   drawPreview();
   if (gallery) renderGallery();
   else markGallery();
+  showScores();
 }
 
-/** A genome with the forced size class, if one is forced. */
-const sized = (genome) => (state.forceSize && state.gen.sizeField ? { ...genome, [state.gen.sizeField]: state.forceSize } : genome);
+/** Generators that name their creatures (fish3) show the name and what the genes do. */
+function showName() {
+  const named = Boolean(state.gen.name);
+  $('nameRow').hidden = !named;
+  if (!named) return;
+  $('fishName').textContent = state.gen.name(state.genome);
+  $('fishGenes').textContent = state.gen.describe ? state.gen.describe(state.genome) : '';
+}
+
+/** A genome with the forced size class and look, where forced. */
+function sized(genome) {
+  const out = state.forceSize && state.gen.sizeField ? { ...genome, [state.gen.sizeField]: state.forceSize } : genome;
+  return state.look !== 'auto' && hasStyle(state.gen) ? { ...out, look: state.look } : out;
+}
 
 /** A fresh genome from `seed`, keeping every locked trait. */
 function roll(seed) {
   const fresh = sized(state.gen.fromSeed(seed, state.opts));
   if (state.genome) for (const id of state.locks) fresh[id] = state.genome[id];
   setGenome(fresh, { seed });
+  polish();
+}
+
+// ---------- pixelgen: beautify and scores ----------
+
+const beautifying = () => state.beautify !== 'off' && hasStyle(state.gen);
+const lockedStyle = () => Object.fromEntries([...state.locks].filter((id) => hasStyle(state.gen) && state.gen.traits.fieldById(id)?.group === 'style').map((id) => [id, state.genome[id]]));
+let polishToken = 0;
+
+/** Restyle the current roll the way the chosen model likes it (the creature stays the same). */
+async function polish() {
+  if (!beautifying()) return;
+  const token = ++polishToken;
+  const { gen, genome } = state;
+  const r = await call('beautifyGenome', { kind: gen.id, genome, mode: state.beautify, look: state.look }).catch(() => null);
+  if (!r || token !== polishToken || gen !== state.gen || genome !== state.genome) return;
+  setGenome({ ...r.genome, ...lockedStyle() });
+  if (r.before != null) $('scores').dataset.lift = `${r.beauty >= r.before ? '+' : ''}${Math.round((r.beauty - r.before) * 100)}`;
+}
+
+/** Restyle the whole gallery, then show it again. */
+async function polishGallery() {
+  if (!beautifying()) return;
+  const gallery = state.gallery;
+  const gen = state.gen;
+  const out = [];
+  for (const entry of gallery) {
+    const r = await call('beautifyGenome', { kind: gen.id, genome: entry.genome, mode: state.beautify, look: state.look }).catch(() => null);
+    if (gallery !== state.gallery) return;
+    out.push(r ? { ...entry, genome: r.genome } : entry);
+  }
+  state.gallery = out;
+  renderGallery();
+}
+
+let scoreToken = 0;
+async function showScores() {
+  const token = ++scoreToken;
+  const s = await call('score', { kind: state.gen.id, genome: state.genome }).catch(() => null);
+  if (token !== scoreToken) return;
+  const box = $('scores');
+  const bar = (label, v) => (v == null ? '' : `<span class="score"><b>${label}</b><i style="--v:${v}"></i>${Math.round(v * 100)}</span>`);
+  box.innerHTML = s ? bar('Public', s.public) + bar('You', s.personal) + (box.dataset.lift && beautifying() ? `<span class="lift">beautified ${box.dataset.lift}</span>` : '') : '';
+  delete box.dataset.lift;
 }
 
 function selectGenerator(id, { code = null } = {}) {
@@ -110,6 +187,7 @@ function selectGenerator(id, { code = null } = {}) {
   $('anim').replaceChildren(...state.gen.anims.map((a) => new Option(`${a.label ?? a.id} (${a.frames})`, a.id)));
   $('growWrap').hidden = !state.gen.at;
   $('sizeWrap').hidden = !state.gen.sizes;
+  $('styleRow').hidden = !hasStyle(state.gen);
   $('size').replaceChildren(new Option('as rolled', ''), ...(state.gen.sizes ?? []).map((s) => new Option(`${s.id} (${s.w}×${s.h})`, s.id)));
   renderOptions();
   state.gallery = gallerySeeds(randomSeed());
@@ -118,7 +196,9 @@ function selectGenerator(id, { code = null } = {}) {
   else {
     const g = state.gallery[0];
     setGenome(g.genome, { seed: g.seed, gallery: true });
+    polish();
   }
+  polishGallery();
 }
 
 const gallerySeeds = (base) =>
@@ -129,7 +209,7 @@ const gallerySeeds = (base) =>
 
 // ---------- rendering ----------
 
-/** One group per family: its name, then a button per version (v1 is the frozen original). */
+/** One group per family: its name, then a button per generator. */
 function renderKinds() {
   const families = [...new Set(GENERATORS.map((g) => g.family ?? g.id))];
   $('kinds').replaceChildren(...families.map((family) => {
@@ -143,10 +223,15 @@ function renderKinds() {
       const b = document.createElement('button');
       b.type = 'button';
       b.dataset.id = g.id;
-      b.textContent = `v${g.version ?? 1}${g.version === 2 ? '' : g.size.w !== GENERATORS.find((x) => x.family === family).size.w ? ` ${g.size.w}px` : ''}`;
-      b.title = `${g.label} (${g.game})${g.version === 1 ? ' — frozen original' : ''}`;
-      // Switching version keeps the creature: v2 remasters a v1 code.
-      b.addEventListener('click', () => selectGenerator(g.id, { code: state.genome && state.gen.family === g.family ? g.traits.encode(state.genome) : null }));
+      b.textContent = kindButtonLabel(g);
+      const frozen = (g.version ?? 1) === 1;
+      b.title = `${g.label} (${g.game})${frozen ? ' — frozen original' : ''}`;
+      // Switching version inside a family keeps the creature. Decided at click time: the buttons
+      // are built once, while the current generator changes.
+      b.addEventListener('click', () => {
+        const sameLine = state.genome && state.gen.family === g.family && (state.gen.generation ?? 'old') === (g.generation ?? 'old');
+        selectGenerator(g.id, { code: sameLine ? g.traits.encode(state.genome) : null });
+      });
       box.append(b);
     }
     return box;
@@ -166,6 +251,7 @@ function renderOptions() {
       state.gallery = gallerySeeds(randomSeed());
       roll(state.seed || randomSeed());
       renderGallery();
+      polishGallery();
     });
     label.append(input, ` ${o.label}`);
     return label;
@@ -290,7 +376,9 @@ function renderGallery() {
       r.textContent = { uncommon: '★', rare: '★★', myth: '★★★' }[rarity] ?? '';
       cell.append(r);
     }
-    cell.title = `${entry.seed ?? ''}\n${codeOf(entry.genome)}`;
+    const named = state.gen.name ? `${state.gen.name(entry.genome)}\n` : '';
+    const events = entry.events?.length ? `\n${entry.events.map((e) => `• ${e.text}`).join('\n')}` : '';
+    cell.title = `${named}${entry.seed ?? ''}\n${codeOf(entry.genome)}${events}`;
     cell.addEventListener('click', (e) => {
       if (e.shiftKey) {
         toggleParent(i);
@@ -325,6 +413,11 @@ function breedLitter() {
   const egg = randomSeed();
   const kids = Array.from({ length: GALLERY - 2 }, (_, i) => {
     const seed = `${egg}-${i}`;
+    if (state.gen.breedDetailed) {
+      // fish3: say what happened (a hybrid, a sport, a hidden gene showing) on the kid's tag.
+      const { child, events } = state.gen.breedDetailed(a.genome, b.genome, seed);
+      return { seed, genome: child, label: events.length ? events[0].kind : 'kid', events };
+    }
     return { seed, genome: breedWith(state.gen, a.genome, b.genome, seed), label: 'kid' };
   });
   state.gallery = [{ ...a, label: 'parent' }, { ...b, label: 'parent' }, ...kids];
@@ -349,6 +442,22 @@ function wire() {
     state.gallery = state.gallery.map((e) => ({ ...e, genome: sized(e.genome) }));
     renderGallery();
   });
+  $('look').value = state.look;
+  $('look').addEventListener('change', () => {
+    state.look = $('look').value;
+    savePrefs();
+    if (state.look !== 'auto') setGenome(sized(state.genome));
+    state.gallery = state.gallery.map((e) => ({ ...e, genome: sized(e.genome) }));
+    renderGallery();
+  });
+  $('beautify').value = state.beautify;
+  $('beautify').addEventListener('change', () => {
+    state.beautify = $('beautify').value;
+    savePrefs();
+    polish();
+    polishGallery();
+  });
+  onPixelgen('models', showScores);
   $('play').addEventListener('click', () => {
     state.playing = !state.playing;
     if (state.playing) state.growth = null;
@@ -373,6 +482,7 @@ function wire() {
     state.gallery = gallerySeeds(randomSeed());
     state.parents = [];
     renderGallery();
+    polishGallery();
   });
   $('breed').addEventListener('click', breedLitter);
 
@@ -400,7 +510,7 @@ function wire() {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.target.closest('input, select, textarea')) return;
+    if (state.view !== 'forge' || e.target.closest?.('input, select, textarea')) return;
     if (e.key === 'r') roll(randomSeed());
     if (e.key === ' ') {
       e.preventDefault();
@@ -410,8 +520,26 @@ function wire() {
   window.addEventListener('hashchange', fromHash);
 }
 
+/** Show one view: forge, swipe, likes or admin. */
+let wantsAdmin = false; // #admin asked for before the session said who this is
+function showView(view) {
+  wantsAdmin = view === 'admin' && !isAdmin();
+  if (wantsAdmin) view = 'forge';
+  state.view = view;
+  for (const v of Object.keys(VIEWS)) {
+    $(v).hidden = v !== view;
+    document.querySelector(`[data-view="${v}"]`).setAttribute('aria-current', v === view ? 'page' : 'false');
+  }
+  $('kinds').hidden = view !== 'forge';
+  for (const [v, show] of Object.entries(VIEWS)) show?.(v === view);
+  if (view === 'forge' && state.genome) writeHash();
+}
+
 function fromHash() {
-  const [id, code] = decodeURIComponent(location.hash.slice(1)).split('/');
+  const hash = decodeURIComponent(location.hash.slice(1));
+  if (hash in VIEWS) return showView(hash), true;
+  showView('forge');
+  const [id, code] = hash.split('/');
   if (!id || !generator(id)) return false;
   if (id === state.gen.id && code && code === codeOf(state.genome ?? {})) return true;
   selectGenerator(id, { code });
@@ -422,8 +550,9 @@ function fromHash() {
 let last = 0;
 function tick(now) {
   requestAnimationFrame(tick);
-  if (!state.playing || !state.anim) return;
-  if (now - last < 1000 / (state.anim.fps || 6)) return;
+  if (!state.playing || !state.anim || state.view !== 'forge') return;
+  const fps = state.gen.fpsOf ? state.gen.fpsOf(state.genome, state.anim) : state.anim.fps;
+  if (now - last < 1000 / (fps || 6)) return;
   last = now;
   state.frame = (state.frame + 1) % state.anim.frames;
   if (state.gen.at && state.anim.continuous) {
@@ -434,7 +563,51 @@ function tick(now) {
   drawPreview();
 }
 
+// Light is Keypad's own theme. Dark overrides the same tokens. Nothing saved follows the OS,
+// which index.html also applies before first paint.
+const THEME_KEY = 'pixelforge.theme';
+const themeMedia = matchMedia('(prefers-color-scheme: dark)');
+const savedTheme = () => {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    return saved === 'light' || saved === 'dark' ? saved : null;
+  } catch {
+    return null;
+  }
+};
+const applyTheme = (theme) => {
+  document.documentElement.dataset.theme = theme;
+  for (const b of document.querySelectorAll('[data-theme-choice]')) {
+    b.setAttribute('aria-pressed', String(b.dataset.themeChoice === theme));
+  }
+};
+applyTheme(document.documentElement.dataset.theme || (themeMedia.matches ? 'dark' : 'light'));
+for (const b of document.querySelectorAll('[data-theme-choice]')) {
+  b.addEventListener('click', () => {
+    const theme = b.dataset.themeChoice;
+    try { localStorage.setItem(THEME_KEY, theme); } catch {}
+    applyTheme(theme);
+  });
+}
+themeMedia.addEventListener('change', () => {
+  if (!savedTheme()) applyTheme(themeMedia.matches ? 'dark' : 'light');
+});
+
 renderKinds();
 wire();
-if (!fromHash()) selectGenerator(GENERATORS[0].id);
+mountAccount($('acctChip'), $('acctSheet'));
+document.addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('.account')) $('acctSheet').hidden = true;
+});
+mountSwipe();
+mountLikes();
+mountAdmin();
+onAuth(() => {
+  document.querySelector('[data-view="admin"]').hidden = !isAdmin();
+  if (wantsAdmin && isAdmin()) location.hash = 'admin';
+  else if (state.view === 'admin' && !isAdmin()) location.hash = 'swipe';
+});
+fromHash();
+if (!state.genome) selectGenerator(GENERATORS[0].id);
 requestAnimationFrame(tick);
+startSession().catch((e) => console.warn('pixelgen: no session', e));

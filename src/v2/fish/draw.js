@@ -8,11 +8,12 @@
 import { mix, shade, lum } from '../../pixel/color.js';
 import { roller } from '../../pixel/rng.js';
 import { Surface } from '../kit/surface.js';
+import { styleOf, fineAt } from '../kit/style.js';
 import { poly, ellipse, linePts } from '../kit/shapes.js';
 import { noise2 } from '../kit/noise.js';
 import { roundUp } from '../kit/sizes.js';
 import { rest } from '../anim/rig.js';
-import { fish2Traits } from './traits.js';
+import { fish2Traits, identityCode } from './traits.js';
 
 const HIGHLIGHT = '#f4f1e8';
 const PUPIL = '#141018';
@@ -258,7 +259,7 @@ function tail(s, geo, mats) {
     lines = [-0.8, -0.4, 0, 0.4, 0.8].map((k) => [hx, hy + k * up * 0.5, tipX + 1, tipY + k * spread + (k > 0 ? droop : droop * 0.4)]);
   }
   const part = s.fill(shape, { box: shape.box, mat: mats.fin, flat: 0.65, light: finLight(hx, hy, tailLen) });
-  if (geo.L >= 26) rays(s, part, lines);
+  if (geo.fine(geo.L, 26)) rays(s, part, lines);
 }
 
 function dorsalAndAnal(s, geo, mats) {
@@ -267,7 +268,7 @@ function dorsalAndAnal(s, geo, mats) {
   const membrane = (pts, reachX, reachY, reach, rayLines) => {
     const shape = poly(pts);
     const part = s.fill(shape, { box: shape.box, mat: mats.fin, flat: 0.65, light: finLight(reachX, reachY, reach) });
-    if (geo.L >= 26) rays(s, part, rayLines);
+    if (geo.fine(geo.L, 26)) rays(s, part, rayLines);
   };
   if (set.dorsal !== 'none') {
     const style = set.dorsal;
@@ -316,7 +317,7 @@ function dorsalAndAnal(s, geo, mats) {
     membrane([...low, ...[...top].reverse()], (from + to) / 2, geo.mid(from) + geo.belly((from + to) / 2), geo.analH, rl);
   }
   // Pelvic fin: a small leaf under the belly, forward of the anal fin, once there is room.
-  if (geo.L >= 40 && arch.pelvic !== 0) {
+  if (geo.fine(geo.L, 40) && arch.pelvic !== 0) {
     const px = x0 + bodyLen * (arch.pelvic ?? 0.52);
     const py = geo.mid(px) + geo.belly(px) - unit;
     const len = unit * 4 * Math.min(1.4, geo.finLen);
@@ -416,7 +417,7 @@ function markings(s, geo, mats, body, seed) {
   // Scales: a scalloped lattice of darker arcs, only once the body has room for it.
   const deepest = Math.max(...Object.keys(top).map((x) => rows(+x)));
   const scaleSize = { fine: 2, plate: 3, armor: 4 }[set.scales];
-  if (scaleSize && deepest >= 9 + scaleSize * 2) {
+  if (scaleSize && geo.fine(deepest, 9 + scaleSize * 2)) {
     const sz = Math.max(2, Math.round(scaleSize * Math.max(1, unit * 0.8)));
     s.tone((x, y) => {
       if (!inBody(x, y) || geo.t(x) > 0.8 || geo.t(x) < 0.08) return false;
@@ -433,7 +434,7 @@ function markings(s, geo, mats, body, seed) {
   }
 
   // Lateral line: a row of pale dots along the flank.
-  if (set.lateral === 'yes' && deepest >= 10) {
+  if (set.lateral === 'yes' && geo.fine(deepest, 10)) {
     s.tone((x, y) => {
       if (!inBody(x, y)) return false;
       const t = geo.t(x);
@@ -455,8 +456,21 @@ function markings(s, geo, mats, body, seed) {
     } else {
       const arc = (y) => gx + 1.4 * unit * (1 - ((y + 0.5 - geo.mid(gx)) / Math.max(1, geo.back(gx) * 0.75)) ** 2);
       s.tone((x, y) => inBody(x, y) && fromTop(x, y) > 0.15 && fromTop(x, y) < 0.85 && Math.round(arc(y)) === x, -1, { box });
-      if (geo.L >= 40) s.lift((x, y) => inBody(x, y) && x > arc(y) && x < arc(y) + unit * 1.5 && fromTop(x, y) < 0.6, 0.12, { box });
+      if (geo.fine(geo.L, 40)) s.lift((x, y) => inBody(x, y) && x > arc(y) && x < arc(y) + unit * 1.5 && fromTop(x, y) < 0.6, 0.12, { box });
     }
+  }
+}
+
+/** Body-wide tone: a tail that fades darker, or countershading (dark back, pale flank); fin edges. */
+function shading(s, geo, mats, body) {
+  const { set, x0, x1 } = geo;
+  const { inBody } = body;
+  const box = [x0 - 1, 0, x1 + 1, geo.H - 1];
+  if (set.gradient === 'fade') s.tone((x, y) => inBody(x, y) && geo.t(x) < 0.32 - ((x + y) % 2) * 0.06, -1, { box });
+  if (set.gradient === 'counter') s.tone((x, y) => inBody(x, y) && y + 0.5 < geo.mid(x + 0.5) - geo.back(x + 0.5) * 0.45, -1, { box });
+  if (set.finEdge !== 'none') {
+    const edge = (x, y, i) => s.mat[i] === mats.fin && !inBody(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !s.filled(x + dx, y + dy));
+    s.tone(edge, set.finEdge === 'light' ? 2 : -2, { box });
   }
 }
 
@@ -471,7 +485,7 @@ function pectoral(s, geo, mats, pose) {
     ? ellipse(px - size * 0.45 * sweep, py + size * 0.3, size * 0.55, size * 0.4)
     : poly([[px + unit, py - unit], [px - size * sweep, py + size * 0.3], [px - size * 0.55, py + size * 0.75], [px, py + unit]]);
   const part = s.fill(shape, { box: shape.box, mat: mats.fin, flat: 0.5, light: finLight(px, py, size) });
-  if (geo.L >= 40) rays(s, part, [[px, py, px - size * sweep, py + size * 0.3], [px, py, px - size * 0.6, py + size * 0.7]]);
+  if (geo.fine(geo.L, 40)) rays(s, part, [[px, py, px - size * sweep, py + size * 0.3], [px, py, px - size * 0.6, py + size * 0.7]]);
 }
 
 function eye(s, geo, pose) {
@@ -516,12 +530,13 @@ function eye(s, geo, pose) {
       const pd = Math.hypot(fx, dy);
       let c = sclera;
       if (pd <= r * 0.78) c = dy > r * 0.15 ? irisL : irisC;
-      if (pd <= r * 0.45) c = pupil;
+      if (set.eyeStyle === 'slit' ? Math.abs(fx) <= Math.max(0.5, r * 0.16) && pd <= r * 0.72 : pd <= r * (set.eyeStyle === 'cute' ? 0.6 : 0.45)) c = pupil;
       s.pin(x, y, c);
     }
   }
   s.pin(Math.floor(ex - r * 0.35), Math.floor(ey - r * 0.45), glint);
-  if (r >= 3) s.pin(Math.floor(ex + r * 0.3), Math.floor(ey + r * 0.35), glint);
+  if (set.eyeStyle === 'cute' && r >= 2) s.pin(Math.floor(ex - r * 0.35) + 1, Math.floor(ey - r * 0.45), glint);
+  if (r >= 3 || (set.eyeStyle === 'cute' && r >= 2)) s.pin(Math.floor(ex + r * 0.3), Math.floor(ey + r * 0.35), glint);
 }
 
 function mouth(s, geo, pose, mats) {
@@ -541,7 +556,7 @@ function mouth(s, geo, pose, mats) {
     s.pin(x, my + slope, open ? gullet : ink);
     for (let k = 1; k <= open; k++) if (i < len - k) s.pin(x, my + slope + k, k === open ? ink : gullet);
   }
-  if (arch.teeth && geo.L >= 40) {
+  if (arch.teeth && geo.fine(geo.L, 40)) {
     const tooth = s.color(HIGHLIGHT);
     for (let i = 1; i < len - 1; i += 2) s.pin(mx - i, my + Math.round(i * 0.35) - 1, tooth);
   }
@@ -607,7 +622,7 @@ function rare(s, geo, pose, mats, body, seed) {
       const y = Math.round(geo.mid(x) + range(-geo.back(x) * 0.6, geo.belly(x) * 0.6, 30 + i));
       if (!inBody(x, y)) continue;
       s.pin(x, y, glow);
-      if (geo.L >= 56) s.pin(x + 1, y, glow);
+      if (geo.fine(geo.L, 56)) s.pin(x + 1, y, glow);
     }
   }
   if (set.glow === 'full') s.lift((x, y) => inBody(x, y), 0.08 + 0.1 * pose.glow, { box });
@@ -616,9 +631,10 @@ function rare(s, geo, pose, mats, body, seed) {
 /** One fish in a pose. */
 export function drawFish2(genome, pose = rest('fish')) {
   const set = fish2Traits.normalize(genome);
-  const seed = fish2Traits.encode(set);
+  const seed = identityCode(set);
   const geo = layout(set, pose, fishCanvas(set));
-  const s = new Surface(geo.W, geo.H);
+  const s = new Surface(geo.W, geo.H, styleOf(set));
+  geo.fine = fineAt(s.style);
   const skin = hexOf(set, 'skin');
   const fin = finHex(set);
   const bellyAmount = BELLY[set.belly] ?? 0.26;
@@ -636,6 +652,7 @@ export function drawFish2(genome, pose = rest('fish')) {
   dorsalAndAnal(s, geo, mats);
   const body = bodyFill(s, geo, mats);
   markings(s, geo, mats, body, seed);
+  shading(s, geo, mats, body);
   pectoral(s, geo, mats, pose);
   rare(s, geo, pose, mats, body, seed);
   eye(s, geo, pose);

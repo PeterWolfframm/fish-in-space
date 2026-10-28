@@ -4,8 +4,10 @@
 //   node cli/forge.mjs <kind> [--count 24] [--seed name] [--code <code>] [--anim id] [--scale 4]
 //                             [--sheet] [--contact] [--bg] [--avatar] [--out out/<kind>]
 //
-//   kind       v1: pilot | fish | waterplant | plant | plant32  (frozen, historic)
-//              v2: pilot2 | fish2 | waterplant2 | plant2        (`list` prints them all)
+//   kind       v1: pilot | fish | waterplant | plant | plant32
+//              v2: pilot2 | fish2 | waterplant2 | plant2
+//              v3: fish3 (tiny … giant, --set swim=raised|side|cartoon)
+//              (`list` prints them all)
 //   --size     v2: a size class (fish2: tiny … giant), or `all` for every class of each genome
 //   --count    how many genomes, seeded <seed>-0 … <seed>-(n-1)
 //   --seed     the seed (or seed prefix with --count > 1); default "forge"
@@ -16,23 +18,34 @@
 //   --contact  one contact sheet: a row per genome, a column per frame
 //   --bg       paint the generator's preview background instead of transparency
 //   --avatar   pilots: dress them as crew-room avatars rolled from the seed
+//   --look     v2: lit | comic | clean, forced onto every genome
+//   --set      force a trait on every genome, field=value (repeatable), e.g. --set body=piranha
+//   --beautify pixelgen: render each genome in the style a model likes best, rolls with the
+//              weakest of a few candidates left out. public | personal:<userId> | blend:<userId>,
+//              read from PocketBase (PB_URL, superuser as for the trainer), or `file` with --model
+//   --model    a model JSON file (a stored model record, or a Net's toJSON) for --beautify
 //
 // Writes PNGs and manifest.json (seed → code → files) into --out.
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { GENERATORS, generator, fromCode, sizeOf } from '../src/gen/registry.js';
 import { padAll } from '../src/v2/kit/sizes.js';
 import { toSheet } from '../src/pixel/blit.js';
 import { imagePNG } from '../src/png.js';
+import { hasStyle } from '../src/pixelgen/features.js';
+import { beautify, pickGood, blend } from '../src/pixelgen/beautify.js';
+import { loadModel } from '../src/pixelgen/model.js';
+import { Net } from '../src/pixelgen/net.js';
 
 function parse(argv) {
-  const args = { _: [], code: [] };
+  const args = { _: [], code: [], set: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith('--')) args._.push(a);
     else if (['sheet', 'contact', 'bg', 'avatar', 'help'].includes(a.slice(2))) args[a.slice(2)] = true;
     else if (a === '--code') args.code.push(argv[++i]);
+    else if (a === '--set') args.set.push(argv[++i]);
     else args[a.slice(2)] = argv[++i];
   }
   return args;
@@ -44,9 +57,9 @@ if (!kind || args.help || kind === 'list') {
   console.log('kinds:');
   for (const g of GENERATORS) {
     const sizes = g.sizes ? g.sizes.map((s) => `${s.id} ${s.w}×${s.h}`).join(', ') : `${g.size.w}×${g.size.h}`;
-    console.log(`  ${g.id.padEnd(12)} v${g.version ?? 1}  ${g.label} (${g.game})\n${' '.repeat(18)}sizes: ${sizes}\n${' '.repeat(18)}anims: ${g.anims.map((a) => `${a.id}×${a.frames}`).join(' ')}`);
+    console.log(`  ${g.id.padEnd(14)} v${g.version ?? 1}  ${g.label} (${g.game})\n${' '.repeat(20)}sizes: ${sizes}\n${' '.repeat(20)}anims: ${g.anims.map((a) => `${a.id}×${a.frames}`).join(' ')}`);
   }
-  console.log('\nusage: node cli/forge.mjs <kind> [--count n] [--seed s] [--code c] [--anim id] [--size class|all] [--scale k] [--sheet|--contact] [--bg] [--out dir]');
+  console.log('\nusage: node cli/forge.mjs <kind> [--count n] [--seed s] [--code c] [--anim id] [--size class|all] [--scale k] [--sheet|--contact] [--bg] [--out dir]\n                           [--look lit|comic|clean] [--beautify public|personal:<id>|blend:<id>|file] [--model file.json]');
   process.exit(kind ? 0 : 2);
 }
 const gen = generator(kind);
@@ -64,6 +77,64 @@ const bg = args.bg ? gen.bg : null;
 const out = args.out ?? join('out', kind);
 mkdirSync(out, { recursive: true });
 
+const normalize = (g) => (gen.normalize ? gen.normalize(g) : gen.traits.normalize(g));
+
+// --look: a whole-render look forced onto every v2 genome.
+const LOOKS = ['lit', 'comic', 'clean'];
+if (args.look && (!LOOKS.includes(args.look) || !hasStyle(gen))) {
+  console.error(hasStyle(gen) ? `--look is one of ${LOOKS.join(', ')}` : `${kind} has no looks; try a v2 kind`);
+  process.exit(2);
+}
+const fixed = args.look ? { look: args.look } : {};
+for (const kv of args.set) {
+  const [field, value] = kv.split('=');
+  const f = gen.traits.fieldById?.(field);
+  if (!f || !f.choices.some((c) => c.id === value)) {
+    console.error(f ? `${field} is one of: ${f.choices.map((c) => c.id).join(' ')}` : `${kind} has no field "${field}"`);
+    process.exit(2);
+  }
+  fixed[field] = value;
+}
+
+// --beautify: the model to render for, from a file or PocketBase.
+async function readModel(spec) {
+  if (args.model) {
+    const json = JSON.parse(readFileSync(args.model, 'utf8'));
+    return json.weights ? loadModel(json) : Net.fromJSON(json);
+  }
+  const { adminClient } = await import('../server/pb.mjs');
+  const pb = await adminClient();
+  const get = (filter) =>
+    pb
+      .collection('models')
+      .getFirstListItem(filter)
+      .then(loadModel, () => null);
+  const [scope, user] = spec.split(':');
+  const pub = scope === 'personal' ? null : await get('scope = "public"');
+  const own = user ? await get(pb.filter('scope = "personal" && user = {:user}', { user })) : null;
+  if (scope === 'public') return pub;
+  if (scope === 'personal') return own;
+  if (scope === 'blend') return blend(pub, own, 0.5);
+  throw new Error(`--beautify is public, personal:<userId>, blend:<userId> or file (with --model)`);
+}
+let model = null;
+if (args.beautify || args.model) {
+  if (!hasStyle(gen)) {
+    console.error(`${kind} has no style genome to beautify; try a v2 kind`);
+    process.exit(2);
+  }
+  try {
+    model = await readModel(args.beautify ?? 'file');
+  } catch (e) {
+    console.error(`couldn't load the model: ${e.message}`);
+    process.exit(1);
+  }
+  if (!model) {
+    console.error('no such model (yet), or it was trained on an older feature layout: swipe some more and let the trainer run');
+    process.exit(1);
+  }
+}
+
 // The genomes: given codes, else count seeds.
 const entries = [];
 if (args.code.length) {
@@ -80,7 +151,8 @@ if (args.code.length) {
   const seed = args.seed ?? 'forge';
   for (let i = 0; i < count; i++) {
     const s = count === 1 ? seed : `${seed}-${i}`;
-    entries.push({ seed: s, genome: gen.fromSeed(s, { avatar: args.avatar ?? null }) });
+    const roll = (x) => gen.fromSeed(x, { avatar: args.avatar ?? null });
+    entries.push({ seed: s, genome: model ? pickGood(gen, model, s, { roll }) : roll(s) });
   }
 }
 
@@ -100,6 +172,15 @@ if (args.size) {
   entries.splice(0, entries.length, ...sized);
 }
 
+// The look, then the model's styling (which never changes a forced look).
+for (const e of entries) {
+  e.genome = normalize({ ...e.genome, ...fixed });
+  if (!model) continue;
+  const b = beautify(gen, e.genome, model, { fixed });
+  e.genome = b.genome;
+  e.beauty = b.beauty;
+}
+
 const frames = (genome) => Array.from({ length: anim.frames }, (_, i) => gen.frame(genome, anim.id, i));
 const manifest = { kind, version: gen.version ?? 1, anim: anim.id, frames: anim.frames, fps: anim.fps, size: gen.size, scale, items: [] };
 const safe = (s) => String(s).replace(/[^a-z0-9._-]+/gi, '_');
@@ -110,7 +191,7 @@ if (args.contact) {
   const sheet = toSheet(all, { columns: anim.frames });
   const file = `${kind}-${anim.id}-contact.png`;
   writeFileSync(join(out, file), imagePNG(sheet, scale, bg ?? gen.bg));
-  for (const [row, e] of entries.entries()) manifest.items.push({ seed: e.seed, code: gen.traits.encode(e.genome), size: sizeOf(gen, e.genome), row });
+  for (const [row, e] of entries.entries()) manifest.items.push({ seed: e.seed, code: gen.traits.encode(e.genome), ...(gen.name ? { name: gen.name(e.genome) } : {}), size: sizeOf(gen, e.genome), row, ...(e.beauty != null ? { beauty: e.beauty } : {}) });
   manifest.contact = file;
 } else {
   for (const e of entries) {
@@ -129,7 +210,7 @@ if (args.contact) {
         files.push(file);
       });
     }
-    manifest.items.push({ seed: e.seed, code, size: sizeOf(gen, e.genome), files });
+    manifest.items.push({ seed: e.seed, code, ...(gen.name ? { name: gen.name(e.genome) } : {}), size: sizeOf(gen, e.genome), files, ...(e.beauty != null ? { beauty: e.beauty } : {}) });
   }
 }
 

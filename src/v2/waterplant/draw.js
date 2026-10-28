@@ -8,12 +8,13 @@
 import { shade, mix } from '../../pixel/color.js';
 import { roller } from '../../pixel/rng.js';
 import { Surface, pointAt } from '../kit/surface.js';
+import { styleOf } from '../kit/style.js';
 import { ellipse, capsule } from '../kit/shapes.js';
 import { noise2 } from '../kit/noise.js';
 import { roundUp } from '../kit/sizes.js';
 import { rest } from '../anim/rig.js';
 import { LEAF_SHAPES } from '../../gen/plants/stroke.js';
-import { waterplant2Traits } from './traits.js';
+import { waterplant2Traits, identityCode } from './traits.js';
 
 const TAU = Math.PI * 2;
 const WATER = '#1e3c5a';
@@ -42,7 +43,7 @@ export function plantCanvas(genome) {
 
 function setup(s, genome, pose) {
   const set = waterplant2Traits.normalize(genome);
-  const roll = roller(waterplant2Traits.encode(set), 3000);
+  const roll = roller(identityCode(set), 3000);
   const H = CLASS_H[set.size] ?? 48;
   const k = H / 48;
   const hex = waterplant2Traits.choiceOf(set, 'color').hex;
@@ -247,7 +248,7 @@ function mossball(env) {
   const cy = baseY - r + squash;
   const e = ellipse(cx, cy, r + squash * 0.5, r - squash);
   s.fill(e, { box: e.box, mat: m.depth[2] });
-  const fuzz = noise2(waterplant2Traits.encode(set), Math.max(1.5, k * 1.2));
+  const fuzz = noise2(identityCode(set), Math.max(1.5, k * 1.2));
   s.tone((x, y) => e(x, y) && fuzz(x, y) > 0.66, -1, { box: e.box });
   s.tone((x, y) => e(x, y) && fuzz(x + 40, y) > 0.75, 1, { box: e.box });
   // A fuzzy rim: threads poking out.
@@ -345,8 +346,8 @@ function bed(env) {
   const { s, set, roll, k, cx, baseY } = env;
   if (set.base === 'sand' || set.base === 'gravel') {
     const sand = set.base === 'sand';
-    const mat = s.material(sand ? '#c8b48a' : '#8a8478', { steps: 5, shift: 18 });
-    const grain = noise2(`${waterplant2Traits.encode(set)}:bed`, sand ? 2 : Math.max(1.2, k));
+    const mat = s.material(sand ? '#c8b48a' : '#8a8478', { steps: 5, shift: 18, keepHue: true });
+    const grain = noise2(`${identityCode(set)}:bed`, sand ? 2 : Math.max(1.2, k));
     // A low mound, lit from above.
     const top = (x) => baseY - 0.5 - Math.max(0, 1 - ((x - cx) / (s.w * 0.55)) ** 2) * k;
     s.fill((x, y) => y + 0.5 >= top(x + 0.5), { box: [0, baseY - 2 * k - 1, s.w - 1, s.h - 1], mat, dome: Math.max(2, 2 * k), seam: false, under: true });
@@ -357,7 +358,7 @@ function bed(env) {
       s.tone((x, y) => s.mat[s.idx(x, y)] === mat && grain(x, y) > 0.78, -1, { box: [0, baseY - 3 * k, s.w - 1, s.h - 1] });
     }
   } else if (set.base === 'pebble') {
-    const tones = ['#8a8f96', '#a69a86', '#6d7480', '#b8b2a6'].map((h) => s.material(h, { steps: 4 }));
+    const tones = ['#8a8f96', '#a69a86', '#6d7480', '#b8b2a6'].map((h) => s.material(h, { steps: 4, keepHue: true }));
     const n = Math.round(4 * Math.max(1, k));
     for (let j = 0; j < n; j++) {
       const x = cx + roll.range(-s.w * 0.35, s.w * 0.35, 200 + j);
@@ -366,10 +367,10 @@ function bed(env) {
     }
   } else if (set.base === 'rock') {
     const e = ellipse(cx + roll.range(-3, 3, 220) * k, baseY - 0.5, s.w * 0.3, 3.5 * k ** 0.8);
-    s.fill((x, y) => e(x, y) && y <= baseY + 1, { box: e.box, mat: s.material('#6f7682', { steps: 5 }) });
+    s.fill((x, y) => e(x, y) && y <= baseY + 1, { box: e.box, mat: s.material('#6f7682', { steps: 5, keepHue: true }) });
   } else if (set.base === 'wood') {
     const c = capsule(cx - s.w * 0.36, baseY, cx + s.w * 0.3, baseY - 1.5 * k, 1.6 * k ** 0.8, 1.2 * k ** 0.8);
-    const wood = s.material('#6b4a2b', { steps: 5 });
+    const wood = s.material('#6b4a2b', { steps: 5, keepHue: true });
     s.fill(c, { box: c.box, mat: wood });
     s.tone((x, y, i) => s.mat[i] === wood && (y + Math.round(x * 0.1)) % 2 === 0 && x % 5 > 1, -1, { box: c.box });
   }
@@ -396,14 +397,59 @@ function bubbles(env) {
   }
 }
 
+/** Pale variegated leaf edges or stripes, and algae specks, onto the lit leaves. */
+function leafFinish(env) {
+  const { s, m, set } = env;
+  const leaves = new Set(m.depth);
+  const pale = s.material(mix(s.mats[m.depth[2]].hex, '#eef6d8', 0.6), { steps: 4 });
+  const algae = s.material('#4a5a24', { steps: 3 });
+  const specks = noise2(`${identityCode(set)}:algae`, Math.max(1.2, env.k));
+  s.each(null, (x, y, i) => {
+    if (!leaves.has(s.mat[i])) return;
+    if (set.algae !== 'none' && specks(x, y) > (set.algae === 'fuzz' ? 0.6 : 0.78)) {
+      s.mat[i] = algae;
+      return;
+    }
+    if (set.variegation === 'none' || s.mat[i] !== m.depth[2]) return;
+    const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !s.inside(x + dx, y + dy) || !leaves.has(s.mat[s.idx(x + dx, y + dy)]));
+    if (set.variegation === 'edge' ? edge : (x + 2 * y) % 5 === 0 && !edge) s.mat[i] = pale;
+  });
+}
+
+/** A tank-mate on the bed: a snail with a spiral shell, or a little red shrimp. */
+function critter(env) {
+  const { s, set, roll, k, baseY } = env;
+  const side = roll.range(0, 1, 400) < 0.5 ? -1 : 1;
+  const x = s.w / 2 + side * s.w * 0.3;
+  const r = Math.max(1.6, 2.2 * k ** 0.7);
+  if (set.critter === 'snail') {
+    const foot = s.material('#c9b9a0', { steps: 3 });
+    s.fill(capsule(x - r * 1.2, baseY - 0.5, x + r * 1.3, baseY - 0.5, Math.max(0.7, r * 0.35)), { box: [x - r * 2, baseY - r, x + r * 2, baseY + 1], mat: foot });
+    const shell = ellipse(x, baseY - r * 0.9, r, r);
+    const sm = s.material('#a0643a', { steps: 5 });
+    s.fill(shell, { box: shell.box, mat: sm });
+    s.tone((px, py) => shell(px, py) && Math.abs(Math.hypot(px + 0.5 - x, py + 0.5 - (baseY - r * 0.9)) - r * 0.5) < 0.5, -1, { box: shell.box });
+    s.pin(x + side * r * 1.25, baseY - Math.max(1, r * 0.5), s.color('#2a2018'));
+  } else {
+    const sm = s.material('#d2463a', { steps: 4 });
+    const body = capsule(x - r * 1.1, baseY - r * 0.7, x + r * 1.1, baseY - r * 0.9, Math.max(0.6, r * 0.42), Math.max(0.5, r * 0.3));
+    s.fill(body, { box: body.box, mat: sm });
+    s.tone((px, py) => body(px, py) && Math.round(px) % 2 === 0, -1, { box: body.box });
+    s.pin(x + r * 1.2, baseY - r * 0.9, s.color('#1a1418'));
+    s.stroke({ x: x + r, y: baseY - r * 0.9, angle: 0.3, len: r * 2.2, bend: 0.4, width: () => 1 }, { mat: sm, seam: false });
+  }
+}
+
 /** One plant in a pose. */
 export function drawWaterplant2(genome, pose = rest('plant')) {
   const set = waterplant2Traits.normalize(genome);
   const { w, h } = plantCanvas(set);
-  const s = new Surface(w, h);
+  const s = new Surface(w, h, styleOf(set));
   const env = setup(s, set, pose);
   bed(env);
   FORMS[set.form](env);
+  if (set.variegation !== 'none' || set.algae !== 'none') leafFinish(env);
+  if (set.critter !== 'none') critter(env);
   if (env.m.glow && set.glow !== 'none') {
     // Glow breathes: lift the glowing pixels with the pulse.
     s.lift((x, y, i) => s.mat[i] === env.m.glow, (pose.glow - 0.5) * 0.4);

@@ -39,6 +39,39 @@ export const CHANNELS = {
     sweep: [0, 'scope sweep phase, 0..1'],
     phase: [0, 'anim phase, 0..1 (loop-safe clock for glints and blinks)'],
   },
+  // Fish v3: a modelled swim (see src/v3/fish/kinematics.js) plus face and breathing.
+  fish3: {
+    wave: [0, 'body-wave phase, turns (integers loop)'],
+    amp: [1, 'body-wave amplitude, 1 = a cruise'],
+    coast: [0, 'gliding, 0..1 (fins spread, body still)'],
+    fin: [0, 'pectoral beat, -1..1 (< -0.5 tucked)'],
+    ripple: [0, 'dorsal/anal ripple phase, turns'],
+    pelvic: [0, 'pelvic-fin flutter, -1..1'],
+    mouth: [0, 'mouth open, 0..1'],
+    gill: [0, 'gill cover open, 0..1'],
+    lid: [0, 'eyelid, 0 open .. 1 shut'],
+    glance: [0, 'eye looks back (−1) or forward (1)'],
+    turn: [0, 'turn round, 0..1 a full turn (0.5 = facing left)'],
+    bend: [0, 'C-bend of the body, -1..1 (a turn)'],
+    bob: [0, 'vertical offset, px'],
+    lean: [0, 'nose up (+) or down (−), -1..1'],
+    glow: [0.5, 'glow strength, 0..1'],
+    sheen: [0, 'sheen sweep phase, 0..1'],
+    stage: [-1, 'life stage override, -1 = the genome\'s, 0 fry .. 3 elder'],
+  },
+  // Plant v3: a modelled bend (see src/v3/plant/kinematics.js) plus growth, bloom and season.
+  plant3: {
+    wind: [0, 'sway phase, turns (integers loop)'],
+    sway: [1, 'sway amplitude, 1 = a breeze'],
+    lean: [0, 'steady push, -1..1 (a gust)'],
+    flutter: [0, 'leaf flutter phase, turns (integers loop)'],
+    bloom: [1, 'flowers open, 0 shut .. 1 open'],
+    growth: [1, 'growth t, 0 seed .. 1 grown'],
+    glow: [0.5, 'glow strength, 0..1'],
+    droop: [0, 'extra downward bend, 0..1 (a wilt)'],
+    season: [-1, 'season override, -1 = summer, 0 spring .. 3 winter'],
+    sheen: [0, 'highlight sweep, 0..1'],
+  },
 };
 
 /** The rest pose of a family. */

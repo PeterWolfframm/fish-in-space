@@ -1,0 +1,12 @@
+.git
+.github
+.pocketbase
+node_modules
+out
+test
+.DS_Store
+.claude
+.cursor
+**/.DS_Store
+*.log
+agent-transcripts

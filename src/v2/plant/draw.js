@@ -9,18 +9,21 @@
 import { shade, mix } from '../../pixel/color.js';
 import { roller } from '../../pixel/rng.js';
 import { Surface, pointAt } from '../kit/surface.js';
+import { styleOf, fineAt } from '../kit/style.js';
 import { ellipse, poly, capsule } from '../kit/shapes.js';
 import { noise2 } from '../kit/noise.js';
 import { roundUp } from '../kit/sizes.js';
 import { rest } from '../anim/rig.js';
 import { LEAF_SHAPES } from '../../gen/plants/stroke.js';
-import { plant2Traits } from './traits.js';
+import { plant2Traits, identityCode } from './traits.js';
 
 export { STAGE_T } from '../../gen/plant.js';
 
 const TAU = Math.PI * 2;
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 const SOIL = '#5a3e28';
+const SEASON = { warm: '#d9922e', red: '#c4402c' };
+const POT = { clay: '#b8643c', glazed: '#3c78a8', stone: '#8a8c86' };
 const GLOW = '#9ff7ff';
 
 /** Canvas height per class; v1's `plant` is a herb, `plant32` a shrub. */
@@ -41,7 +44,7 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 /** All the parts of the grown plant, in pixels. */
 function skeleton(set, W, H) {
-  const roll = roller(plant2Traits.encode(set), 5000);
+  const roll = roller(identityCode(set), 5000);
   const k = H / 16;
   const kd = k ** 0.6; // detail scale: leaves and stems grow slower than the plant, so there are more of them
   const groundY = H - Math.max(2, Math.round(H * 0.12));
@@ -267,7 +270,7 @@ function materials(s, set) {
   const hexOf = (id) => plant2Traits.choiceOf(set, id)?.hex ?? '#888888';
   const glow = set.glow === 'glow' || set.glow === 'crystal';
   const lit = (hex) => (glow ? mix(hex, GLOW, set.glow === 'crystal' ? 0.45 : 0.25) : hex);
-  const leaf = lit(hexOf('leafColor'));
+  const leaf = lit(SEASON[set.season] ? mix(hexOf('leafColor'), SEASON[set.season], 0.55) : hexOf('leafColor'));
   const petal = set.bloom !== 'none' ? hexOf('petal') : '#f5c842';
   const fruit = set.fruit !== 'none' ? hexOf('fruitColor') : '#d23a3a';
   const capHex = set.bloom !== 'none' ? petal : set.fruit !== 'none' ? fruit : '#c8553a';
@@ -284,11 +287,13 @@ function materials(s, set) {
     grain: s.material('#e8b820', { steps: 4 }),
     grainGreen: s.material('#c8c070', { steps: 4 }),
     cone: s.material('#8a5a32', { steps: 4 }),
-    soil: s.material(SOIL, { steps: 4, shift: 14 }),
-    seed: s.material('#c9a66b', { steps: 3 }),
+    soil: s.material(SOIL, { steps: 4, shift: 14, keepHue: true }),
+    seed: s.material('#c9a66b', { steps: 3, keepHue: true }),
     cap: s.material(capHex, { steps: 5 }),
     gill: s.material('#e8dcc4', { steps: 3 }),
-    stake: s.material('#a07c50', { steps: 3 }),
+    stake: s.material('#a07c50', { steps: 3, keepHue: true }),
+    pale: s.material(mix(leaf, '#f6f2d4', 0.62), { steps: 4 }),
+    pot: set.pot !== 'none' ? s.material(POT[set.pot], { steps: 5, shift: 16, keepHue: set.pot !== 'glazed' }) : -1,
   };
 }
 
@@ -296,10 +301,11 @@ function materials(s, set) {
 export function drawPlant2(genome, t = 1, pose = rest('plant')) {
   const set = plant2Traits.normalize(genome);
   const { w: W, h: H } = plantCanvas(set);
-  const s = new Surface(W, H);
+  const s = new Surface(W, H, styleOf(set));
+  const fine = fineAt(s.style);
   const m = materials(s, set);
   const { parts, groundY, cx, k, kd, Hp } = skeleton(set, W, H);
-  const seed = plant2Traits.encode(set);
+  const seed = identityCode(set);
   const phase = pose.wind * TAU;
   const amp = 1.3 * k ** 0.8 * pose.sway;
   const lean = pose.lean * 3 * k ** 0.8;
@@ -317,7 +323,8 @@ export function drawPlant2(genome, t = 1, pose = rest('plant')) {
   // Soil: a lit mound.
   const soil = ellipse(cx, groundY + Math.max(1, kd * 1.2), Math.max(3, 4.2 * k ** 0.85), Math.max(1.5, 1.6 * k ** 0.7));
   s.fill((x, y) => soil(x, y) && y < H, { box: soil.box, mat: m.soil, seam: false });
-  if (H >= 48) s.tone((x, y, i) => s.mat[i] === m.soil && noise2(`${seed}:soil`, 1.5)(x, y) > 0.7, 1, { box: soil.box });
+  if (set.pot !== 'none') pot(s, m, set, cx, groundY, soil, H, k);
+  if (fine(H, 48)) s.tone((x, y, i) => s.mat[i] === m.soil && noise2(`${seed}:soil`, 1.5)(x, y) > 0.7, 1, { box: soil.box });
   if (t < 0.14) {
     const e = ellipse(cx, groundY, Math.max(1, 1.1 * kd), Math.max(0.8, 0.8 * kd));
     s.fill(e, { box: e.box, mat: m.seed });
@@ -458,6 +465,8 @@ export function drawPlant2(genome, t = 1, pose = rest('plant')) {
     }
   }
 
+  if (set.variegation !== 'none') variegate(s, m, set.variegation);
+
   // Rare plants: sparkles that twinkle with the glow channel.
   if (set.glow !== 'none' && t >= 0.6) {
     const roll = roller(seed, 7000);
@@ -472,6 +481,28 @@ export function drawPlant2(genome, t = 1, pose = rest('plant')) {
     }
   }
   return s.render({ dither: H >= 48 ? 0.08 : 0, outline: H > 16 });
+}
+
+/** A pot round the soil: a rim at the ground line, a tapering body down to the canvas edge. */
+function pot(s, m, set, cx, groundY, soil, H, k) {
+  const top = Math.min(groundY + 1, H - 2);
+  const rw = Math.max(3, soil.box ? (soil.box[2] - soil.box[0]) / 2 - 0.5 : 4) + 0.6;
+  const body = poly([[cx - rw * 0.92, top], [cx + rw * 0.92, top], [cx + rw * 0.7, H], [cx - rw * 0.7, H]]);
+  s.fill(body, { box: body.box, mat: m.pot, dome: Math.max(2, rw * 0.7), seam: false });
+  const rim = (x, y) => y >= top - 1 && y <= top + (k >= 3 ? 1 : 0) && Math.abs(x + 0.5 - cx) <= rw;
+  s.fill(rim, { box: [cx - rw - 1, top - 2, cx + rw + 1, top + 2], mat: m.pot, bias: 0.12 });
+  if (set.pot === 'glazed') s.tone((x, y) => body(x, y) && y === top + 2 + Math.round(k), 1, { box: body.box });
+  if (set.pot === 'stone') s.tone((x, y) => body(x, y) && (x * 7 + y * 3) % 11 === 0, -1, { box: body.box });
+}
+
+/** Pale leaf edges or stripes, recoloured onto the lit leaves so they keep their shading. */
+function variegate(s, m, kind) {
+  const leaves = new Set([m.leaf, m.young]);
+  s.each(null, (x, y, i) => {
+    if (!leaves.has(s.mat[i])) return;
+    const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !s.inside(x + dx, y + dy) || !leaves.has(s.mat[s.idx(x + dx, y + dy)]));
+    if (kind === 'edge' ? edge : (x + y) % 4 === 0 && !edge) s.mat[i] = m.pale;
+  });
 }
 
 function bloom(s, m, set, x, y, size, grown, kd) {

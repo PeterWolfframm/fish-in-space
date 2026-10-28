@@ -11,11 +11,12 @@
 
 import { shade, mix, rgbOf } from '../../pixel/color.js';
 import { hash01 } from '../../pixel/rng.js';
-import { Surface, lightOf } from '../kit/surface.js';
+import { Surface } from '../kit/surface.js';
+import { styleOf } from '../kit/style.js';
 import { ellipse, poly, capsule } from '../kit/shapes.js';
 import { crop } from '../kit/sizes.js';
 import { rest } from '../anim/rig.js';
-import { pilot2Traits } from './traits.js';
+import { pilot2Traits, identityCode } from './traits.js';
 
 export const SCENE = { w: 64, h: 48 };
 
@@ -48,9 +49,9 @@ const WHITE = '#f0f0ec';
 
 export function drawPilot2(genome, pose = rest('pilot')) {
   const set = pilot2Traits.normalize(genome);
-  const seed = String(genome?.seed ?? pilot2Traits.encode(set));
+  const seed = String(genome?.seed ?? identityCode(set));
   const framing = FRAMINGS[set.size] ?? FRAMINGS.portrait;
-  const s = new Surface(SCENE.w, SCENE.h);
+  const s = new Surface(SCENE.w, SCENE.h, styleOf(set));
   const expr = pose.expr ?? 'idle';
   const beat = pose.beat ?? 0;
   const jitter = pose.shake ?? 0;
@@ -66,6 +67,7 @@ export function drawPilot2(genome, pose = rest('pilot')) {
     else if (set.figure === 'tutor') tutor(ctx);
     else pilot(ctx);
   }
+  if (set.backdrop !== 'plain') backdrop(s, set, seed);
   const img = s.render({ dither: 0, outline: true });
   return crop(img, framing.x, framing.y, framing.w, framing.h);
 }
@@ -134,7 +136,7 @@ function sphere(s, test, box, mat, cx, cy, rx, ry, extra = {}) {
       const nx = (x + 0.5 - cx) / rx;
       const ny = (y + 0.5 - cy) / ry;
       const nz = Math.sqrt(Math.max(0.04, 1 - nx * nx - ny * ny));
-      return lightOf(nx, ny, nz) + (extra.bias ?? 0);
+      return s.lightAt(nx, ny, nz) + (extra.bias ?? 0);
     },
   });
 }
@@ -159,6 +161,7 @@ function torso(c, { harness = true, coat = null, suit = null }) {
   // Collar.
   const collar = ellipse(bx, 26, 6.5, 2.2);
   s.fill(collar, { box: collar.box, mat: m, bias: -0.15 });
+  if (set.scarf !== 'none') scarf(c, collar);
 
   if (coat) {
     // Reflective bands on a float coat.
@@ -180,13 +183,13 @@ function torso(c, { harness = true, coat = null, suit = null }) {
   const tag = s.material('#6e5034', { steps: 4 });
   s.fill(rect(bx - 12, 36, 6, 3), { box: rect(bx - 12, 36, 6, 3).box, mat: tag, flat: 0.7 });
   const letters = s.color('#e6d2a0');
-  for (let i = 0; i < 4; i++) if (hash01(pilot2Traits.encode(set), 90 + i) > 0.25) s.pin(bx - 11 + i, 37, letters);
+  for (let i = 0; i < 4; i++) if (hash01(identityCode(set), 90 + i) > 0.25) s.pin(bx - 11 + i, 37, letters);
 }
 
 function head(c, { visorUp, mask }) {
   const { s, set, expr, beat, pose, cx, bx } = c;
   const skinHex = hexOf(set, 'skin');
-  const skin = s.material(skinHex, { steps: 5, shift: 6, dark: 0.38, light: 0.4 });
+  const skin = s.material(skinHex, { steps: 5, shift: 6, dark: 0.38, light: 0.4, keepHue: true });
   // Neck in the head's shadow.
   s.fill(rect(Math.min(cx, bx) - 3, 22, 7 + Math.abs(cx - bx), 5), { box: [bx - 6, 21, bx + 6, 28], mat: skin, bias: -0.18, flat: 0.5 });
   const face = ellipse(cx, 17, 6.2, 7.4);
@@ -291,7 +294,47 @@ function head(c, { visorUp, mask }) {
     if (set.mustache === 'yes') for (let x = cx - 2; x <= cx + 2; x++) s.pin(x, 20 - (open ? 1 : 0), moustache);
     if (set.scar === 'chin') s.pin(cx + 1, 23, s.color(mix(skinHex, '#f0c8c0', 0.5)));
   }
+  if (set.beard !== 'none') beard(c, skin, hair);
   void pal;
+}
+
+/** Facial hair on the skin that is still showing: a shadow of stubble, a chin tuft or a full jaw. */
+function beard(c, skin, hair) {
+  const { s, set, cx } = c;
+  const onSkin = (x, y) => s.inside(x, y) && s.mat[s.idx(x, y)] === skin && s.fixed[s.idx(x, y)] < 0;
+  const face = ellipse(cx, 17, 6.2, 7.4);
+  const col = s.color(set.beard === 'stubble' ? mix(hexOf(set, 'skin'), hair, 0.38) : shade(hair, 0.85));
+  for (let y = 18; y <= 25; y++) {
+    for (let x = Math.floor(cx - 7); x <= cx + 7; x++) {
+      if (!onSkin(x, y) || !face(x, y)) continue;
+      const edge = !face(x - 1, y) || !face(x + 1, y) || !face(x, y + 1);
+      const chin = y >= 22 && Math.abs(x + 0.5 - cx) <= 2.5;
+      const on = set.beard === 'stubble' ? (x + y) % 2 === 0 && (y >= 20 || edge) : set.beard === 'chin' ? chin : edge || chin || y >= 22;
+      if (on) s.pin(x, y, col);
+    }
+  }
+}
+
+/** A silk scarf knotted at the collar, its tail blown over the shoulder. */
+function scarf(c, collar) {
+  const { s, set, bx } = c;
+  const m = s.material(set.scarf === 'white' ? '#ecebe4' : set.scarf === 'red' ? '#c8322a' : '#2f5cb4', { steps: 4, shift: 20 });
+  s.fill((x, y) => collar(x, y) || (y >= 25 && y <= 27 && Math.abs(x + 0.5 - bx) <= 6.5), { box: [bx - 8, 23, bx + 8, 29], mat: m, dome: 2 });
+  s.stroke({ x: bx + 4, y: 27, angle: 2.3, len: 9, bend: 0.6, width: (u) => 2.4 - u * 1.2 }, { mat: m, profile: 'fold' });
+}
+
+/** A painted backdrop behind the figure: banded sky, dusk or night, under everything drawn. */
+function backdrop(s, set, seed) {
+  const SKY = { sky: '#6fa8dc', dusk: '#d9785a', night: '#1f2a52' };
+  const m = s.material(SKY[set.backdrop] ?? SKY.sky, { steps: 5, shift: 30, keepHue: true });
+  s.mats[m].noOutline = true;
+  s.fill(() => true, { box: [0, 0, s.w - 1, s.h - 1], mat: m, under: true, seam: false, light: (x, y) => 0.9 - (y / s.h) * 0.75 });
+  const dot = s.color(set.backdrop === 'night' ? '#f4f0d0' : '#ffffff', set.backdrop === 'night' ? 255 : 150);
+  for (let i = 0; i < 14; i++) {
+    const x = Math.floor(hash01(seed, 300 + i) * s.w);
+    const y = Math.floor(hash01(seed, 320 + i) * s.h * 0.6);
+    if (s.mat[s.idx(x, y)] === m && s.fixed[s.idx(x, y)] < 0) s.pin(x, y, dot);
+  }
 }
 
 function helmet(c, { visorUp }) {

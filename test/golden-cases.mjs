@@ -71,3 +71,28 @@ export function plantGoldens({ plantTraits, drawPlant }) {
   }
   return out;
 }
+
+// ---------- v2 compatibility ----------
+//
+// v2 grows by appending options whose first choice is the look it had before. A code written
+// before an append decodes with the new fields at their defaults, so it must keep drawing the
+// same pixels. `npm run goldens:v2` captured these codes once; test/v2-compat.test.mjs compares.
+
+export const V2_SEEDS = Array.from({ length: 10 }, (_, i) => `v2c-${i}`);
+
+/** `code` → { `anim|frame`: fingerprint } for every v2 generator, size class and anim. */
+export function v2Goldens({ GENERATORS, fromCode }) {
+  const out = {};
+  for (const gen of GENERATORS.filter((g) => g.version === 2)) {
+    for (const seed of V2_SEEDS) {
+      for (const size of gen.sizes) {
+        const code = gen.traits.encode({ ...gen.fromSeed(seed), [gen.sizeField]: size.id });
+        const g = fromCode(gen, code);
+        const prints = {};
+        for (const a of gen.anims) for (const i of new Set([0, a.frames >> 1])) prints[`${a.id}|${i}`] = fingerprint(gen.frame(g, a.id, i));
+        out[`${gen.id}|${code}`] = prints;
+      }
+    }
+  }
+  return out;
+}

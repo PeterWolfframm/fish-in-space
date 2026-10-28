@@ -1,7 +1,7 @@
 {
   "name": "pixelforge",
   "version": "0.1.0",
-  "description": "Procedural pixel-art generator for Burn-Through pilots, fish. fish and tank plants, and plantasia plants",
+  "description": "pixel art generator. for some reason, specialed in fish!",
   "type": "module",
   "private": true,
   "exports": {
@@ -11,15 +11,43 @@
     "./registry": "./src/gen/registry.js",
     "./png": "./src/png.js"
   },
-  "bin": { "forge": "cli/forge.mjs" },
+  "bin": {
+    "forge": "cli/forge.mjs"
+  },
   "scripts": {
-    "app": "echo 'open http://localhost:8017/app/' && python3 -m http.server 8017",
+    "css": "tailwindcss -i app/app.css -o app/built.css",
+    "css:watch": "tailwindcss -i app/app.css -o app/built.css --watch",
+    "app": "node scripts/run-app.mjs",
+    "app:static": "npm run css && node server/static.mjs 8017",
+    "pb": "node scripts/get-pocketbase.mjs && .pocketbase/pocketbase serve --http 127.0.0.1:8090 --dir .pocketbase/pb_data --migrationsDir pb_migrations",
+    "trainer": "node server/trainer.mjs",
+    "pixelgen:admin": "node scripts/pixelgen-admin.mjs",
+    "export-swipes": "node scripts/export-swipes.mjs",
     "forge": "node cli/forge.mjs",
     "test": "node --test test/*.test.mjs",
     "vendor:pixel": "node scripts/vendor-pixel.mjs",
     "goldens:pilot": "node scripts/make-goldens.mjs pilot",
     "goldens:v1": "node scripts/make-goldens.mjs v1",
+    "goldens:v2": "node scripts/make-goldens.mjs v2",
     "goldens:fish": "cd ../fish. && node_modules/.bin/vite-node ../pixelforge/scripts/make-goldens.mjs fish"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "react",
+        "react-dom",
+        "lucide-react"
+      ]
+    }
+  },
+  "dependencies": {
+    "@keypad/ui": "link:../kahootclone/packages/keypad"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
 }
