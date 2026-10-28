@@ -12,18 +12,16 @@ import { EYE_COLORS } from '../../gen/fish/palettes.js';
 
 const opts = (...pairs) => pairs.map(([id, label]) => ({ id, label }));
 const isRare = (set) => set.rarity === 'rare' || set.rarity === 'myth';
+const isRareOnly = (set) => set.rarity === 'rare';
 const notCommon = (set) => set.rarity !== 'common';
-const isMyth = (set) => set.rarity === 'myth';
 
-/** Rare signatures: drawn features nothing else in the generator can make. Every rare or myth
- * fish shows one (`auto` resolves from the fish's looks, see phenotype.js). */
+/** Rare signatures: drawn features nothing else in the generator can make. */
 export const SIGNATURES = [
   ['crown', 'Spine crown'], ['halo', 'Halo'], ['thirdeye', 'Third eye'], ['runes', 'Rune line'],
   ['embers', 'Ember wake'], ['voideye', 'Void eye'], ['wings', 'Second wings'], ['brand', 'Sigil brand'],
 ];
-/** Myth relics: a second, myth-only feature on top of the signature. */
-export const RELICS = [['mantle', 'Aurora mantle'], ['orbit', 'Orbiting motes'], ['eclipse', 'Black sun'], ['revenant', 'Revenant bones']];
-
+// Kept as an empty export for consumers of the previous fish3 trait set.
+export const RELICS = [];
 /** Seven steps around a centre, for the heritable proportions. */
 const STEPS = opts(['n3', '−3'], ['n2', '−2'], ['n1', '−1'], ['0', '·'], ['p1', '+1'], ['p2', '+2'], ['p3', '+3']);
 const BELL = [3, 8, 18, 42, 18, 8, 3];
@@ -132,9 +130,10 @@ export const fish3Traits = defineTraits({
     field({ id: 'lineA', label: 'Lineage', group: 'genes', choices: opts(...Array.from({ length: 36 }, (_, i) => [`l${i}`, i.toString(36)])), volatility: 0 }),
     field({ id: 'lineB', label: 'Lineage ·', group: 'genes', choices: opts(...Array.from({ length: 36 }, (_, i) => [`l${i}`, i.toString(36)])), volatility: 0 }),
     field({ id: 'purity', label: 'Line purity', group: 'genes', choices: opts(...Array.from({ length: 10 }, (_, i) => [`p${i}`, String(i)])), weights: [1, ...Array(9).fill(0)], volatility: 0 }),
-    // --- signatures: rare and myth only, never rolled directly (`auto` picks from the looks) -----
-    field({ id: 'signature', label: 'Signature', group: 'rare', choices: opts(['auto', 'Chosen by the fish'], ...SIGNATURES), weights: [1, ...SIGNATURES.map(() => 0)], default: 'auto', volatility: 0, when: isRare, gateHint: 'needs a rare fish' }),
-    field({ id: 'relic', label: 'Relic', group: 'rare', choices: opts(['auto', 'Chosen by the fish'], ...RELICS), weights: [1, ...RELICS.map(() => 0)], default: 'auto', volatility: 0, when: isMyth, gateHint: 'needs a mythic fish' }),
+    // --- signatures: rare only, never rolled directly (`auto` picks from the looks) -------------
+    field({ id: 'signature', label: 'Signature', group: 'rare', choices: opts(['auto', 'Chosen by the fish'], ...SIGNATURES), weights: [1, ...SIGNATURES.map(() => 0)], default: 'auto', volatility: 0, when: isRareOnly, gateHint: 'needs a rare fish' }),
+    // Reserved in the code so existing fish3 codes keep decoding; relics were removed.
+    field({ id: 'relic', label: 'Relic', group: 'rare', choices: opts(['auto', 'None']), weights: [1], default: 'auto', volatility: 0, hidden: true }),
   ],
 });
 

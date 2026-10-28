@@ -24,7 +24,7 @@ the hash only ever picks *within* a pool that a fact about the fish points to.
 ```
 genome ──► phenotype ──► ecology (pure rules, no RNG)     ──► ecology keys  diet.piscivore …
                     └──► salience (most striking traits)   ──► trait keys    jaw.fangs, morph.galaxy …
-                    └──► signature / relic (rare, myth)    ──► rare keys     signature.crown, relic.eclipse
+                    └──► signature (rare)                  ──► rare keys     signature.crown
                                                                 rarity key    rarity.myth
 ```
 
@@ -32,12 +32,12 @@ genome ──► phenotype ──► ecology (pure rules, no RNG)     ──► 
 |---|---|---|
 | Common name | `names.js` | lead modifier of the most striking trait + `colour-part` compound + body noun |
 | Binomial | `names.js` | body genus + Latin root of the most striking trait + ending |
-| Title | `names.js` | relic, else signature: `…, the <Title>` |
+| Title | `names.js` | signature: `…, the <Title>` |
 | Designation | `lore.js` | binomial · class word for the rarity · home depth |
 | Quote | `lore.js` | any of the fish's keys that has a quote |
 | Codex (3 lines) | `lore.js` | line 1 always diet; lines 2–3 other ecology facts; a trait line may take line 3 |
 | Edict | `lore.js` | temperament, sociality or level |
-| Legend | `lore.js` | rare and myth only: relic or signature |
+| Legend | `lore.js` | rare only: signature |
 
 Until a key has lines, `lore.js` prints a plain factual sentence for it ("The Golden Fang eats other
 fish."). So the entry is always complete and always true, and every line you add is an upgrade.
@@ -128,9 +128,9 @@ keyed to must still be readable through the damage.
 | Slot | Pool | Keys it reads | Cap | Form |
 |---|---|---|---|---|
 | Quote | `QUOTES` | any key the fish has | ≤ 18 words + attribution | `{ text, by }`, no quote marks, no dash in `by` |
-| Codex | `CODEX` | ecology keys (except hardness), trait keys, signature and relic | ≤ 22 words | one or two sentences, third person, present tense |
+| Codex | `CODEX` | ecology keys (except hardness), trait keys and signature | ≤ 22 words | one or two sentences, third person, present tense |
 | Edict | `EDICTS` | `temperament.*`, `sociality.*`, `level.*` | ≤ 14 words | imperative, addressed to the keeper |
-| Legend | `LEGENDS` | `signature.*`, `relic.*` | ≤ 40 words | past tense, the origin or the price of the feature |
+| Legend | `LEGENDS` | `signature.*` | ≤ 40 words | past tense, the origin or the price of the feature |
 | Class word | `CLASSES` | rarity | 1–3 words | a classification or threat grade, several per tier |
 
 Codex line 1 is always the diet, so `diet.*` keys need the most lines. Lines 2–3 are drawn from
@@ -148,7 +148,7 @@ Use tokens instead of restating facts, so a line stays true when it lands on a d
 | `{binomial}` `{genus}` | "Serrasalmus chrysonotus", "Serrasalmus" | archival tone |
 | `{body}` `{Body}` | body label, lower and capitalised | when the shape matters |
 | `{colour}` | the rolled skin colour, lower case | sparingly, colour is in the name already |
-| `{signature}` `{relic}` | their labels, lower case (empty if none) | only in keys that guarantee one |
+| `{signature}` | its label, lower case (empty if none) | only in keys that guarantee one |
 | `{diet}` `{depth}` `{temp}` `{current}` | plain words from `WORDS` ("eats other fish", "the abyss") | only in a key about the same fact |
 | `{cm}` `{litres}` `{tempLo}` `{tempHi}` `{group}` | care numbers | edicts; make the numbers solemn, keep them exact |
 
@@ -184,7 +184,7 @@ Edict, `sociality.school`:
 '<imperative about never keeping fewer than {group}>.'
 ```
 
-Legend, `relic.eclipse`, myth register:
+Legend, `signature.crown`, rare register:
 
 ```js
 '<a fragment of the origin of the black sun> <redaction mark> <what it cost the one who witnessed it>.'
@@ -207,7 +207,7 @@ Legend, `relic.eclipse`, myth register:
 How a fish earns each key, so you know what the player sees. Run `node scripts/lore-coverage.mjs`
 for the live list with how common each key is.
 
-### Ecology keys (from `ecology.js`; signatures and relics override last)
+### Ecology keys (from `ecology.js`; signatures override last)
 
 | Fact | Values | Decided by |
 |---|---|---|
@@ -227,7 +227,7 @@ of 4000 fish: a schooling fish is territorial 7 % of the time and aggressive 4 %
 peaceful 2.5 %, even skittish 0.5 %; an aggressive herbivore turns up 1 %. A line about one fact
 must survive every value of the others: a `sociality.school` line cannot promise the school is calm.
 
-### Special values (only a signature or relic gives these)
+### Special values (only a signature gives these)
 
 | Key | From | Visual |
 |---|---|---|
@@ -239,19 +239,13 @@ must survive every value of the others: a `sociality.school` line cannot promise
 | `depth.abyss`, `activity.nocturnal` | `signature.voideye` | the eye is a black hole with one star in it |
 | `level.above` | `signature.wings` | a second pair of pale wing fins on the back, beating |
 | `sociality.warband` | `signature.brand` | a burning sigil on the flank |
-| `temp.polar` | `relic.mantle` | an aurora ribbon streaming over the back |
-| `sociality.retinue` | `relic.orbit` | three motes circling the fish, passing behind it |
-| `depth.void` | `relic.eclipse` | a black sun with a burning rim behind the back |
-| `diet.carrion` | `relic.revenant` | the rear third has rotted to bone |
-
-**Rules of the rare features**: rare and myth fish always have a signature. Myth fish also have a
-relic. Common and uncommon fish never have either, whatever is locked or bred. Two parents that
-both bear a signature can pass one on; otherwise it appears only as a breeding sport. Nothing else
-in the generator can draw these features.
+**Rules of the rare feature**: rare fish always have a signature. Common, uncommon and mythic fish
+never have one, whatever is locked or bred. Two rare parents that both bear a signature can pass
+one on; otherwise it appears only as a breeding sport. Nothing else in the generator can draw it.
 
 ### Trait keys (the name's salience order)
 
-The most striking first: relic, signature, `morph.*`, `lure.on`, `glow.on`, `photophores.on`,
+The most striking first: signature, `morph.*`, `lure.on`, `glow.on`, `photophores.on`,
 `jaw.*`, `extras.*`, `dorsal.*`, `tail.*`, `eyes.*`, `pattern.*`, `size.*` (tiny, huge, giant),
 `mood.*`, and always `skin.<colour>` last. The keys listed in `names-data.js` `MODIFIERS` and
 `PATTERN_PARTS` are the ones that exist. A trait line describes what the trait *looks like* and
@@ -277,7 +271,7 @@ Names are procgen output too. The same traits always give related names.
   "-spotted"). Keep them anatomical.
 - **`LATIN[key]`**: one root per meaning, stable per trait (glow is always `luci-`/`photo-`).
   Roots must combine with every ending in `LATIN_ENDS` and still be pronounceable.
-- **`TITLES[signature or relic]`**: the epithet in "…, the <Title>". Several per feature. A title
+- **`TITLES[signature]`**: the epithet in "…, the <Title>". Several per feature. A title
   names what the feature *means* in the lore canon (the lexicon), not what it looks like.
 
 `npm test` checks that every common name ends in a noun of its body and every binomial starts with its
@@ -298,8 +292,8 @@ the voice goes in tooltips, empty states, headings and event text. Strings live 
 | `app/likes.js` | action button tooltips, empty state |
 | `app/auth.js` | backend-offline notice, sign in/out |
 | `app/admin.js` | status lines, model card headings, empty states |
-| `src/v3/fish/breeding.js` | breeding event sentences (`say(kind, text)`): sterile, blend, pattern, hybrid, vigour, sport, signature, relic, line, reveal |
-| `src/v3/fish/genome.js` | trait and choice labels, including `SIGNATURES` and `RELICS` labels (these show in the editor and in `{signature}` tokens, so keep them short and plain) |
+| `src/v3/fish/breeding.js` | breeding event sentences (`say(kind, text)`): sterile, blend, pattern, hybrid, vigour, sport, signature, line, reveal |
+| `src/v3/fish/genome.js` | trait and choice labels, including `SIGNATURES` (these show in the editor and in `{signature}` tokens, so keep them short and plain) |
 | `package.json`, `README.md` | the tagline again |
 
 Breeding events are the best place for the voice outside the codex: one line per event kind,
@@ -312,7 +306,7 @@ plain: the user needs the error message.
 
 1. Fill the lexicon (section 3) and commit it before writing lines.
 2. Pick keys from `node scripts/lore-coverage.mjs --missing`. Start with the most common
-   (`diet.*`, `temperament.*`, `depth.*`), then the signatures and relics (every rare fish shows them).
+   (`diet.*`, `temperament.*`, `depth.*`), then signatures (every rare fish shows one).
 3. For each key, read its row in section 7, then write **2× the target** lines (codex 6, quote 2,
    edict 4, legend 4 by default), across tiers.
 4. Cut half. Keep the lines whose fact survives the escalation and that do not share an opening

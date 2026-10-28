@@ -1,0 +1,11 @@
+{
+  "name": "Seedfall",
+  "short_name": "Seedfall",
+  "description": "Breed pixel fish and seed the oceans of a terraformed planet.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f2238",
+  "theme_color": "#0f2238",
+  "icons": []
+}

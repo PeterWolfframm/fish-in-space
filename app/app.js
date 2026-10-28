@@ -361,6 +361,7 @@ function renderTraits() {
   const nodes = [];
   let group = null;
   for (const f of traits.fields) {
+    if (f.hidden) continue;
     if (f.group && f.group !== group) {
       group = f.group;
       const h = document.createElement('div');

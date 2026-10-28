@@ -16,7 +16,7 @@ import { TAXA } from '../src/v3/fish/names-data.js';
 import { ecologyOf } from '../src/v3/fish/ecology.js';
 import { DIET_BY_JAW } from '../src/v3/fish/ecology-data.js';
 import { loreOf, loreText } from '../src/v3/fish/lore.js';
-import { jitterKey, SIGNATURES, RELICS } from '../src/v3/fish/genome.js';
+import { jitterKey, SIGNATURES } from '../src/v3/fish/genome.js';
 
 const gen = generator('fish3');
 const same = (a, b) => a.w === b.w && a.h === b.h && a.data.every((v, i) => v === b.data[i]);
@@ -152,13 +152,13 @@ test('fish3 ecology is read off the body, with evidence', () => {
   }
 });
 
-test('fish3 signatures: only rare fish, always rare fish; relics only myth', () => {
+test('fish3 signatures are rare-only; mythic fish keep their earlier look', () => {
   for (let i = 0; i < 3000; i++) {
     const g = gen.fromSeed(`sig-${i}`);
     const ph = phenotype(g);
-    const rare = ['rare', 'myth'].includes(ph.set.rarity);
+    const rare = ph.set.rarity === 'rare';
     assert.equal(ph.signature !== 'none', rare, `${ph.set.rarity}: ${ph.signature}`);
-    assert.equal(ph.relic !== 'none', ph.set.rarity === 'myth', `${ph.set.rarity}: ${ph.relic}`);
+    assert.equal(ph.relic, 'none', `${ph.set.rarity}: ${ph.relic}`);
   }
   // A lock can't sneak one onto a common fish.
   const g = T.normalize({ ...gen.fromSeed('sig-lock'), rarity: 'common', signature: 'crown', relic: 'eclipse' });
@@ -166,18 +166,19 @@ test('fish3 signatures: only rare fish, always rare fish; relics only myth', () 
   assert.equal(phenotype(g).relic, 'none');
 });
 
-test('fish3 signatures and relics draw every frame, inside the window', () => {
+test('fish3 rare signatures draw every frame, inside the window', () => {
   for (const [sig] of SIGNATURES) {
-    for (const [relic] of [['auto'], ...RELICS]) {
-      const base = T.normalize({ ...gen.fromSeed(`sigdraw-${sig}`), rarity: 'myth', signature: sig, relic, size: 'medium' });
-      const plain = T.normalize({ ...base, rarity: 'uncommon' });
-      for (const a of gen.anims) {
-        const img = gen.frame(base, a.id, 0);
-        assert.ok(!edgePaint(img), `${sig}/${relic} ${a.id} paints the edge`);
-      }
-      assert.ok(!same(gen.frame(base, 'swim', 0), gen.frame(plain, 'swim', 0)), `${sig}/${relic} changes pixels`);
+    const base = T.normalize({ ...gen.fromSeed(`sigdraw-${sig}`), rarity: 'rare', signature: sig, size: 'medium' });
+    const plain = T.normalize({ ...base, rarity: 'uncommon' });
+    for (const a of gen.anims) {
+      const img = gen.frame(base, a.id, 0);
+      assert.ok(!edgePaint(img), `${sig} ${a.id} paints the edge`);
     }
+    assert.ok(!same(gen.frame(base, 'swim', 0), gen.frame(plain, 'swim', 0)), `${sig} changes pixels`);
   }
+  const myth = T.normalize({ ...gen.fromSeed('myth-look'), rarity: 'myth', signature: 'crown', relic: 'eclipse' });
+  assert.equal(phenotype(myth).signature, 'none');
+  assert.equal(phenotype(myth).relic, 'none');
 });
 
 test('fish3 signatures leave existing fish pixels alone (jitter key fixture)', () => {

@@ -5,7 +5,7 @@
 // Pure and cached by code: the painter calls this once per frame.
 
 import { roller } from '../../pixel/rng.js';
-import { fish3Traits, stepOf, jitterKey, SIGNATURES, RELICS } from './genome.js';
+import { fish3Traits, stepOf, jitterKey, SIGNATURES } from './genome.js';
 import { archetypeOf, profileAt } from './bodies.js';
 import { paletteOf } from './colors.js';
 
@@ -172,8 +172,8 @@ function build(set, stageOverride) {
     back: (t) => height(back, t, s, beak, beakH, L),
     belly: (t) => height(belly, t, s, beak, beakH, L),
     rare: set.rarity === 'rare' || set.rarity === 'myth',
-    signature: resolved(set.signature, SIGNATURES, set.rarity === 'rare' || set.rarity === 'myth', jkey, 1),
-    relic: resolved(set.relic, RELICS, set.rarity === 'myth', jkey, 2),
+    signature: resolved(set.signature, SIGNATURES, set.rarity === 'rare', jkey, 1),
+    relic: 'none',
     jitter: range,
   };
   ph.colors = paletteOf(set, ph);
