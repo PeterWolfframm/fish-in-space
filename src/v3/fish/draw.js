@@ -79,6 +79,7 @@ export function drawFish3(genome, pose, look) {
   const K = columns(ph, pose, sc.origin, look ?? set.swim ?? 'raised');
   const ctx = makeCtx(g, ph, K, pose);
 
+  relicBehind(ctx);
   pelvicFins(ctx, 'far');
   tailFin(ctx);
   dorsalFin(ctx);
@@ -91,6 +92,7 @@ export function drawFish3(genome, pose, look) {
   markings(ctx);
   wear(ctx);
   ghostBones(ctx);
+  revenant(ctx);
   forehead(ctx);
   gill(ctx);
   pectoralFin(ctx);
@@ -99,6 +101,8 @@ export function drawFish3(genome, pose, look) {
   mouth(ctx);
   extras(ctx);
   flourish(ctx);
+  signature(ctx);
+  orbit(ctx);
 
   let out = g;
   if (pose.turn) out = squash(g, pose.turn, sc.origin.x - ph.L / 2);
@@ -1323,6 +1327,215 @@ function flourish(ctx) {
       const y = Math.round(c.mid + v * (v < 0 ? c.back : c.belly));
       g.px(c.x, y, glow);
       if (set.glow === 'full') g.px(c.x + 1, y, glow);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Signatures and relics: rare- and myth-only features. Each is its own routine and shares no
+// path with the ordinary traits, so nothing a common fish can roll or breed reaches these pixels.
+
+const GOLD = '#f2c53d';
+const pulseOf = (pose) => 0.5 + 0.5 * Math.sin(TAU * (pose.glow ?? 0.5));
+/** The tail joint: the body column nearest t = 0. */
+const tailCol = (ctx) => ctx.bodyCols.reduce((best, c) => (!best || c.t < best.t ? c : best), null);
+
+/** The signature: one of eight, picked or set (see genome.js SIGNATURES). */
+function signature(ctx) {
+  const { g, ph, pal, s, pose, colT, edges } = ctx;
+  const kind = ph.signature;
+  if (!kind || kind === 'none') return;
+  const glowA = Math.round(170 + 85 * pulseOf(pose));
+  const head = colT(ph.eyeT);
+  if (!head) return;
+
+  if (kind === 'crown') {
+    // A row of gold spikes standing on the head.
+    const gold = g.color(GOLD);
+    const tip = g.color(HIGHLIGHT);
+    const n = Math.max(3, Math.min(5, Math.round(2 + s)));
+    const h = Math.max(3, Math.round(2.6 * s + 1));
+    for (let i = 0; i < n; i++) {
+      const c = colT(ph.eyeT - 0.14 + (0.16 * i) / (n - 1));
+      if (!c) continue;
+      const { yb } = edges(c);
+      const hh = i === Math.floor(n / 2) ? h + 1 : h;
+      g.line(c.x, yb, c.x, yb - hh, gold);
+      g.px(c.x, yb - hh, tip);
+    }
+    const a = colT(ph.eyeT - 0.14);
+    const b = colT(ph.eyeT + 0.02);
+    if (a && b) g.line(a.x, edges(a).yb, b.x, edges(b).yb, gold);
+  } else if (kind === 'halo') {
+    // A gold ring floating over the head, bobbing with the swim.
+    const ring = g.color(mix(GOLD, HIGHLIGHT, 0.35), glowA);
+    const { yb } = edges(head);
+    const cx = head.x - 1;
+    const rx = Math.max(2.5, 2.4 * s + 1);
+    const ry = Math.max(1, 0.7 * s);
+    const cy = yb - Math.max(3, 2.5 * s + 2) + Math.round(Math.sin(TAU * (pose.wave ?? 0)) * 0.6);
+    const steps = Math.ceil(TAU * rx * 2);
+    for (let i = 0; i < steps; i++) {
+      const a = (TAU * i) / steps;
+      g.px(Math.round(cx + Math.cos(a) * rx), Math.round(cy + Math.sin(a) * ry), ring);
+    }
+  } else if (kind === 'thirdeye') {
+    // A large slit-pupilled eye set into the brow, above and behind the real one.
+    const c = colT(ph.eyeT - 0.09) ?? head;
+    const { yb } = edges(c);
+    const r = Math.max(2, Math.round(0.9 * s + 0.8));
+    const cx = c.x + 0.5;
+    const cy = yb + r + 0.5;
+    g.ellipse(cx, cy, r + 1, r + 0.6, g.color(INK));
+    g.ellipse(cx, cy, r, r - 0.3, g.color(mix('#ff4fd8', HIGHLIGHT, 0.25 * pulseOf(pose)), glowA));
+    g.line(c.x, Math.round(cy - r + 1), c.x, Math.round(cy + r - 1), g.color(INK));
+    g.px(c.x - 1, Math.round(cy - r + 1), g.color(HIGHLIGHT));
+  } else if (kind === 'runes') {
+    // A glowing rune script along the lateral line.
+    const rune = g.color(mix('#7ee8ff', HIGHLIGHT, 0.3), glowA);
+    const per = Math.max(3, Math.round(2.5 * s));
+    for (const c of ctx.bodyCols) {
+      if (c.t < 0.12 || c.t > ph.eyeT - 0.12) continue;
+      const y = Math.round(c.mid);
+      const k = Math.round(c.t * ph.L) % per;
+      if (k === per - 1) continue;
+      g.px(c.x, y, rune);
+      if (k === 0) g.px(c.x, y - 1, rune);
+      if (k === 1 && per > 3) g.px(c.x, y + 1, rune);
+    }
+  } else if (kind === 'embers') {
+    // Embers shed from the tail, rising and cooling as they drift back.
+    const tc = tailCol(ctx);
+    if (!tc) return;
+    const hot = ['#fff1a8', '#ffd84a', '#ff9a2e', '#f2552a', '#b8321e'];
+    const n = Math.max(4, Math.round(3 + 1.5 * s));
+    const w = pose.wave ?? 0;
+    for (let i = 0; i < n; i++) {
+      const f = (i / n + w) % 1;
+      const x = Math.round(tc.x - (2 + f * 14) * s);
+      const y = Math.round(tc.mid - f * 10 * s - 1 + Math.sin(TAU * (f * 2 + i * 0.37)) * 1.5 * s);
+      const sz = Math.max(2, Math.round((1 - f) * 2 * s + 1));
+      const heat = Math.min(hot.length - 2, Math.floor(f * f * (hot.length - 1)));
+      g.rect(x, y, sz, sz, g.color(hot[heat + 1]));
+      if (sz >= 3) g.rect(x + 1, y + 1, sz - 2, sz - 2, g.color(hot[heat]));
+    }
+  } else if (kind === 'voideye') {
+    // The eye is a hole: black, a single star in it, and a dark streak running back.
+    const size = Math.max(2, Math.min(6, ph.eyeSize, Math.floor(head.back + head.belly) - 1));
+    const top = Math.round(head.mid - head.back * ph.eyeUp - size / 2 + 0.5);
+    const cx = head.x - size + 1 + size / 2;
+    const cy = top + size / 2;
+    const voidC = g.color('#0b0614');
+    g.ellipse(cx, cy, size / 2 + 0.4, size / 2 + 0.4, voidC);
+    g.px(Math.round(cx - 0.5), Math.round(cy - 0.5), g.color('#b98cff', glowA));
+    const streak = g.color('#2a1640', 220);
+    const len = Math.max(2, Math.round(2.5 * s));
+    for (let k = 1; k <= len; k++) g.px(Math.round(cx - size / 2 - k), Math.round(cy + size / 2 + k * 0.5), streak);
+  } else if (kind === 'wings') {
+    // A second pair of wing fins rising from the back, beating with the swim.
+    const c = colT(0.55);
+    if (!c) return;
+    const { yb } = edges(c);
+    const beat = 0.7 + 0.3 * Math.sin(TAU * (pose.wave ?? 0) * 2);
+    const wing = g.color(mix('#cfe9ff', pal.fin.lit, 0.2), 215);
+    const rim = g.color(mix(GOLD, HIGHLIGHT, 0.3), 240);
+    for (const [back, k] of [[0, 1], [3 * s, 0.7]]) {
+      const bx = c.x - Math.round(back);
+      const tip = [bx - 8 * s * k, yb - 7 * s * k * beat - 2];
+      const pts = [[bx + 1, yb + 1], [tip[0] + 3 * s, tip[1]], tip, [bx - 4 * s * k, yb - 1.5 * s], [bx - 1, yb + 1]];
+      g.polygon(pts, wing);
+      g.line(bx, yb, tip[0], tip[1], rim);
+    }
+  } else if (kind === 'brand') {
+    // A glowing sigil burnt into the flank: a diamond crossed by a bar.
+    const c = colT(0.45);
+    if (!c) return;
+    const sig = g.color(mix('#e8551f', GOLD, 0.4 + 0.4 * pulseOf(pose)), 235);
+    const r = Math.max(2, Math.round(1.4 * s + 0.6));
+    const cx = c.x;
+    const cy = Math.round(c.mid - c.back * 0.15);
+    for (let k = 0; k < r; k++) {
+      g.px(cx - r + k, cy - k, sig);
+      g.px(cx + k, cy - r + k, sig);
+      g.px(cx + r - k, cy + k, sig);
+      g.px(cx - k, cy + r - k, sig);
+    }
+    g.line(cx, cy - r - 1, cx, cy + r + 1, sig);
+  }
+}
+
+/** Relics that sit behind the fish: the aurora mantle and the black sun. */
+function relicBehind(ctx) {
+  const { g, ph, s, pose, K } = ctx;
+  const kind = ph.relic;
+  if (kind !== 'mantle' && kind !== 'eclipse') return;
+  const cols = K.cols.filter((c) => c.back + c.belly >= 1);
+  if (!cols.length) return;
+  const at = (t) => cols.reduce((best, c) => (!best || Math.abs(c.t - t) < Math.abs(best.t - t) ? c : best), null);
+  if (kind === 'mantle') {
+    // A ribbon of shifting colour streaming above the back.
+    const w = pose.wave ?? 0;
+    const lift = Math.max(3, 2.5 * s + 2);
+    for (const c of cols) {
+      if (c.t < 0.05 || c.t > 0.85) continue;
+      const y = Math.round(c.mid - c.back - lift - Math.sin(TAU * (c.t * 1.5 - w)) * s);
+      const hue = rotateHue('#7ee8ff', Math.round(c.t * 220 + w * 360) % 360);
+      const col = g.color(hue, 200);
+      g.px(c.x, y, col);
+      g.px(c.x, y + 1, col);
+    }
+  } else {
+    // A black disc with a burning rim, risen behind the back.
+    const c = at(0.5);
+    const r = Math.max(3, 2.6 * s + 1.5);
+    const cx = c.x + 0.5;
+    const cy = c.mid - c.back - r * 0.4;
+    g.ellipse(cx, cy, r + 1, r + 1, g.color(mix(GOLD, HIGHLIGHT, 0.4 * pulseOf(pose)), 230));
+    g.ellipse(cx, cy, r, r, g.color('#07050c'));
+  }
+}
+
+/** Relic: motes circling the fish, passing behind it on the far side. */
+function orbit(ctx) {
+  const { g, ph, s, pose, onBody } = ctx;
+  if (ph.relic !== 'orbit') return;
+  const c = ctx.colT(0.5);
+  if (!c) return;
+  const rx = ph.L * 0.62;
+  const ry = Math.max(3, (c.back + c.belly) * 0.5 + 2 * s);
+  const mote = g.color(mix('#b98cff', HIGHLIGHT, 0.5), 235);
+  const sz = s >= 1.4 ? 2 : 1;
+  for (let i = 0; i < 3; i++) {
+    const a = TAU * ((pose.wave ?? 0) + i / 3);
+    const x = Math.round(c.x + Math.cos(a) * rx);
+    const y = Math.round(c.mid + Math.sin(a) * ry * 0.6);
+    const behind = Math.sin(a) < 0;
+    for (let dy = 0; dy < 2; dy++) {
+      for (let dx = 0; dx < sz + 1; dx++) {
+        if (dy === 1 && dx === sz) continue;
+        if (behind && onBody(x + dx, y + dy)) continue;
+        g.px(x + dx, y + dy, mote);
+      }
+    }
+  }
+}
+
+/** Relic: the rear of the body has rotted to bone. */
+function revenant(ctx) {
+  const { g, ph, bodyCols, edges, s } = ctx;
+  if (ph.relic !== 'revenant') return;
+  const rot = g.color('#3a3542', 235);
+  const bone = g.color('#e8e4d8');
+  const per = Math.max(2, Math.round(2 * s));
+  for (const c of bodyCols) {
+    if (c.t > 0.34) continue;
+    const { yb, yv } = edges(c);
+    for (let y = yb + 1; y < yv; y++) g.px(c.x, y, rot);
+    const y = Math.round(c.mid);
+    g.px(c.x, y, bone);
+    if (Math.round(c.t * ph.L) % per === 0 && c.t > 0.04) {
+      for (let k = 1; k < Math.round(c.back); k++) g.px(c.x - Math.round(k * 0.3), y - k, bone);
+      for (let k = 1; k < Math.round(c.belly); k++) g.px(c.x - Math.round(k * 0.3), y + k, bone);
     }
   }
 }

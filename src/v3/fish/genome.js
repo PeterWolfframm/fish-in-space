@@ -13,6 +13,16 @@ import { EYE_COLORS } from '../../gen/fish/palettes.js';
 const opts = (...pairs) => pairs.map(([id, label]) => ({ id, label }));
 const isRare = (set) => set.rarity === 'rare' || set.rarity === 'myth';
 const notCommon = (set) => set.rarity !== 'common';
+const isMyth = (set) => set.rarity === 'myth';
+
+/** Rare signatures: drawn features nothing else in the generator can make. Every rare or myth
+ * fish shows one (`auto` resolves from the fish's looks, see phenotype.js). */
+export const SIGNATURES = [
+  ['crown', 'Spine crown'], ['halo', 'Halo'], ['thirdeye', 'Third eye'], ['runes', 'Rune line'],
+  ['embers', 'Ember wake'], ['voideye', 'Void eye'], ['wings', 'Second wings'], ['brand', 'Sigil brand'],
+];
+/** Myth relics: a second, myth-only feature on top of the signature. */
+export const RELICS = [['mantle', 'Aurora mantle'], ['orbit', 'Orbiting motes'], ['eclipse', 'Black sun'], ['revenant', 'Revenant bones']];
 
 /** Seven steps around a centre, for the heritable proportions. */
 const STEPS = opts(['n3', '−3'], ['n2', '−2'], ['n1', '−1'], ['0', '·'], ['p1', '+1'], ['p2', '+2'], ['p3', '+3']);
@@ -122,6 +132,9 @@ export const fish3Traits = defineTraits({
     field({ id: 'lineA', label: 'Lineage', group: 'genes', choices: opts(...Array.from({ length: 36 }, (_, i) => [`l${i}`, i.toString(36)])), volatility: 0 }),
     field({ id: 'lineB', label: 'Lineage ·', group: 'genes', choices: opts(...Array.from({ length: 36 }, (_, i) => [`l${i}`, i.toString(36)])), volatility: 0 }),
     field({ id: 'purity', label: 'Line purity', group: 'genes', choices: opts(...Array.from({ length: 10 }, (_, i) => [`p${i}`, String(i)])), weights: [1, ...Array(9).fill(0)], volatility: 0 }),
+    // --- signatures: rare and myth only, never rolled directly (`auto` picks from the looks) -----
+    field({ id: 'signature', label: 'Signature', group: 'rare', choices: opts(['auto', 'Chosen by the fish'], ...SIGNATURES), weights: [1, ...SIGNATURES.map(() => 0)], default: 'auto', volatility: 0, when: isRare, gateHint: 'needs a rare fish' }),
+    field({ id: 'relic', label: 'Relic', group: 'rare', choices: opts(['auto', 'Chosen by the fish'], ...RELICS), weights: [1, ...RELICS.map(() => 0)], default: 'auto', volatility: 0, when: isMyth, gateHint: 'needs a mythic fish' }),
   ],
 });
 
@@ -134,11 +147,14 @@ export function fromV1Code(code) {
 /** Fields that are bookkeeping or camera, not the animal: left out of the drawing's jitter key. */
 export const NOT_LOOKS = ['stage', 'swim', 'gait', 'generation', 'lineA', 'lineB', 'purity', 'chaos', 'geneA', 'geneB', 'sex'];
 
+/** Fields from `signature` on never reach the jitter key, so adding them moved no existing fish. */
+const KEY_LEN = fish3Traits.prefix.length + fish3Traits.fields.findIndex((f) => f.id === 'signature');
+
 /** The key a drawing seeds its per-fish randomness from, stable across growth and breeding bookkeeping. */
 export function jitterKey(set) {
   const plain = { ...set };
   for (const id of NOT_LOOKS) plain[id] = fish3Traits.fieldById(id).default ?? fish3Traits.fieldById(id).choices[0].id;
-  return fish3Traits.encode(plain);
+  return fish3Traits.encode(plain).slice(0, KEY_LEN);
 }
 
 export const hexOf = (genome, fieldId) => fish3Traits.choiceOf(genome, fieldId)?.hex ?? '#888888';

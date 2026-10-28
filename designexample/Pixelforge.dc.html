@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&amp;family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; background: #0E0D0B; color: #F3EFE6; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #F7C64A; } a:hover { color: #FFE08A; }
+    button { font: inherit; }
+    canvas { image-rendering: pixelated; }
+    @keyframes pfToast { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes pfSheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  </style>
+</helmet>
+<div style="min-height: 100dvh; display: flex; background: #0E0D0B; color: #F3EFE6; font-family: 'Geist', system-ui, sans-serif; font-size: 15px; line-height: 1.45;">
+
+  <sc-if value="{{ wide }}" hint-placeholder-val="{{ false }}">
+    <aside style="width: 232px; flex: none; position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 28px; padding: 28px 20px; background: #141210; border-right: 2px solid #221F1B;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="font-family: 'Silkscreen', monospace; font-size: 24px; line-height: 1; color: #F7C64A; letter-spacing: 0.5px;">PIXELFORGE</div>
+        <div style="font-size: 13px; color: #A69F92;">for some reason, specialised in fish</div>
+      </div>
+      <nav style="display: flex; flex-direction: column; gap: 4px;">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+          <sc-if value="{{ t.active }}">
+            <button type="button" onClick="{{ t.go }}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 0; background: #F7C64A; color: #1A1405; font-family: 'Silkscreen', monospace; font-size: 16px; cursor: pointer; text-align: left; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));"><span>{{ t.label }}</span><span style="font-size: 12px;">{{ t.count }}</span></button>
+          </sc-if>
+          <sc-if value="{{ t.inactive }}">
+            <button type="button" onClick="{{ t.go }}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 0; background: transparent; color: #D8D1C4; font-family: 'Silkscreen', monospace; font-size: 16px; cursor: pointer; text-align: left;" style-hover="background: #221F1B; color: #F3EFE6;"><span>{{ t.label }}</span><span style="font-size: 12px; color: #6F685D;">{{ t.count }}</span></button>
+          </sc-if>
+        </sc-for>
+      </nav>
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #A69F92;">
+        <div style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #6F685D;">GUEST ANGLER</div>
+        <div>{{ statLine }}</div>
+      </div>
+    </aside>
+  </sc-if>
+
+  <main style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+    <sc-if value="{{ narrow }}" hint-placeholder-val="{{ true }}">
+      <header style="position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: rgba(14,13,11,0.94); backdrop-filter: blur(8px); border-bottom: 2px solid #191714;">
+        <div style="font-family: 'Silkscreen', monospace; font-size: 20px; line-height: 1; color: #F7C64A;">PIXELFORGE</div>
+        <div style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #A69F92;">{{ statShort }}</div>
+      </header>
+    </sc-if>
+
+    <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+      <div style="flex: 1; display: grid; place-items: center; padding: 48px 16px; font-family: 'Silkscreen', monospace; font-size: 16px; color: #A69F92;">Hatching fish…</div>
+    </sc-if>
+
+    <!-- HOME -->
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Home" style="width: 100%; max-width: 1180px; margin: 0 auto; padding: 24px 16px 120px; display: flex; flex-direction: column; gap: 32px;">
+        <section style="display: flex; flex-direction: column; gap: 14px; padding-top: 8px;">
+          <h1 style="margin: 0; font-family: 'Silkscreen', monospace; font-weight: 400; font-size: clamp(36px, 7vw, 64px); line-height: 1; letter-spacing: -1px; text-wrap: balance;">Fish. <span style="color: #F7C64A;">For some reason.</span></h1>
+          <p style="margin: 0; max-width: 46ch; color: #A69F92; font-size: 16px; text-wrap: pretty;">Swipe on procedurally generated fish. Rank the keepers. Breed the weird ones. Nobody asked, we did it anyway.</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; padding-top: 6px;">
+            <button type="button" onClick="{{ goSwipe }}" style="padding: 14px 20px; border: 0; background: #F7C64A; color: #1A1405; font-family: 'Silkscreen', monospace; font-size: 16px; cursor: pointer; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));" style-hover="background: #FFD866;">Go fishing →</button>
+            <button type="button" onClick="{{ goTank }}" style="padding: 14px 20px; border: 0; background: #221F1B; color: #F3EFE6; font-family: 'Silkscreen', monospace; font-size: 16px; cursor: pointer; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));" style-hover="background: #2D2924;">Visit the tank</button>
+          </div>
+        </section>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start;">
+          <section style="flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+              <h2 style="margin: 0; font-family: 'Silkscreen', monospace; font-weight: 400; font-size: 24px; line-height: 1.1;">Your tier list</h2>
+              <span style="font-size: 13px; color: #A69F92;">Drag fish between tiers. They won't take it personally.</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <sc-for list="{{ tierRows }}" as="tier" hint-placeholder-count="5">
+                <div data-tier="{{ tier.key }}" style="display: grid; grid-template-columns: 76px minmax(0, 1fr); min-height: 84px; background: {{ tier.zoneBg }};">
+                  <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; padding: 8px 4px; background: {{ tier.color }}; color: #1A1405; text-align: center;">
+                    <div style="font-family: 'Silkscreen', monospace; font-size: 32px; line-height: 1;">{{ tier.key }}</div>
+                    <div style="font-size: 10px; font-weight: 600; line-height: 1.15; text-transform: uppercase; letter-spacing: 0.3px;">{{ tier.name }}</div>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; align-content: center; gap: 6px; padding: 10px;">
+                    <sc-for list="{{ tier.fish }}" as="f" hint-placeholder-count="2">
+                      <div data-fish="{{ f.code }}" onPointerDown="{{ f.onDown }}" title="{{ f.name }}" style="position: relative; width: 64px; height: 64px; background: #1E3C5A; cursor: grab; touch-action: none; user-select: none; opacity: {{ f.opacity }}; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));">
+                        <pf-fish code="{{ f.code }}" max-scale="3" style="position: absolute; inset: 4px; pointer-events: none;"></pf-fish>
+                        <sc-if value="{{ f.marker }}"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #F7C64A;"></div></sc-if>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ tier.empty }}"><span style="font-size: 13px; color: #6F685D; padding-left: 4px;">{{ tier.emptyText }}</span></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div data-tier="pool" style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding: 14px; background: {{ poolBg }}; outline: 2px dashed #3A352E; outline-offset: -2px;">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+                <div style="font-family: 'Silkscreen', monospace; font-size: 16px;">The bucket <span style="color: #A69F92;">{{ poolCount }}</span></div>
+                <span style="font-size: 13px; color: #A69F92;">Fresh catches, unranked. Tap one to read its profile.</span>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 64px;">
+                <sc-for list="{{ poolFish }}" as="f" hint-placeholder-count="3">
+                  <div data-fish="{{ f.code }}" onPointerDown="{{ f.onDown }}" title="{{ f.name }}" style="position: relative; width: 64px; height: 64px; background: #1E3C5A; cursor: grab; touch-action: none; user-select: none; opacity: {{ f.opacity }}; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));">
+                    <pf-fish code="{{ f.code }}" max-scale="3" style="position: absolute; inset: 4px; pointer-events: none;"></pf-fish>
+                    <sc-if value="{{ f.marker }}"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #F7C64A;"></div></sc-if>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ poolEmpty }}"><span style="align-self: center; font-size: 13px; color: #6F685D;">Empty. Go swipe right on something.</span></sc-if>
+              </div>
+            </div>
+          </section>
+
+          <aside style="flex: 1 1 280px; max-width: 100%; display: flex; flex-direction: column; gap: 12px;">
+            <h2 style="margin: 0; font-family: 'Silkscreen', monospace; font-weight: 400; font-size: 24px; line-height: 1.1;">More from the forge</h2>
+            <sc-for list="{{ products }}" as="pr" hint-placeholder-count="4">
+              <button type="button" onClick="{{ pr.go }}" style="display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 0; background: #191714; color: #F3EFE6; text-align: left; cursor: pointer; clip-path: polygon(0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 6px),0 calc(100% - 6px));" style-hover="background: #221F1B;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%;">
+                  <span style="font-family: 'Silkscreen', monospace; font-size: 16px;">{{ pr.name }}</span>
+                  <span style="font-family: 'Silkscreen', monospace; font-size: 12px; padding: 3px 6px; background: {{ pr.tagBg }}; color: {{ pr.tagInk }};">{{ pr.tag }}</span>
+                </div>
+                <span style="font-size: 14px; color: #A69F92; text-wrap: pretty;">{{ pr.text }}</span>
+              </button>
+            </sc-for>
+          </aside>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- SWIPE -->
+    <sc-if value="{{ isSwipe }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Swipe" style="width: 100%; max-width: 1040px; margin: 0 auto; padding: 14px 16px 110px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; font-size: 13px; color: #A69F92;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>Show</span>
+            <div style="display: flex; gap: 2px; padding: 2px; background: #191714;">
+              <sc-for list="{{ countOpts }}" as="o" hint-placeholder-count="3">
+                <button type="button" onClick="{{ o.go }}" style="min-width: 36px; height: 32px; border: 0; padding: 0 8px; font-family: 'Silkscreen', monospace; font-size: 14px; cursor: pointer; background: {{ o.bg }}; color: {{ o.ink }};">{{ o.label }}</button>
+              </sc-for>
+            </div>
+            <span>{{ versionsWord }} by</span>
+          </div>
+          <div style="display: flex; gap: 2px; padding: 2px; background: #191714; opacity: {{ axisOpacity }};">
+            <sc-for list="{{ axisOpts }}" as="o" hint-placeholder-count="4">
+              <button type="button" onClick="{{ o.go }}" style="height: 32px; border: 0; padding: 0 10px; font-family: 'Silkscreen', monospace; font-size: 12px; cursor: pointer; background: {{ o.bg }}; color: {{ o.ink }};">{{ o.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 28px;">
+          <div style="width: min(420px, 100%); display: flex; flex-direction: column; gap: 16px;">
+            <div style="position: relative; height: clamp(440px, calc(100dvh - 270px), 660px);">
+              <sc-if value="{{ hasNext }}">
+                <div style="position: absolute; inset: 0; transform: translateY(10px) scale(0.95); background: #191714; clip-path: polygon(0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 6px),0 calc(100% - 6px));"></div>
+              </sc-if>
+              <sc-if value="{{ hasCard }}" hint-placeholder-val="{{ true }}">
+                <article ref="{{ cardRef }}" onPointerDown="{{ cardDown }}" onPointerMove="{{ cardMove }}" onPointerUp="{{ cardUp }}" onPointerCancel="{{ cardUp }}" style="position: absolute; inset: 0; display: flex; flex-direction: column; background: #1E1C18; touch-action: none; user-select: none; cursor: grab; clip-path: polygon(0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 6px),0 calc(100% - 6px));">
+                  <div style="position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: {{ gridCols }}; grid-auto-rows: minmax(0, 1fr); gap: 4px; padding: 4px; background: #1E3C5A;">
+                    <sc-for list="{{ variantCells }}" as="v" hint-placeholder-count="2">
+                      <button type="button" onClick="{{ v.pick }}" style="position: relative; min-height: 0; border: 0; padding: 0; cursor: pointer; background: {{ v.bg }}; box-shadow: {{ v.ring }};">
+                        <pf-fish code="{{ v.code }}" style="position: absolute; inset: 22px 8px 8px; pointer-events: none;"></pf-fish>
+                        <span style="position: absolute; left: 8px; top: 6px; font-family: 'Silkscreen', monospace; font-size: 12px; color: {{ v.labelInk }};">{{ v.label }}</span>
+                      </button>
+                    </sc-for>
+                    <div style="position: absolute; left: 16px; top: 34px; padding: 4px 10px; border: 3px solid #F7C64A; color: #F7C64A; font-family: 'Silkscreen', monospace; font-size: 28px; line-height: 1; transform: rotate(-12deg); opacity: var(--like, 0); pointer-events: none; background: rgba(14,13,11,0.55);">HOOKED</div>
+                    <div style="position: absolute; right: 16px; top: 34px; padding: 4px 10px; border: 3px solid #EF6A5B; color: #EF6A5B; font-family: 'Silkscreen', monospace; font-size: 24px; line-height: 1; transform: rotate(12deg); opacity: var(--nope, 0); pointer-events: none; background: rgba(14,13,11,0.55);">THROW BACK</div>
+                    <sc-if value="{{ noteBadge }}"><div style="position: absolute; right: 10px; bottom: 10px; padding: 3px 8px; background: #F7C64A; color: #1A1405; font-family: 'Silkscreen', monospace; font-size: 12px;">{{ noteBadgeText }}</div></sc-if>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 16px;">
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px;">
+                      <div style="font-family: 'Silkscreen', monospace; font-size: 24px; line-height: 1.05; text-wrap: balance;">{{ p.name }}</div>
+                      <div style="flex: none; font-family: 'Geist Mono', monospace; font-size: 12px; color: #A69F92;">{{ p.away }}</div>
+                    </div>
+                    <div style="font-size: 13px; color: #A69F92;">{{ p.sub }}</div>
+                    <div style="font-size: 15px; color: #E4DED2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-wrap: pretty;">{{ p.lead }}</div>
+                    <sc-if value="{{ narrow }}">
+                      <button type="button" onClick="{{ openCardProfile }}" style="align-self: flex-start; border: 0; background: none; padding: 2px 0; color: #F7C64A; font-family: 'Silkscreen', monospace; font-size: 12px; cursor: pointer;">Read full profile ↑</button>
+                    </sc-if>
+                  </div>
+                </article>
+              </sc-if>
+              <sc-if value="{{ noCard }}">
+                <div style="position: absolute; inset: 0; display: grid; place-items: center; color: #A69F92; font-family: 'Silkscreen', monospace;">Out of fish. Somehow.</div>
+              </sc-if>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: center; gap: 14px;">
+              <button type="button" onClick="{{ undo }}" title="Undo (U)" aria-label="Undo" style="width: 48px; height: 48px; border: 0; background: #221F1B; color: #A69F92; font-size: 20px; cursor: pointer; opacity: {{ undoOpacity }}; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));" style-hover="color: #F3EFE6;">↺</button>
+              <button type="button" onClick="{{ pass }}" title="Throw back (←)" aria-label="Throw back" style="width: 68px; height: 68px; border: 0; background: #221F1B; color: #EF6A5B; font-size: 28px; cursor: pointer; clip-path: polygon(0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 6px),0 calc(100% - 6px));" style-hover="background: #2D2924;">✕</button>
+              <button type="button" onClick="{{ like }}" title="Hook it (→)" aria-label="Hook it" style="width: 68px; height: 68px; border: 0; background: #F7C64A; color: #1A1405; font-size: 28px; cursor: pointer; clip-path: polygon(0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 6px),0 calc(100% - 6px));" style-hover="background: #FFD866;">♥</button>
+              <button type="button" onClick="{{ openNotes }}" title="Notes (N)" aria-label="Notes" style="width: 48px; height: 48px; border: 0; background: #221F1B; color: #F7C64A; font-size: 18px; cursor: pointer; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));" style-hover="background: #2D2924;">✎</button>
+            </div>
+            <sc-if value="{{ wide }}">
+              <div style="text-align: center; font-family: 'Geist Mono', monospace; font-size: 12px; color: #6F685D;">← throw back · → hook · N notes · U undo · {{ pickHint }}</div>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ wide }}">
+            <aside style="width: 360px; flex: none; display: flex; flex-direction: column; gap: 12px;">
+              <div style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #6F685D;">PROFILE</div>
+              <div style="display: flex; flex-direction: column; gap: 4px; padding: 16px; background: #191714;">
+                <div style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #F7C64A;">About me</div>
+                <sc-for list="{{ p.bio }}" as="line" hint-placeholder-count="3">
+                  <p style="margin: 0; font-size: 17px; line-height: 1.4; text-wrap: pretty;">{{ line }}</p>
+                </sc-for>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; background: #191714;">
+                <div style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #F7C64A;">Compatibility</div>
+                <div style="display: grid; grid-template-columns: 64px minmax(0,1fr) 40px; gap: 10px; align-items: center; font-size: 13px; color: #A69F92;">
+                  <span>Public</span><div style="height: 8px; background: #2D2924;"><div style="height: 100%; width: {{ p.pubW }}; background: #F7C64A;"></div></div><span style="font-family: 'Geist Mono', monospace; color: #F3EFE6; text-align: right;">{{ p.pub }}</span>
+                  <span>You</span><div style="height: 8px; background: #2D2924;"><div style="height: 100%; width: {{ p.youW }}; background: #9BD07A;"></div></div><span style="font-family: 'Geist Mono', monospace; color: #F3EFE6; text-align: right;">{{ p.you }}</span>
+                </div>
+                <div style="font-size: 12px; color: #6F685D;">What the taste models think. They learn from every swipe.</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; background: #191714;">
+                <div style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #F7C64A;">The facts</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                  <sc-for list="{{ p.chips }}" as="c" hint-placeholder-count="5">
+                    <span style="padding: 5px 10px; background: #2D2924; font-size: 13px;">{{ c }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </aside>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- TANK -->
+    <sc-if value="{{ isTank }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Tank" style="width: 100%; max-width: 1180px; margin: 0 auto; padding: 20px 16px 110px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <h1 style="margin: 0; font-family: 'Silkscreen', monospace; font-weight: 400; font-size: 32px; line-height: 1;">The tank</h1>
+            <div style="font-size: 14px; color: #A69F92;">{{ tankLine }}</div>
+          </div>
+          <button type="button" onClick="{{ toggleFeed }}" style="padding: 12px 18px; border: 0; background: #F7C64A; color: #1A1405; font-family: 'Silkscreen', monospace; font-size: 14px; cursor: pointer; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));" style-hover="background: #FFD866;">{{ feedLabel }}</button>
+        </div>
+        <div style="position: relative; height: clamp(380px, calc(100dvh - 260px), 640px); background: linear-gradient(#21456A, #15304C); clip-path: polygon(0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 6px),0 calc(100% - 6px));">
+          <pf-tank codes="{{ tankCodes }}" anim="{{ tankAnim }}" style="position: absolute; inset: 0;"></pf-tank>
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: #3A3122; border-top: 4px solid #4A3F2B; pointer-events: none;"></div>
+          <sc-if value="{{ tankEmpty }}"><div style="position: absolute; inset: 0; display: grid; place-items: center; color: #BFD3E6; font-family: 'Silkscreen', monospace; font-size: 16px;">Just water. Very calm. Bit sad.</div></sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- BREED -->
+    <sc-if value="{{ isBreed }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Matchmaker" style="width: 100%; max-width: 1040px; margin: 0 auto; padding: 20px 16px 110px; display: flex; flex-direction: column; gap: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <h1 style="margin: 0; font-family: 'Silkscreen', monospace; font-weight: 400; font-size: 32px; line-height: 1;">Matchmaker</h1>
+          <div style="font-size: 14px; color: #A69F92;">Pick two of your catches. Genetics handles the awkward part.</div>
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1.2fr); align-items: center; gap: 8px;">
+          <sc-for list="{{ slots }}" as="s" hint-placeholder-count="3">
+            <sc-if value="{{ s.isOp }}"><div style="font-family: 'Silkscreen', monospace; font-size: 24px; color: #6F685D; text-align: center;">{{ s.op }}</div></sc-if>
+            <sc-if value="{{ s.isSlot }}">
+              <button type="button" onClick="{{ s.clear }}" style="position: relative; aspect-ratio: 1; border: 0; padding: 0; cursor: pointer; background: {{ s.bg }}; outline: {{ s.outline }}; outline-offset: -2px; clip-path: polygon(0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 6px),0 calc(100% - 6px));">
+                <sc-if value="{{ s.filled }}"><pf-fish code="{{ s.code }}" style="position: absolute; inset: 10px;"></pf-fish></sc-if>
+                <sc-if value="{{ s.empty }}"><span style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #6F685D;">{{ s.hint }}</span></sc-if>
+              </button>
+            </sc-if>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+          <button type="button" onClick="{{ doBreed }}" style="padding: 14px 20px; border: 0; background: {{ breedBg }}; color: {{ breedInk }}; font-family: 'Silkscreen', monospace; font-size: 16px; cursor: pointer; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));">{{ breedLabel }}</button>
+          <sc-if value="{{ hasBaby }}">
+            <button type="button" onClick="{{ keepBaby }}" style="padding: 14px 20px; border: 0; background: #221F1B; color: #F3EFE6; font-family: 'Silkscreen', monospace; font-size: 16px; cursor: pointer; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));" style-hover="background: #2D2924;">Keep the baby</button>
+          </sc-if>
+        </div>
+        <sc-if value="{{ hasBaby }}">
+          <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px; background: #191714; animation: pfSheet 0.3s ease-out;">
+            <div style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #F7C64A;">It's a fish!</div>
+            <div style="font-family: 'Silkscreen', monospace; font-size: 24px; line-height: 1.1;">{{ baby.name }}</div>
+            <div style="font-size: 13px; color: #A69F92;">{{ baby.sub }}</div>
+            <sc-for list="{{ baby.bio }}" as="line" hint-placeholder-count="2"><p style="margin: 0; font-size: 15px; text-wrap: pretty;">{{ line }}</p></sc-for>
+          </div>
+        </sc-if>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="font-family: 'Silkscreen', monospace; font-size: 16px;">Eligible singles <span style="color: #A69F92;">{{ hookedCount }}</span></div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px;">
+            <sc-for list="{{ singles }}" as="f" hint-placeholder-count="6">
+              <button type="button" onClick="{{ f.pick }}" title="{{ f.name }}" style="position: relative; aspect-ratio: 1; border: 0; padding: 0; cursor: pointer; background: #1E3C5A; box-shadow: {{ f.ring }};">
+                <pf-fish code="{{ f.code }}" max-scale="3" style="position: absolute; inset: 6px; pointer-events: none;"></pf-fish>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+
+  <sc-if value="{{ narrow }}" hint-placeholder-val="{{ true }}">
+    <nav style="position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); background: #141210; border-top: 2px solid #221F1B;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <sc-if value="{{ t.active }}">
+          <button type="button" onClick="{{ t.go }}" style="height: 48px; border: 0; background: #F7C64A; color: #1A1405; font-family: 'Silkscreen', monospace; font-size: 14px; cursor: pointer; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px));">{{ t.label }}</button>
+        </sc-if>
+        <sc-if value="{{ t.inactive }}">
+          <button type="button" onClick="{{ t.go }}" style="height: 48px; border: 0; background: transparent; color: #A69F92; font-family: 'Silkscreen', monospace; font-size: 14px; cursor: pointer;">{{ t.label }}</button>
+        </sc-if>
+      </sc-for>
+    </nav>
+  </sc-if>
+
+  <sc-if value="{{ dragging }}">
+    <div style="position: fixed; z-index: 60; left: {{ ghostX }}; top: {{ ghostY }}; width: 72px; height: 72px; background: #1E3C5A; box-shadow: 0 0 0 3px #F7C64A, 6px 6px 0 rgba(0,0,0,0.5); transform: rotate(-5deg); pointer-events: none;">
+      <pf-fish code="{{ dragCode }}" max-scale="3" style="position: absolute; inset: 4px;"></pf-fish>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sheetOpen }}">
+    <div onClick="{{ closeSheet }}" style="position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,0.6);"></div>
+    <div style="position: fixed; z-index: 71; left: 50%; bottom: 0; transform: translateX(-50%); width: min(520px, 100%); max-height: 86dvh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 18px 16px calc(20px + env(safe-area-inset-bottom)); background: #141210; border-top: 4px solid #F7C64A; animation: pfSheet 0.25s ease-out;">
+      <sc-if value="{{ isProfileSheet }}">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <div style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #6F685D;">PROFILE</div>
+          <button type="button" onClick="{{ closeSheet }}" aria-label="Close" style="width: 40px; height: 40px; border: 0; background: #221F1B; color: #F3EFE6; cursor: pointer; font-size: 16px;">✕</button>
+        </div>
+        <div style="position: relative; height: 200px; background: #1E3C5A;"><pf-fish code="{{ sp.code }}" style="position: absolute; inset: 12px;"></pf-fish></div>
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px;">
+          <div style="font-family: 'Silkscreen', monospace; font-size: 24px; line-height: 1.05;">{{ sp.name }}</div>
+          <div style="flex: none; font-family: 'Geist Mono', monospace; font-size: 12px; color: #A69F92;">{{ sp.away }}</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; background: #191714;">
+          <div style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #F7C64A;">About me</div>
+          <sc-for list="{{ sp.bio }}" as="line" hint-placeholder-count="3"><p style="margin: 0; font-size: 16px; text-wrap: pretty;">{{ line }}</p></sc-for>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #191714;">
+          <div style="font-family: 'Silkscreen', monospace; font-size: 12px; color: #F7C64A;">Compatibility</div>
+          <div style="display: grid; grid-template-columns: 56px minmax(0,1fr) 36px; gap: 10px; align-items: center; font-size: 13px; color: #A69F92;">
+            <span>Public</span><div style="height: 8px; background: #2D2924;"><div style="height: 100%; width: {{ sp.pubW }}; background: #F7C64A;"></div></div><span style="font-family: 'Geist Mono', monospace; color: #F3EFE6; text-align: right;">{{ sp.pub }}</span>
+            <span>You</span><div style="height: 8px; background: #2D2924;"><div style="height: 100%; width: {{ sp.youW }}; background: #9BD07A;"></div></div><span style="font-family: 'Geist Mono', monospace; color: #F3EFE6; text-align: right;">{{ sp.you }}</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <sc-for list="{{ sp.chips }}" as="c" hint-placeholder-count="5"><span style="padding: 5px 10px; background: #2D2924; font-size: 13px;">{{ c }}</span></sc-for>
+        </div>
+        <sc-if value="{{ sheetFromTier }}">
+          <button type="button" onClick="{{ releaseFish }}" style="align-self: flex-start; padding: 10px 14px; border: 0; background: #221F1B; color: #EF6A5B; font-family: 'Silkscreen', monospace; font-size: 12px; cursor: pointer;">Release into the wild</button>
+        </sc-if>
+      </sc-if>
+      <sc-if value="{{ isNotesSheet }}">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <div style="font-family: 'Silkscreen', monospace; font-size: 16px;">Notes for the forge</div>
+          <button type="button" onClick="{{ closeSheet }}" aria-label="Close" style="width: 40px; height: 40px; border: 0; background: #221F1B; color: #F3EFE6; cursor: pointer; font-size: 16px;">✕</button>
+        </div>
+        <div style="font-size: 14px; color: #A69F92;">What's off? Saved with your swipe. The model takes notes too.</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <sc-for list="{{ noteChips }}" as="n" hint-placeholder-count="6">
+            <button type="button" onClick="{{ n.toggle }}" style="padding: 10px 14px; border: 0; cursor: pointer; font-size: 14px; font-weight: 500; background: {{ n.bg }}; color: {{ n.ink }};">{{ n.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" onClick="{{ passFromSheet }}" style="flex: 1; height: 48px; border: 0; background: #221F1B; color: #EF6A5B; font-family: 'Silkscreen', monospace; font-size: 14px; cursor: pointer;">✕ Throw back</button>
+          <button type="button" onClick="{{ likeFromSheet }}" style="flex: 1; height: 48px; border: 0; background: #F7C64A; color: #1A1405; font-family: 'Silkscreen', monospace; font-size: 14px; cursor: pointer;">♥ Hook it</button>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasToast }}">
+    <div style="position: fixed; z-index: 80; left: 50%; bottom: 96px; transform: translateX(-50%); padding: 10px 16px; background: #F3EFE6; color: #0E0D0B; font-family: 'Silkscreen', monospace; font-size: 14px; white-space: nowrap; pointer-events: none; animation: pfToast 0.2s ease-out;">{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;variantCount&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;2&quot;,&quot;4&quot;],&quot;default&quot;:&quot;2&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Swipe&quot;},&quot;variantAxis&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;swim&quot;,&quot;size&quot;,&quot;mood&quot;,&quot;pattern&quot;],&quot;default&quot;:&quot;swim&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Swipe&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;swipe&quot;,&quot;tank&quot;,&quot;breed&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;App&quot;}}">
+const TIERS = [
+  ['S', 'Soulmate', '#F7C64A'],
+  ['A', 'Absolute unit', '#F0A05E'],
+  ['B', 'Bring home to mom', '#9BD07A'],
+  ['C', 'Coworker energy', '#74C3D9'],
+  ['D', 'Dinner', '#C9A0E8'],
+];
+const EMPTY = { S: 'Nobody. Standards are standards.', A: 'Vacant.', B: 'Mom is waiting.', C: 'Nobody. Yet.', D: 'Nobody’s on the menu.' };
+const HOOK = ['Hooked.', 'Into the bucket.', 'Reel love.', 'Catch of the day.', 'Fin-tastic.'];
+const NOPE = ['Thrown back.', 'Plenty more in the sea.', 'Not your type.', 'Swim along.'];
+const NOTES = ["Chef's kiss", 'Too busy', 'Colors off', 'Looks broken', 'Wrong species', 'Needs contrast'];
+const AXES = [['swim', 'Swim'], ['size', 'Size'], ['mood', 'Mood'], ['pattern', 'Pattern']];
+const STARTERS = [['kipper', 'S'], ['gilbert', 'A'], ['wanda', 'A'], ['captain', 'B'], ['sushi', 'C'], ['blub', 'D'], ['finnegan', 'pool'], ['marlo', 'pool'], ['pebble', 'pool']];
+const KEY = 'pixelforge.redesign.v1';
+const rand = (a) => a[Math.floor(Math.random() * a.length)];
+const seed = () => Math.random().toString(36).slice(2, 8);
+const pctW = (n) => n + '%';
+
+class Component extends DCLogic {
+  state = {
+    ready: false, tab: null, wide: typeof window !== 'undefined' && window.innerWidth >= 900,
+    deck: [], idx: 0, picked: 0, history: [],
+    tiers: { S: [], A: [], B: [], C: [], D: [], pool: [] },
+    swiped: 0, thrown: 0,
+    count: null, axis: null,
+    drag: null, hover: null,
+    sheet: null, sheetCode: null, sheetTier: null, notes: {},
+    toast: '', breedA: null, breedB: null, baby: null, feeding: false,
+  };
+  cardRef = React.createRef();
+  profs = new Map();
+
+  async componentDidMount() {
+    this.onResize = () => this.setState({ wide: window.innerWidth >= 900 });
+    window.addEventListener('resize', this.onResize);
+    this.onKey = (e) => {
+      if (this.tab() !== 'swipe' || this.state.sheet || e.metaKey || e.ctrlKey) return;
+      if (e.target.closest && e.target.closest('input, textarea, select')) return;
+      const act = { ArrowLeft: () => this.fling(-1), ArrowRight: () => this.fling(1), u: () => this.undo(), n: () => this.setState({ sheet: 'notes' }) }[e.key];
+      if (act) { e.preventDefault(); act(); }
+    };
+    window.addEventListener('keydown', this.onKey);
+    const mod = await import('./fish-lib.js');
+    this.lib = mod.default;
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+    let tiers = saved?.tiers;
+    if (!tiers) {
+      tiers = { S: [], A: [], B: [], C: [], D: [], pool: [] };
+      for (const [s, t] of STARTERS) tiers[t].push(this.lib.roll(s));
+    }
+    const deck = Array.from({ length: 40 }, () => this.lib.roll(seed()));
+    this.setState({ ready: true, tiers, deck, swiped: saved?.swiped ?? 14, thrown: saved?.thrown ?? 5 });
+  }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('keydown', this.onKey);
+    this.endWindowDrag && this.endWindowDrag();
+  }
+  persist() {
+    const { tiers, swiped, thrown } = this.state;
+    try { localStorage.setItem(KEY, JSON.stringify({ tiers, swiped, thrown })); } catch (e) {}
+  }
+  tab() { return this.state.tab ?? this.props.startTab ?? 'home'; }
+  count() { return this.state.count ?? Number(this.props.variantCount ?? 2); }
+  axis() { return this.state.axis ?? this.props.variantAxis ?? 'swim'; }
+  prof(code) {
+    if (!code || !this.lib) return null;
+    if (!this.profs.has(code)) this.profs.set(code, this.lib.profile(code));
+    return this.profs.get(code);
+  }
+  view(code) {
+    const p = this.prof(code);
+    if (!p) return { name: '', sub: '', lead: '', bio: [], chips: [], away: '', pub: '', you: '', pubW: '0%', youW: '0%', code: '' };
+    const kind = p.hybrid || p.body;
+    return {
+      code, name: p.name, bio: p.bio, lead: p.bio[0] || '',
+      sub: [p.size, kind, p.mood].filter(Boolean).join(' · '),
+      away: p.pixels + ' px away',
+      chips: [kind, p.size, p.pattern, p.mood, p.rarity].filter(Boolean),
+      pub: String(p.pub), you: String(p.you), pubW: pctW(p.pub), youW: pctW(p.you),
+    };
+  }
+  hooked() { const t = this.state.tiers; return [...t.S, ...t.A, ...t.B, ...t.C, ...t.D, ...t.pool]; }
+  say(text) {
+    clearTimeout(this.toastT);
+    this.setState({ toast: text });
+    this.toastT = setTimeout(() => this.setState({ toast: '' }), 1500);
+  }
+  cards() {
+    const code = this.state.deck[this.state.idx];
+    if (!code || !this.lib) return [];
+    const key = code + this.axis() + this.count();
+    if (this._vk !== key) { this._vk = key; this._v = this.lib.variants(code, this.axis(), this.count()); }
+    return this._v;
+  }
+
+  // swipe
+  setCard(x, y, t) {
+    const el = this.cardRef.current;
+    if (!el) return;
+    el.style.transition = t || 'none';
+    el.style.transform = x || y ? `translate(${x}px, ${y}px) rotate(${x / 18}deg)` : '';
+    el.style.setProperty('--like', String(Math.max(0, Math.min(1, x / 110))));
+    el.style.setProperty('--nope', String(Math.max(0, Math.min(1, -x / 110))));
+  }
+  fling(dir) {
+    if (this.busy || !this.state.deck[this.state.idx]) return;
+    this.busy = true;
+    const w = window.innerWidth / 2 + 480;
+    this.setCard(dir * 30, -6, 'transform 0.08s ease-out');
+    setTimeout(() => this.setCard(dir * w, 40, 'transform 0.32s ease-in'), 80);
+    setTimeout(() => { this.decide(dir > 0 ? 'hook' : 'nope'); this.setCard(0, 0); this.busy = false; }, 420);
+  }
+  decide(verdict) {
+    const { idx, deck, tiers, history } = this.state;
+    const vs = this.cards();
+    const code = (vs[this.state.picked] || vs[0] || {}).code || deck[idx];
+    const next = { idx: idx + 1, picked: 0, history: [...history, { verdict, code, idx }].slice(-20), swiped: this.state.swiped + 1 };
+    if (verdict === 'hook') next.tiers = { ...tiers, pool: [code, ...tiers.pool.filter((c) => c !== code)] };
+    else next.thrown = this.state.thrown + 1;
+    if (deck.length - idx < 8) next.deck = [...deck, ...Array.from({ length: 20 }, () => this.lib.roll(seed()))];
+    this.setState(next, () => this.persist());
+    this.say(rand(verdict === 'hook' ? HOOK : NOPE));
+  }
+  undo() {
+    const h = this.state.history;
+    const last = h[h.length - 1];
+    if (!last || this.busy) return;
+    const tiers = { ...this.state.tiers };
+    if (last.verdict === 'hook') tiers.pool = tiers.pool.filter((c) => c !== last.code);
+    this.setState({ history: h.slice(0, -1), idx: last.idx, picked: 0, tiers, swiped: Math.max(0, this.state.swiped - 1), thrown: last.verdict === 'nope' ? Math.max(0, this.state.thrown - 1) : this.state.thrown }, () => this.persist());
+    this.say('Fine. Second chances.');
+  }
+  cardDown = (e) => {
+    if (this.busy || e.button) return;
+    this.cd = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false, t: e.timeStamp, lx: 0, lt: e.timeStamp };
+  };
+  cardMove = (e) => {
+    const d = this.cd;
+    if (!d) return;
+    const x = e.clientX - d.x, y = e.clientY - d.y;
+    if (!d.moved && Math.hypot(x, y) > 6) { d.moved = true; try { e.currentTarget.setPointerCapture(d.id); } catch (err) {} }
+    if (d.moved) { d.vx = (x - d.lx) / Math.max(1, e.timeStamp - d.lt); d.lx = x; d.lt = e.timeStamp; this.setCard(x, y * 0.4); }
+  };
+  cardUp = (e) => {
+    const d = this.cd;
+    this.cd = null;
+    if (!d || !d.moved) return;
+    const x = e.clientX - d.x;
+    if (x > 110 || (d.vx > 0.5 && x > 20)) this.flingFrom(1, x);
+    else if (x < -110 || (d.vx < -0.5 && x < -20)) this.flingFrom(-1, x);
+    else this.setCard(0, 0, 'transform 0.45s cubic-bezier(.34,1.56,.64,1)');
+  };
+  flingFrom(dir, x) {
+    this.busy = true;
+    this.setCard(dir * (window.innerWidth / 2 + 480), 30, 'transform 0.3s ease-in');
+    setTimeout(() => { this.decide(dir > 0 ? 'hook' : 'nope'); this.setCard(0, 0); this.busy = false; }, 300);
+  }
+
+  // tier drag
+  tileDown(code, e) {
+    if (e.button) return;
+    e.preventDefault();
+    const start = { x: e.clientX, y: e.clientY };
+    let started = false;
+    const move = (ev) => {
+      if (!started && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+      started = true;
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const tierEl = el && el.closest('[data-tier]');
+      const fishEl = el && el.closest('[data-fish]');
+      this.setState({ drag: { code, x: ev.clientX, y: ev.clientY }, hover: tierEl ? { tier: tierEl.dataset.tier, before: fishEl ? fishEl.dataset.fish : null } : null });
+    };
+    const up = () => {
+      this.endWindowDrag();
+      if (!started) { this.setState({ sheet: 'profile', sheetCode: code, sheetTier: true }); return; }
+      const h = this.state.hover;
+      if (h) this.moveFish(code, h.tier, h.before);
+      this.setState({ drag: null, hover: null });
+    };
+    this.endWindowDrag = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      this.endWindowDrag = null;
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+  moveFish(code, tier, before) {
+    const t = {};
+    for (const k of Object.keys(this.state.tiers)) t[k] = this.state.tiers[k].filter((c) => c !== code);
+    const list = t[tier];
+    const at = before && before !== code ? list.indexOf(before) : -1;
+    if (at >= 0) list.splice(at, 0, code); else list.push(code);
+    this.setState({ tiers: t }, () => this.persist());
+    if (tier === 'S') this.say('Soulmate secured.');
+    if (tier === 'D') this.say('Bon appétit.');
+  }
+  tileList(codes) {
+    const { drag, hover } = this.state;
+    return codes.map((code) => ({
+      code,
+      name: this.prof(code)?.name ?? '',
+      opacity: drag && drag.code === code ? 0.25 : 1,
+      marker: !!(drag && hover && hover.before === code && code !== drag.code),
+      onDown: (e) => this.tileDown(code, e),
+    }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const tab = this.tab();
+    const ready = s.ready;
+    const hooked = this.hooked();
+    const tabs = [['home', 'Home', ''], ['swipe', 'Swipe', ''], ['tank', 'Tank', String(hooked.length)], ['breed', 'Breed', '']].map(([id, label, count]) => ({
+      label, count, active: tab === id, inactive: tab !== id, go: () => this.setState({ tab: id, sheet: null }),
+    }));
+    const hv = s.hover;
+    const tierRows = TIERS.map(([key, name, color]) => {
+      const fish = this.tileList(s.tiers[key] || []);
+      return { key, name, color, fish, empty: !fish.length, emptyText: EMPTY[key], zoneBg: s.drag && hv && hv.tier === key ? '#2D2924' : '#191714' };
+    });
+    const poolFish = this.tileList(s.tiers.pool || []);
+
+    const vs = this.cards();
+    const count = this.count();
+    const axis = this.axis();
+    const picked = Math.min(s.picked, Math.max(0, vs.length - 1));
+    const multi = vs.length > 1;
+    const variantCells = vs.map((v, i) => ({
+      code: v.code,
+      label: multi ? v.label : '',
+      bg: multi && i === picked ? 'rgba(247,198,74,0.10)' : 'rgba(0,0,0,0.16)',
+      ring: multi && i === picked ? 'inset 0 0 0 3px #F7C64A' : 'none',
+      labelInk: i === picked ? '#F7C64A' : '#BFD3E6',
+      pick: () => this.setState({ picked: i }),
+    }));
+    const cur = vs[picked] ? vs[picked].code : s.deck[s.idx];
+    const noteSet = s.notes[s.deck[s.idx]] || [];
+
+    const slotOf = (code, hint, isBaby) => ({
+      isSlot: true, isOp: false, code: code || '', filled: !!code, empty: !code, hint,
+      bg: isBaby && code ? '#22405F' : '#1E3C5A',
+      outline: isBaby ? '2px solid #F7C64A' : 'none',
+      clear: () => !isBaby && code && this.setState(hint === 'Fish A' ? { breedA: null, baby: null } : { breedB: null, baby: null }),
+    });
+    const canBreed = s.breedA && s.breedB;
+
+    const products = [
+      ['Daily catch', 'NEW', 'One fish a day. Everyone gets the same one. Argue about it in the group chat.', () => this.setState({ tab: 'swipe' })],
+      ['Fish v3 editor', 'LIVE', 'The old forge, for when you want to hand-pick every fin. Locks, seeds, PNG export.', () => this.say('Opening the forge…')],
+      ['Plantasia', 'SOON', 'Garden plants that sway in 16 pixels. Same swiping, more photosynthesis.', () => this.say('Still sprouting.')],
+      ['Burn-Through crew', 'SOON', 'Pilot portraits for your squadron. Rank your wingmen. Diplomatically.', () => this.say('Still in the hangar.')],
+    ].map(([name, tag, text, go]) => ({ name, tag, text, go, tagBg: tag === 'SOON' ? '#2D2924' : '#F7C64A', tagInk: tag === 'SOON' ? '#A69F92' : '#1A1405' }));
+
+    return {
+      wide: s.wide, narrow: !s.wide, loading: !ready,
+      isHome: ready && tab === 'home', isSwipe: ready && tab === 'swipe', isTank: ready && tab === 'tank', isBreed: ready && tab === 'breed',
+      tabs,
+      statLine: `${s.swiped} swiped · ${hooked.length} hooked · ${s.thrown} thrown back`,
+      statShort: `${hooked.length} hooked`,
+      goSwipe: () => this.setState({ tab: 'swipe' }), goTank: () => this.setState({ tab: 'tank' }),
+      tierRows, poolFish, poolEmpty: !poolFish.length, poolCount: String(poolFish.length),
+      poolBg: s.drag && hv && hv.tier === 'pool' ? '#221F1B' : '#141210',
+      products,
+
+      countOpts: [1, 2, 4].map((n) => ({ label: String(n), bg: n === count ? '#F7C64A' : 'transparent', ink: n === count ? '#1A1405' : '#A69F92', go: () => this.setState({ count: n, picked: 0 }) })),
+      axisOpts: AXES.map(([id, label]) => ({ label, bg: id === axis ? '#F3EFE6' : 'transparent', ink: id === axis ? '#0E0D0B' : '#A69F92', go: () => this.setState({ axis: id, picked: 0 }) })),
+      axisOpacity: count > 1 ? 1 : 0.4,
+      versionsWord: count === 1 ? 'version' : 'versions',
+      gridCols: count === 4 ? '1fr 1fr' : '1fr',
+      variantCells, hasCard: !!cur, noCard: ready && !cur, hasNext: !!s.deck[s.idx + 1],
+      cardRef: this.cardRef, cardDown: this.cardDown, cardMove: this.cardMove, cardUp: this.cardUp,
+      p: this.view(cur),
+      pickHint: multi ? 'tap the best version, then hook it' : 'set Show to 2 or 4 to compare',
+      like: () => this.fling(1), pass: () => this.fling(-1), undo: () => this.undo(),
+      undoOpacity: s.history.length ? 1 : 0.4,
+      noteBadge: noteSet.length > 0, noteBadgeText: '✎ ' + noteSet.length,
+      openNotes: () => this.setState({ sheet: 'notes' }),
+      openCardProfile: () => this.setState({ sheet: 'profile', sheetCode: cur, sheetTier: false }),
+
+      tankCodes: hooked.join(','), tankAnim: s.feeding ? 'eat' : 'swim', tankEmpty: !hooked.length,
+      tankLine: `${hooked.length} residents. Zero rent paid.`,
+      feedLabel: s.feeding ? 'Stop the buffet' : 'Feed them',
+      toggleFeed: () => { this.setState({ feeding: !s.feeding }); if (!s.feeding) this.say('Nom nom nom.'); },
+
+      slots: [slotOf(s.breedA, 'Fish A'), { isOp: true, isSlot: false, op: '+' }, slotOf(s.breedB, 'Fish B'), { isOp: true, isSlot: false, op: '=' }, slotOf(s.baby, '?', true)],
+      singles: hooked.map((code) => ({
+        code, name: this.prof(code)?.name ?? '',
+        ring: code === s.breedA || code === s.breedB ? 'inset 0 0 0 3px #F7C64A' : 'none',
+        pick: () => {
+          if (code === s.breedA) return this.setState({ breedA: null, baby: null });
+          if (code === s.breedB) return this.setState({ breedB: null, baby: null });
+          this.setState(!s.breedA ? { breedA: code, baby: null } : { breedB: code, baby: null });
+        },
+      })),
+      hookedCount: String(hooked.length),
+      breedLabel: s.baby ? 'Again, but weirder' : canBreed ? 'Make it happen' : 'Pick two fish',
+      breedBg: canBreed ? '#F7C64A' : '#221F1B', breedInk: canBreed ? '#1A1405' : '#6F685D',
+      doBreed: () => {
+        if (!canBreed) return this.say('It takes two.');
+        try { this.setState({ baby: this.lib.breed(s.breedA, s.breedB, seed()) }); this.say("It's a fish!"); } catch (e) { this.say('They just want to be friends.'); }
+      },
+      hasBaby: !!s.baby, baby: this.view(s.baby),
+      keepBaby: () => { this.setState({ tiers: { ...s.tiers, pool: [s.baby, ...s.tiers.pool] }, baby: null, breedA: null, breedB: null }, () => this.persist()); this.say('Welcome to the bucket.'); },
+
+      dragging: !!s.drag, dragCode: s.drag ? s.drag.code : '',
+      ghostX: s.drag ? s.drag.x - 36 + 'px' : '0px', ghostY: s.drag ? s.drag.y - 36 + 'px' : '0px',
+
+      sheetOpen: !!s.sheet, isProfileSheet: s.sheet === 'profile', isNotesSheet: s.sheet === 'notes',
+      sp: this.view(s.sheetCode), sheetFromTier: !!s.sheetTier,
+      closeSheet: () => this.setState({ sheet: null }),
+      releaseFish: () => {
+        const t = {};
+        for (const k of Object.keys(s.tiers)) t[k] = s.tiers[k].filter((c) => c !== s.sheetCode);
+        this.setState({ tiers: t, sheet: null }, () => this.persist());
+        this.say('Swim free, little guy.');
+      },
+      noteChips: NOTES.map((label) => {
+        const on = noteSet.includes(label);
+        return { label, bg: on ? '#F7C64A' : '#221F1B', ink: on ? '#1A1405' : '#D8D1C4', toggle: () => {
+          const k = s.deck[s.idx];
+          const next = on ? noteSet.filter((n) => n !== label) : [...noteSet, label];
+          this.setState({ notes: { ...s.notes, [k]: next } });
+        } };
+      }),
+      passFromSheet: () => { this.setState({ sheet: null }); setTimeout(() => this.fling(-1), 120); },
+      likeFromSheet: () => { this.setState({ sheet: null }); setTimeout(() => this.fling(1), 120); },
+
+      hasToast: !!s.toast, toast: s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&amp;family=Pixelify+Sans:wght@400;500;600;700&amp;family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    :root, [data-theme="light"] { --bg:#FFF6EC; --ink:#3B2A3A; --dk:#3B2A3A; --line:#3B2A3A; --card:#fff; --soft:#FFF0DA; --soft2:#EADFEF; --tint:#FFE3EC; --mut:#6B5668; --link:#C23A70; --logo:#D9467C; --hover:#FFEBC8; --pool:#FFF9F0; }
+    [data-theme="dark"] { --bg:#07050A; --ink:#F6EBF2; --dk:#3B2A3A; --line:#5E4A63; --card:#110C16; --soft:#1B1322; --soft2:#21172A; --tint:#170E1C; --mut:#BDA8BB; --link:#FF9DBD; --logo:#FF8FB1; --hover:#1B1322; --pool:#0C0810; }
+    html:has([data-theme="dark"]) { background:#07050A; }
+    html, body { margin: 0; background: #FFF6EC; color: #3B2A3A; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #D9467C; } a:hover { color: #A92E5B; }
+    button { font: inherit; }
+    button:active { transform: translateY(2px); }
+    canvas { image-rendering: pixelated; }
+    @keyframes pfToast { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes pfSheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  </style>
+</helmet>
+<div data-theme="{{ theme }}" style="min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font-family:'Nunito',system-ui,sans-serif;font-size:17px;line-height:1.5;">
+
+  <header style="position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 24px;padding:12px 16px;background:var(--bg);border-bottom:3px solid var(--line);">
+    <div style="font-family:'Silkscreen',monospace;font-size:22px;line-height:1;color:var(--logo);">PIXELFORGE</div>
+    <nav style="display:flex;gap:6px;padding:5px;background:var(--card);border:3px solid var(--line);border-radius:999px;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <sc-if value="{{ t.active }}"><button type="button" onClick="{{ t.go }}" style="height:48px;padding:0 22px;border:0;border-radius:999px;background:#FF8FB1;color:var(--dk);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:20px;cursor:pointer;">{{ t.label }} <span style="font-size:14px;">{{ t.count }}</span></button></sc-if>
+        <sc-if value="{{ t.inactive }}"><button type="button" onClick="{{ t.go }}" style="height:48px;padding:0 22px;border:0;border-radius:999px;background:transparent;color:var(--ink);font-family:'Pixelify Sans',monospace;font-weight:500;font-size:20px;cursor:pointer;" style-hover="background:var(--soft);">{{ t.label }} <span style="font-size:14px;color:var(--mut);">{{ t.count }}</span></button></sc-if>
+      </sc-for>
+    </nav>
+    <button type="button" onClick="{{ toggleTheme }}" style="height:48px;padding:0 20px;border:3px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:19px;cursor:pointer;box-shadow:0 4px 0 var(--line);">{{ themeLabel }}</button>
+  </header>
+
+  <main style="flex:1;min-width:0;display:flex;flex-direction:column;">
+    <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:grid;place-items:center;padding:48px 16px;font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:20px;">Hatching fish…</div>
+    </sc-if>
+
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Home" style="width:100%;max-width:760px;margin:0 auto;padding:28px 16px 64px;display:flex;flex-direction:column;gap:36px;">
+        <section style="background:var(--card);border:3px solid var(--line);border-radius:24px;box-shadow:0 5px 0 var(--line);padding:32px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;background:var(--tint);">
+          <h1 style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:clamp(34px,7vw,52px);line-height:1.05;text-wrap:balance;">The best opinionated pixel art procgen out here.</h1>
+          <p style="margin:0;max-width:40ch;font-size:18px;text-wrap:pretty;">Procedural sprites, rolled from a seed and tuned by taste. Swipe to judge them, rank the keepers, breed the weird ones.</p>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;padding-top:6px;">
+            <button type="button" onClick="{{ goSwipe }}" style="padding:16px 32px;border:3px solid var(--line);border-radius:999px;background:#FFD66B;color:var(--dk);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:22px;cursor:pointer;box-shadow:0 4px 0 var(--line);" style-hover="background:#FFE08A;">Start swiping</button>
+            <button type="button" onClick="{{ goTank }}" style="padding:16px 32px;border:3px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:22px;cursor:pointer;box-shadow:0 4px 0 var(--line);" style-hover="background:var(--soft);">Your collection</button>
+          </div>
+        </section>
+
+        <section style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <h2 style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:28px;">Your tier list</h2>
+            <span style="font-size:15px;color:var(--mut);">Drag fish between rows. They won't take it personally.</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ tierRows }}" as="tier" hint-placeholder-count="5">
+              <div data-tier="{{ tier.key }}" style="display:grid;grid-template-columns:92px minmax(0,1fr);min-height:88px;background:{{ tier.zoneBg }};border:3px solid var(--line);border-radius:20px;overflow:hidden;">
+                <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;padding:8px 4px;background:{{ tier.color }};border-right:3px solid var(--line);color:var(--dk);text-align:center;">
+                  <div style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:32px;line-height:1;">{{ tier.key }}</div>
+                  <div style="font-size:12px;font-weight:800;line-height:1.1;">{{ tier.name }}</div>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;align-content:center;gap:8px;padding:10px;">
+                  <sc-for list="{{ tier.fish }}" as="f" hint-placeholder-count="2">
+                    <div data-fish="{{ f.code }}" onPointerDown="{{ f.onDown }}" title="{{ f.name }}" style="position:relative;width:64px;height:64px;background:#8CC8E8;border-radius:16px;cursor:grab;touch-action:none;user-select:none;overflow:hidden;opacity:{{ f.opacity }};">
+                      <pf-fish code="{{ f.code }}" max-scale="3" style="position:absolute;inset:4px;pointer-events:none;"></pf-fish>
+                      <sc-if value="{{ f.marker }}"><div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:#FF8FB1;"></div></sc-if>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ tier.empty }}"><span style="font-size:15px;color:var(--mut);padding-left:4px;">{{ tier.emptyText }}</span></sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div data-tier="pool" style="display:flex;flex-direction:column;gap:10px;margin-top:6px;padding:16px;background:{{ poolBg }};border:3px dashed var(--line);border-radius:20px;">
+            <div style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:20px;">The bucket <span style="font-weight:500;color:var(--mut);">{{ poolCount }}</span></div>
+            <span style="font-size:15px;color:var(--mut);margin-top:-6px;">Fresh catches, unranked. Tap one to read its profile.</span>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;min-height:64px;">
+              <sc-for list="{{ poolFish }}" as="f" hint-placeholder-count="3">
+                <div data-fish="{{ f.code }}" onPointerDown="{{ f.onDown }}" title="{{ f.name }}" style="position:relative;width:64px;height:64px;background:#8CC8E8;border-radius:16px;cursor:grab;touch-action:none;user-select:none;overflow:hidden;opacity:{{ f.opacity }};">
+                  <pf-fish code="{{ f.code }}" max-scale="3" style="position:absolute;inset:4px;pointer-events:none;"></pf-fish>
+                  <sc-if value="{{ f.marker }}"><div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:#FF8FB1;"></div></sc-if>
+                </div>
+              </sc-for>
+              <sc-if value="{{ poolEmpty }}"><span style="align-self:center;font-size:15px;color:var(--mut);">Empty. Go swipe right on something.</span></sc-if>
+            </div>
+          </div>
+        </section>
+
+        <section style="display:flex;flex-direction:column;gap:8px;padding:20px;background:var(--card);border:3px solid var(--line);border-radius:24px;box-shadow:0 4px 0 var(--line);">
+          <h2 style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:24px;">Why is there swiping?</h2>
+          <p style="margin:0;font-size:17px;text-wrap:pretty;">Because quality is a taste call, and generators can’t judge their own work. Every hook or nope is a vote on what reads well and what looks broken. Those votes steer the generators, so the next batch is better than the last.</p>
+        </section>
+
+        <section style="display:flex;flex-direction:column;gap:12px;">
+          <h2 style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:28px;">The sims</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;">
+            <sc-for list="{{ products }}" as="pr" hint-placeholder-count="4">
+              <button type="button" onClick="{{ pr.go }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px;background:var(--card);border:3px solid var(--line);border-radius:24px;box-shadow:0 5px 0 var(--line);box-shadow:0 4px 0 var(--line);color:var(--ink);text-align:left;cursor:pointer;" style-hover="background:var(--soft);">
+                <span style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;"><span style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:19px;">{{ pr.name }}</span><span style="font-family:'Pixelify Sans',monospace;font-weight:600;font-size:12px;padding:2px 10px;border-radius:999px;background:{{ pr.tagBg }};color:{{ pr.tagInk }};">{{ pr.tag }}</span></span>
+                <span style="font-size:15px;color:var(--mut);text-wrap:pretty;">{{ pr.text }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+        <div style="text-align:center;font-size:14px;color:var(--mut);">{{ statLine }}</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSwipe }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Swipe" style="width:100%;max-width:520px;margin:0 auto;padding:18px 16px 56px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 12px;font-size:15px;font-weight:700;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span>Show</span>
+            <div style="display:flex;gap:2px;padding:3px;background:var(--card);border:3px solid var(--line);border-radius:999px;">
+              <sc-for list="{{ countOpts }}" as="o" hint-placeholder-count="3">
+                <button type="button" onClick="{{ o.go }}" style="min-width:46px;height:42px;border:0;border-radius:999px;padding:0 8px;font-family:'Pixelify Sans',monospace;font-weight:600;font-size:20px;cursor:pointer;background:{{ o.bg }};color:{{ o.ink }};">{{ o.label }}</button>
+              </sc-for>
+            </div>
+            <span>{{ versionsWord }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;opacity:{{ axisOpacity }};">
+            <span>by</span>
+            <div style="display:flex;gap:2px;padding:3px;background:var(--card);border:3px solid var(--line);border-radius:999px;">
+              <sc-for list="{{ axisOpts }}" as="o" hint-placeholder-count="4">
+                <button type="button" onClick="{{ o.go }}" style="height:42px;border:0;border-radius:999px;padding:0 16px;font-family:'Pixelify Sans',monospace;font-weight:500;font-size:19px;cursor:pointer;background:{{ o.bg }};color:{{ o.ink }};">{{ o.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:relative;height:clamp(460px,calc(100dvh - 290px),640px);">
+          <sc-if value="{{ hasNext }}"><div style="position:absolute;inset:0;transform:translateY(10px) scale(0.95);background:var(--tint);border:3px solid var(--line);border-radius:28px;"></div></sc-if>
+          <sc-if value="{{ hasCard }}" hint-placeholder-val="{{ true }}">
+            <article ref="{{ cardRef }}" onPointerDown="{{ cardDown }}" onPointerMove="{{ cardMove }}" onPointerUp="{{ cardUp }}" onPointerCancel="{{ cardUp }}" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--card);border:3px solid var(--line);border-radius:28px;box-shadow:0 5px 0 var(--line);overflow:hidden;touch-action:{{ cardTouch }};user-select:none;cursor:grab;">
+              <div style="position:relative;flex:{{ fishFlex }};min-height:0;display:grid;grid-template-columns:{{ gridCols }};grid-auto-rows:minmax(0,1fr);gap:6px;padding:6px;background:#8CC8E8;border-bottom:3px solid var(--line);">
+                <sc-for list="{{ variantCells }}" as="v" hint-placeholder-count="2">
+                  <button type="button" onClick="{{ v.pick }}" style="position:relative;min-height:0;border:0;padding:0;border-radius:18px;cursor:pointer;background:{{ v.bg }};box-shadow:{{ v.ring }};">
+                    <pf-fish code="{{ v.code }}" style="position:absolute;inset:26px 8px 8px;pointer-events:none;"></pf-fish>
+                    <span style="position:absolute;left:12px;top:8px;font-family:'Pixelify Sans',monospace;font-weight:600;font-size:16px;color:{{ v.labelInk }};">{{ v.label }}</span>
+                  </button>
+                </sc-for>
+                <div style="position:absolute;left:14px;top:22px;padding:2px 14px;border:5px solid #1FA463;border-radius:12px;background:rgba(255,255,255,0.88);color:#12804A;font-family:'Pixelify Sans',monospace;font-weight:700;font-size:34px;line-height:1.15;transform:rotate(-12deg);opacity:var(--like,0);pointer-events:none;">HOOKED</div>
+                <div style="position:absolute;right:14px;top:22px;padding:2px 14px;border:5px solid #E5484D;border-radius:12px;background:rgba(255,255,255,0.88);color:#C42B30;font-family:'Pixelify Sans',monospace;font-weight:700;font-size:30px;line-height:1.15;transform:rotate(12deg);opacity:var(--nope,0);pointer-events:none;">NOPE</div>
+                <sc-if value="{{ noteBadge }}"><div style="position:absolute;right:12px;bottom:12px;padding:2px 10px;border-radius:999px;background:#FFD66B;border:2px solid #3B2A3A;color:#3B2A3A;font-family:'Pixelify Sans',monospace;font-weight:600;font-size:15px;">{{ noteBadgeText }}</div></sc-if>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding:14px 18px 16px;flex:{{ panelFlex }};min-height:0;overflow-y:{{ panelOverflow }};">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;">
+                  <div style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:30px;line-height:1.05;text-wrap:balance;">{{ p.name }}</div>
+                  <div style="flex:none;font-size:14px;font-weight:700;color:var(--mut);">{{ p.away }}</div>
+                </div>
+                <div style="font-size:16px;font-weight:700;color:var(--mut);">{{ p.sub }}</div>
+                <sc-if value="{{ isClosed }}"><div style="font-size:17px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty;">{{ p.lead }}</div></sc-if>
+                <sc-if value="{{ isOpen }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div style="font-family:'Pixelify Sans',monospace;font-weight:600;font-size:17px;color:var(--link);">About me</div>
+                    <sc-for list="{{ p.bio }}" as="line" hint-placeholder-count="3"><p style="margin:0;font-size:17px;text-wrap:pretty;">{{ line }}</p></sc-for>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="font-family:'Pixelify Sans',monospace;font-weight:600;font-size:17px;color:var(--link);">Compatibility</div>
+                    <div style="display:grid;grid-template-columns:56px minmax(0,1fr) 40px;gap:10px;align-items:center;font-size:16px;font-weight:700;">
+                      <span>Public</span><div style="height:14px;background:var(--soft);border:2px solid var(--line);border-radius:999px;overflow:hidden;"><div style="height:100%;width:{{ p.pubW }};background:#FFD66B;"></div></div><span style="text-align:right;">{{ p.pub }}</span>
+                      <span>You</span><div style="height:14px;background:var(--soft);border:2px solid var(--line);border-radius:999px;overflow:hidden;"><div style="height:100%;width:{{ p.youW }};background:#FF8FB1;"></div></div><span style="text-align:right;">{{ p.you }}</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    <sc-for list="{{ p.chips }}" as="c" hint-placeholder-count="5"><span style="padding:4px 12px;background:var(--soft);border:2px solid var(--line);border-radius:999px;font-size:15px;font-weight:700;">{{ c }}</span></sc-for>
+                  </div>
+                </sc-if>
+                <button type="button" onClick="{{ toggleProfile }}" onPointerDown="{{ stop }}" style="align-self:flex-start;padding:10px 20px;border:3px solid var(--line);border-radius:999px;background:var(--soft);color:var(--ink);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:18px;cursor:pointer;box-shadow:0 3px 0 var(--line);">{{ profileBtn }}</button>
+              </div>
+            </article>
+          </sc-if>
+          <sc-if value="{{ noCard }}"><div style="position:absolute;inset:0;display:grid;place-items:center;font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:20px;">Out of fish. Somehow.</div></sc-if>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:center;gap:14px;">
+          <button type="button" onClick="{{ undo }}" title="Undo (U)" aria-label="Undo (U)" style="width:64px;height:64px;border:3px solid var(--line);border-radius:50%;background:var(--card);color:#D99A00;font-size:28px;line-height:1;cursor:pointer;box-shadow:0 5px 0 var(--line);opacity:{{ undoOpacity }};" style-hover="background:#D99A00;color:#fff;">↺</button>
+          <button type="button" onClick="{{ pass }}" title="Throw back (←)" aria-label="Throw back (←)" style="width:124px;height:124px;border:3px solid var(--line);border-radius:50%;background:var(--card);color:#E5484D;font-size:58px;line-height:1;cursor:pointer;box-shadow:0 5px 0 var(--line);" style-hover="background:#E5484D;color:#fff;">✕</button>
+          <button type="button" onClick="{{ like }}" title="Hook it (→)" aria-label="Hook it (→)" style="width:124px;height:124px;border:3px solid var(--line);border-radius:50%;background:var(--card);color:#1FA463;font-size:58px;line-height:1;cursor:pointer;box-shadow:0 5px 0 var(--line);" style-hover="background:#1FA463;color:#fff;">♥</button>
+          <button type="button" onClick="{{ openNotes }}" title="Notes (N)" aria-label="Notes (N)" style="width:64px;height:64px;border:3px solid var(--line);border-radius:50%;background:var(--card);color:#2A8BC8;font-size:26px;line-height:1;cursor:pointer;box-shadow:0 5px 0 var(--line);" style-hover="background:#2A8BC8;color:#fff;">✎</button>
+        </div>
+        <div style="text-align:center;font-size:15px;color:var(--mut);">{{ pickHint }}</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isTank }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Tank" style="width:100%;max-width:900px;margin:0 auto;padding:22px 16px 56px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;">
+          <div><h1 style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:34px;line-height:1.1;">The tank</h1><div style="font-size:16px;color:var(--mut);">{{ tankLine }}</div></div>
+          <button type="button" onClick="{{ toggleFeed }}" style="padding:16px 32px;border:3px solid var(--line);border-radius:999px;background:#FFD66B;color:var(--dk);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:22px;cursor:pointer;box-shadow:0 4px 0 var(--line);" style-hover="background:#FFE08A;">{{ feedLabel }}</button>
+        </div>
+        <div style="position:relative;height:clamp(380px,calc(100dvh - 270px),620px);background:linear-gradient(#A9DCF2,#6DB3DA);border:3px solid var(--line);border-radius:28px;box-shadow:0 5px 0 var(--line);overflow:hidden;">
+          <pf-tank codes="{{ tankCodes }}" anim="{{ tankAnim }}" style="position:absolute;inset:0;"></pf-tank>
+          <div style="position:absolute;left:0;right:0;bottom:0;height:24px;background:#F2D9A6;border-top:4px solid #D9B978;pointer-events:none;"></div>
+          <sc-if value="{{ tankEmpty }}"><div style="position:absolute;inset:0;display:grid;place-items:center;font-family:'Pixelify Sans',monospace;font-weight:600;color:#3B2A3A;margin:0;font-size:20px;">Just water. Very calm. Bit sad.</div></sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isBreed }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Matchmaker" style="width:100%;max-width:680px;margin:0 auto;padding:22px 16px 56px;display:flex;flex-direction:column;gap:20px;">
+        <div><h1 style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:34px;line-height:1.1;">Matchmaker</h1><div style="font-size:16px;color:var(--mut);">Pick two of your catches. Genetics handles the awkward part.</div></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1.2fr);align-items:center;gap:8px;">
+          <sc-for list="{{ slots }}" as="s" hint-placeholder-count="3">
+            <sc-if value="{{ s.isOp }}"><div style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:30px;text-align:center;">{{ s.op }}</div></sc-if>
+            <sc-if value="{{ s.isSlot }}">
+              <button type="button" onClick="{{ s.clear }}" style="position:relative;aspect-ratio:1;border:3px solid var(--line);border-radius:20px;padding:0;cursor:pointer;background:{{ s.bg }};outline:{{ s.outline }};outline-offset:2px;">
+                <sc-if value="{{ s.filled }}"><pf-fish code="{{ s.code }}" style="position:absolute;inset:8px;"></pf-fish></sc-if>
+                <sc-if value="{{ s.empty }}"><span style="font-family:'Pixelify Sans',monospace;font-weight:600;font-size:15px;color:#26506E;">{{ s.hint }}</span></sc-if>
+              </button>
+            </sc-if>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+          <button type="button" onClick="{{ doBreed }}" style="padding:16px 32px;border:3px solid var(--line);border-radius:999px;background:{{ breedBg }};color:var(--dk);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:22px;cursor:pointer;box-shadow:0 4px 0 var(--line);color:{{ breedInk }};">{{ breedLabel }}</button>
+          <sc-if value="{{ hasBaby }}"><button type="button" onClick="{{ keepBaby }}" style="padding:16px 32px;border:3px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:22px;cursor:pointer;box-shadow:0 4px 0 var(--line);" style-hover="background:var(--soft);">Keep the baby</button></sc-if>
+        </div>
+        <sc-if value="{{ hasBaby }}">
+          <div style="display:flex;flex-direction:column;gap:6px;padding:18px;background:var(--card);border:3px solid var(--line);border-radius:24px;box-shadow:0 5px 0 var(--line);background:var(--tint);animation:pfSheet 0.3s ease-out;">
+            <div style="font-family:'Pixelify Sans',monospace;font-weight:600;font-size:15px;color:var(--link);">It's a fish!</div>
+            <div style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:28px;line-height:1.1;">{{ baby.name }}</div>
+            <div style="font-size:15px;font-weight:700;color:var(--mut);">{{ baby.sub }}</div>
+            <sc-for list="{{ baby.bio }}" as="line" hint-placeholder-count="2"><p style="margin:0;font-size:16px;text-wrap:pretty;">{{ line }}</p></sc-for>
+          </div>
+        </sc-if>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:22px;">Eligible singles <span style="font-weight:500;color:var(--mut);">{{ hookedCount }}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;">
+            <sc-for list="{{ singles }}" as="f" hint-placeholder-count="6">
+              <button type="button" onClick="{{ f.pick }}" title="{{ f.name }}" style="position:relative;aspect-ratio:1;border:0;border-radius:18px;padding:0;cursor:pointer;background:#8CC8E8;box-shadow:{{ f.ring }};">
+                <pf-fish code="{{ f.code }}" max-scale="3" style="position:absolute;inset:6px;pointer-events:none;"></pf-fish>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+
+  <sc-if value="{{ dragging }}">
+    <div style="position:fixed;z-index:60;left:{{ ghostX }};top:{{ ghostY }};width:72px;height:72px;background:#8CC8E8;border:3px solid var(--line);border-radius:18px;box-shadow:0 6px 0 rgba(59,42,58,0.5);transform:rotate(-5deg);pointer-events:none;">
+      <pf-fish code="{{ dragCode }}" max-scale="3" style="position:absolute;inset:4px;"></pf-fish>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sheetOpen }}">
+    <div onClick="{{ closeSheet }}" style="position:fixed;inset:0;z-index:70;background:rgba(59,42,58,0.5);"></div>
+    <div style="position:fixed;z-index:71;left:50%;bottom:0;transform:translateX(-50%);width:min(540px,100%);max-height:88dvh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:18px 16px calc(20px + env(safe-area-inset-bottom));background:var(--bg);border:3px solid var(--line);border-bottom:0;border-radius:28px 28px 0 0;animation:pfSheet 0.25s ease-out;">
+      <sc-if value="{{ isProfileSheet }}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+          <div style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:28px;line-height:1.05;">{{ sp.name }}</div>
+          <button type="button" onClick="{{ closeSheet }}" aria-label="Close" style="flex:none;width:52px;height:52px;border:3px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink);cursor:pointer;font-size:16px;">✕</button>
+        </div>
+        <div style="position:relative;height:200px;background:#8CC8E8;border:3px solid var(--line);border-radius:20px;"><pf-fish code="{{ sp.code }}" style="position:absolute;inset:12px;"></pf-fish></div>
+        <div style="font-size:15px;font-weight:700;color:var(--mut);">{{ sp.sub }} · {{ sp.away }}</div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:14px 16px;background:var(--card);border:3px solid var(--line);border-radius:24px;box-shadow:0 5px 0 var(--line);box-shadow:0 3px 0 var(--line);">
+          <div style="font-family:'Pixelify Sans',monospace;font-weight:600;font-size:15px;color:var(--link);">About me</div>
+          <sc-for list="{{ sp.bio }}" as="line" hint-placeholder-count="3"><p style="margin:0;font-size:17px;text-wrap:pretty;">{{ line }}</p></sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--card);border:3px solid var(--line);border-radius:24px;box-shadow:0 5px 0 var(--line);box-shadow:0 3px 0 var(--line);">
+          <div style="font-family:'Pixelify Sans',monospace;font-weight:600;font-size:15px;color:var(--link);">Compatibility</div>
+          <div style="display:grid;grid-template-columns:56px minmax(0,1fr) 40px;gap:10px;align-items:center;font-size:15px;font-weight:700;">
+            <span>Public</span><div style="height:12px;background:var(--soft);border:2px solid var(--line);border-radius:999px;overflow:hidden;"><div style="height:100%;width:{{ sp.pubW }};background:#FFD66B;"></div></div><span style="text-align:right;">{{ sp.pub }}</span>
+            <span>You</span><div style="height:12px;background:var(--soft);border:2px solid var(--line);border-radius:999px;overflow:hidden;"><div style="height:100%;width:{{ sp.youW }};background:#FF8FB1;"></div></div><span style="text-align:right;">{{ sp.you }}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <sc-for list="{{ sp.chips }}" as="c" hint-placeholder-count="5"><span style="padding:4px 12px;background:var(--card);border:2px solid var(--line);border-radius:999px;font-size:14px;font-weight:700;">{{ c }}</span></sc-for>
+        </div>
+        <sc-if value="{{ sheetFromTier }}">
+          <button type="button" onClick="{{ releaseFish }}" style="align-self:flex-start;padding:14px 24px;border:3px solid var(--line);border-radius:999px;background:var(--card);color:var(--link);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:19px;cursor:pointer;">Release into the wild</button>
+        </sc-if>
+      </sc-if>
+      <sc-if value="{{ isNotesSheet }}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+          <div style="font-family:'Pixelify Sans',monospace;font-weight:600;color:var(--ink);margin:0;font-size:24px;">Notes for the forge</div>
+          <button type="button" onClick="{{ closeSheet }}" aria-label="Close" style="width:52px;height:52px;border:3px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink);cursor:pointer;font-size:16px;">✕</button>
+        </div>
+        <div style="font-size:16px;color:var(--mut);">What's off? Saved with your swipe.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <sc-for list="{{ noteChips }}" as="n" hint-placeholder-count="6">
+            <button type="button" onClick="{{ n.toggle }}" style="padding:14px 22px;border:3px solid var(--line);border-radius:999px;cursor:pointer;font-size:19px;font-weight:700;background:{{ n.bg }};color:{{ n.ink }};">{{ n.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:10px;padding-top:4px;">
+          <button type="button" onClick="{{ passFromSheet }}" style="flex:1;height:64px;border:3px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:20px;cursor:pointer;box-shadow:0 4px 0 var(--line);">✕ Throw back</button>
+          <button type="button" onClick="{{ likeFromSheet }}" style="flex:1;height:64px;border:3px solid var(--line);border-radius:999px;background:#FF8FB1;color:var(--dk);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:20px;cursor:pointer;box-shadow:0 4px 0 var(--line);">♥ Hook it</button>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasToast }}">
+    <div style="position:fixed;z-index:80;left:50%;bottom:32px;transform:translateX(-50%);padding:10px 20px;background:var(--line);color:var(--bg);border-radius:999px;font-family:'Pixelify Sans',monospace;font-weight:500;font-size:17px;white-space:nowrap;pointer-events:none;animation:pfToast 0.2s ease-out;">{{ toast }}</div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;variantCount&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;2&quot;,&quot;4&quot;],&quot;default&quot;:&quot;2&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Swipe&quot;},&quot;variantAxis&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;swim&quot;,&quot;size&quot;,&quot;mood&quot;,&quot;pattern&quot;],&quot;default&quot;:&quot;swim&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Swipe&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;swipe&quot;,&quot;tank&quot;,&quot;breed&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;App&quot;}}">
+const TIERS = [
+  ['S', 'Soulmate', '#FFD66B'],
+  ['A', 'Absolute unit', '#FFB48A'],
+  ['B', 'Bring home to mom', '#9BE0B5'],
+  ['C', 'Coworker energy', '#8CC8E8'],
+  ['D', 'Dinner', '#CDB6F2'],
+];
+const EMPTY = { S: 'Nobody. Standards are standards.', A: 'Vacant.', B: 'Mom is waiting.', C: 'Nobody. Yet.', D: 'Nobody’s on the menu.' };
+const HOOK = ['Hooked.', 'Into the bucket.', 'Reel love.', 'Catch of the day.', 'Fin-tastic.'];
+const NOPE = ['Thrown back.', 'Plenty more in the sea.', 'Not your type.', 'Swim along.'];
+const NOTES = ["Chef's kiss", 'Too busy', 'Colors off', 'Looks broken', 'Wrong species', 'Needs contrast'];
+const AXES = [['swim', 'Swim'], ['size', 'Size'], ['mood', 'Mood'], ['pattern', 'Pattern']];
+const STARTERS = [['kipper', 'S'], ['gilbert', 'A'], ['wanda', 'A'], ['captain', 'B'], ['sushi', 'C'], ['blub', 'D'], ['finnegan', 'pool'], ['marlo', 'pool'], ['pebble', 'pool']];
+const KEY = 'pixelforge.redesign.v1';
+const rand = (a) => a[Math.floor(Math.random() * a.length)];
+const seed = () => Math.random().toString(36).slice(2, 8);
+const pctW = (n) => n + '%';
+
+class Component extends DCLogic {
+  state = {
+    ready: false, tab: null, wide: typeof window !== 'undefined' && window.innerWidth >= 900,
+    deck: [], idx: 0, picked: 0, history: [],
+    tiers: { S: [], A: [], B: [], C: [], D: [], pool: [] },
+    swiped: 0, thrown: 0,
+    count: null, axis: null,
+    drag: null, hover: null,
+    sheet: null, sheetCode: null, sheetTier: null, notes: {},
+    toast: '', theme: null, cardOpen: false, breedA: null, breedB: null, baby: null, feeding: false,
+  };
+  cardRef = React.createRef();
+  profs = new Map();
+
+  async componentDidMount() {
+    this.onResize = () => this.setState({ wide: window.innerWidth >= 900 });
+    window.addEventListener('resize', this.onResize);
+    this.onKey = (e) => {
+      if (this.tab() !== 'swipe' || this.state.sheet || e.metaKey || e.ctrlKey) return;
+      if (e.target.closest && e.target.closest('input, textarea, select')) return;
+      const act = { ArrowLeft: () => this.fling(-1), ArrowRight: () => this.fling(1), u: () => this.undo(), n: () => this.setState({ sheet: 'notes' }) }[e.key];
+      if (act) { e.preventDefault(); act(); }
+    };
+    window.addEventListener('keydown', this.onKey);
+    const mod = await import('./fish-lib.js');
+    this.lib = mod.default;
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+    let tiers = saved?.tiers;
+    if (!tiers) {
+      tiers = { S: [], A: [], B: [], C: [], D: [], pool: [] };
+      for (const [s, t] of STARTERS) tiers[t].push(this.lib.roll(s));
+    }
+    const deck = Array.from({ length: 40 }, () => this.lib.roll(seed()));
+    const th = (() => { try { return localStorage.getItem('pixelforge.theme'); } catch (e) { return null; } })() || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    this.setState({ theme: th, ready: true, tiers, deck, swiped: saved?.swiped ?? 14, thrown: saved?.thrown ?? 5 });
+  }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('keydown', this.onKey);
+    this.endWindowDrag && this.endWindowDrag();
+  }
+  persist() {
+    const { tiers, swiped, thrown } = this.state;
+    try { localStorage.setItem(KEY, JSON.stringify({ tiers, swiped, thrown })); } catch (e) {}
+  }
+  tab() { return this.state.tab ?? this.props.startTab ?? 'home'; }
+  count() { return this.state.count ?? Number(this.props.variantCount ?? 2); }
+  axis() { return this.state.axis ?? this.props.variantAxis ?? 'swim'; }
+  prof(code) {
+    if (!code || !this.lib) return null;
+    if (!this.profs.has(code)) this.profs.set(code, this.lib.profile(code));
+    return this.profs.get(code);
+  }
+  view(code) {
+    const p = this.prof(code);
+    if (!p) return { name: '', sub: '', lead: '', bio: [], chips: [], away: '', pub: '', you: '', pubW: '0%', youW: '0%', code: '' };
+    const kind = p.hybrid || p.body;
+    return {
+      code, name: p.name, bio: p.bio, lead: p.bio[0] || '',
+      sub: [p.size, kind, p.mood].filter(Boolean).join(' · '),
+      away: p.pixels + ' px away',
+      chips: [kind, p.size, p.pattern, p.mood, p.rarity].filter(Boolean),
+      pub: String(p.pub), you: String(p.you), pubW: pctW(p.pub), youW: pctW(p.you),
+    };
+  }
+  hooked() { const t = this.state.tiers; return [...t.S, ...t.A, ...t.B, ...t.C, ...t.D, ...t.pool]; }
+  say(text) {
+    clearTimeout(this.toastT);
+    this.setState({ toast: text });
+    this.toastT = setTimeout(() => this.setState({ toast: '' }), 1500);
+  }
+  cards() {
+    const code = this.state.deck[this.state.idx];
+    if (!code || !this.lib) return [];
+    const key = code + this.axis() + this.count();
+    if (this._vk !== key) { this._vk = key; this._v = this.lib.variants(code, this.axis(), this.count()); }
+    return this._v;
+  }
+
+  // swipe
+  setCard(x, y, t) {
+    const el = this.cardRef.current;
+    if (!el) return;
+    el.style.transition = t || 'none';
+    el.style.transform = x || y ? `translate(${x}px, ${y}px) rotate(${x / 18}deg)` : '';
+    el.style.setProperty('--like', String(Math.max(0, Math.min(1, x / 110))));
+    el.style.setProperty('--nope', String(Math.max(0, Math.min(1, -x / 110))));
+  }
+  fling(dir) {
+    if (this.busy || !this.state.deck[this.state.idx]) return;
+    this.busy = true;
+    const w = window.innerWidth / 2 + 480;
+    this.setCard(dir * 30, -6, 'transform 0.08s ease-out');
+    setTimeout(() => this.setCard(dir * w, 40, 'transform 0.32s ease-in'), 80);
+    setTimeout(() => { this.decide(dir > 0 ? 'hook' : 'nope'); this.setCard(0, 0); this.busy = false; }, 420);
+  }
+  decide(verdict) {
+    const { idx, deck, tiers, history } = this.state;
+    const vs = this.cards();
+    const code = (vs[this.state.picked] || vs[0] || {}).code || deck[idx];
+    const next = { cardOpen: false, idx: idx + 1, picked: 0, history: [...history, { verdict, code, idx }].slice(-20), swiped: this.state.swiped + 1 };
+    if (verdict === 'hook') next.tiers = { ...tiers, pool: [code, ...tiers.pool.filter((c) => c !== code)] };
+    else next.thrown = this.state.thrown + 1;
+    if (deck.length - idx < 8) next.deck = [...deck, ...Array.from({ length: 20 }, () => this.lib.roll(seed()))];
+    this.setState(next, () => this.persist());
+    this.say(rand(verdict === 'hook' ? HOOK : NOPE));
+  }
+  undo() {
+    const h = this.state.history;
+    const last = h[h.length - 1];
+    if (!last || this.busy) return;
+    const tiers = { ...this.state.tiers };
+    if (last.verdict === 'hook') tiers.pool = tiers.pool.filter((c) => c !== last.code);
+    this.setState({ history: h.slice(0, -1), idx: last.idx, cardOpen: false, picked: 0, tiers, swiped: Math.max(0, this.state.swiped - 1), thrown: last.verdict === 'nope' ? Math.max(0, this.state.thrown - 1) : this.state.thrown }, () => this.persist());
+    this.say('Fine. Second chances.');
+  }
+  cardDown = (e) => {
+    if (this.busy || e.button) return;
+    this.cd = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false, t: e.timeStamp, lx: 0, lt: e.timeStamp };
+  };
+  cardMove = (e) => {
+    const d = this.cd;
+    if (!d) return;
+    const x = e.clientX - d.x, y = e.clientY - d.y;
+    if (!d.moved && Math.hypot(x, y) > 6) { d.moved = true; try { e.currentTarget.setPointerCapture(d.id); } catch (err) {} }
+    if (d.moved) { d.vx = (x - d.lx) / Math.max(1, e.timeStamp - d.lt); d.lx = x; d.lt = e.timeStamp; this.setCard(x, y * 0.4); }
+  };
+  cardUp = (e) => {
+    const d = this.cd;
+    this.cd = null;
+    if (!d || !d.moved) return;
+    const x = e.clientX - d.x;
+    if (x > 110 || (d.vx > 0.5 && x > 20)) this.flingFrom(1, x);
+    else if (x < -110 || (d.vx < -0.5 && x < -20)) this.flingFrom(-1, x);
+    else this.setCard(0, 0, 'transform 0.45s cubic-bezier(.34,1.56,.64,1)');
+  };
+  flingFrom(dir, x) {
+    this.busy = true;
+    this.setCard(dir * (window.innerWidth / 2 + 480), 30, 'transform 0.3s ease-in');
+    setTimeout(() => { this.decide(dir > 0 ? 'hook' : 'nope'); this.setCard(0, 0); this.busy = false; }, 300);
+  }
+
+  // tier drag
+  tileDown(code, e) {
+    if (e.button) return;
+    e.preventDefault();
+    const start = { x: e.clientX, y: e.clientY };
+    let started = false;
+    const move = (ev) => {
+      if (!started && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+      started = true;
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const tierEl = el && el.closest('[data-tier]');
+      const fishEl = el && el.closest('[data-fish]');
+      this.setState({ drag: { code, x: ev.clientX, y: ev.clientY }, hover: tierEl ? { tier: tierEl.dataset.tier, before: fishEl ? fishEl.dataset.fish : null } : null });
+    };
+    const up = () => {
+      this.endWindowDrag();
+      if (!started) { this.setState({ sheet: 'profile', sheetCode: code, sheetTier: true }); return; }
+      const h = this.state.hover;
+      if (h) this.moveFish(code, h.tier, h.before);
+      this.setState({ drag: null, hover: null });
+    };
+    this.endWindowDrag = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      this.endWindowDrag = null;
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+  moveFish(code, tier, before) {
+    const t = {};
+    for (const k of Object.keys(this.state.tiers)) t[k] = this.state.tiers[k].filter((c) => c !== code);
+    const list = t[tier];
+    const at = before && before !== code ? list.indexOf(before) : -1;
+    if (at >= 0) list.splice(at, 0, code); else list.push(code);
+    this.setState({ tiers: t }, () => this.persist());
+    if (tier === 'S') this.say('Soulmate secured.');
+    if (tier === 'D') this.say('Bon appétit.');
+  }
+  tileList(codes) {
+    const { drag, hover } = this.state;
+    return codes.map((code) => ({
+      code,
+      name: this.prof(code)?.name ?? '',
+      opacity: drag && drag.code === code ? 0.25 : 1,
+      marker: !!(drag && hover && hover.before === code && code !== drag.code),
+      onDown: (e) => this.tileDown(code, e),
+    }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const tab = this.tab();
+    const ready = s.ready;
+    const hooked = this.hooked();
+    const tabs = [['home', 'Home', ''], ['swipe', 'Swipe', ''], ['tank', 'Tank', String(hooked.length)], ['breed', 'Breed', '']].map(([id, label, count]) => ({
+      label, count, active: tab === id, inactive: tab !== id, go: () => this.setState({ tab: id, sheet: null }),
+    }));
+    const hv = s.hover;
+    const tierRows = TIERS.map(([key, name, color]) => {
+      const fish = this.tileList(s.tiers[key] || []);
+      return { key, name, color, fish, empty: !fish.length, emptyText: EMPTY[key], zoneBg: s.drag && hv && hv.tier === key ? 'var(--hover)' : 'var(--card)' };
+    });
+    const poolFish = this.tileList(s.tiers.pool || []);
+
+    const vs = this.cards();
+    const count = this.count();
+    const axis = this.axis();
+    const picked = Math.min(s.picked, Math.max(0, vs.length - 1));
+    const multi = vs.length > 1;
+    const variantCells = vs.map((v, i) => ({
+      code: v.code,
+      label: multi ? v.label : '',
+      bg: multi && i === picked ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.22)',
+      ring: multi && i === picked ? 'inset 0 0 0 4px #FF8FB1' : 'none',
+      labelInk: i === picked ? '#3B2A3A' : '#26506E',
+      pick: () => this.setState({ picked: i }),
+    }));
+    const cur = vs[picked] ? vs[picked].code : s.deck[s.idx];
+    const noteSet = s.notes[s.deck[s.idx]] || [];
+
+    const slotOf = (code, hint, isBaby) => ({
+      isSlot: true, isOp: false, code: code || '', filled: !!code, empty: !code, hint,
+      bg: isBaby && code ? '#B7E0F5' : '#8CC8E8',
+      outline: isBaby ? '3px solid #FF8FB1' : 'none',
+      clear: () => !isBaby && code && this.setState(hint === 'Fish A' ? { breedA: null, baby: null } : { breedB: null, baby: null }),
+    });
+    const canBreed = s.breedA && s.breedB;
+
+    const products = [
+      ['Fish', 'v3 · LIVE', '32 bodies plus hybrids, six size classes, modelled swim, Mendelian colour genes. A name for every fish.', () => this.setState({ tab: 'swipe' })],
+      ['Garden plants', 'v3 · LIVE', '16 species on nine bend habits, five heights, wind-driven sway. Veins and bark as they grow.', () => this.say('Swiping is fish-first for now.')],
+      ['Tank plants', 'v2 · LIVE', 'Four classes of aquarium greenery, shaded and animated for the tank.', () => this.say('Swiping is fish-first for now.')],
+      ['Pilots', 'v2 · LIVE', 'Portrait framings cropped from one scene. Same face at every size, talking animations.', () => this.say('Swiping is fish-first for now.')],
+    ].map(([name, tag, text, go]) => ({ name, tag, text, go, tagBg: '#FFD66B', tagInk: '#3B2A3A' }));
+
+    return {
+      theme: s.theme || 'light', themeLabel: s.theme === 'dark' ? '☀ Light' : '☾ Dark',
+      toggleTheme: () => { const n = s.theme === 'dark' ? 'light' : 'dark'; this.setState({ theme: n }); try { localStorage.setItem('pixelforge.theme', n); } catch (e) {} },
+      isOpen: s.cardOpen, isClosed: !s.cardOpen, fishFlex: s.cardOpen ? '0 0 190px' : '1 1 0', panelFlex: s.cardOpen ? '1 1 0' : '0 0 auto',
+      panelOverflow: s.cardOpen ? 'auto' : 'visible', cardTouch: s.cardOpen ? 'pan-y' : 'none',
+      profileBtn: s.cardOpen ? 'Show less ▴' : 'Full profile ▾', toggleProfile: () => this.setState({ cardOpen: !s.cardOpen }),
+      wide: s.wide, narrow: !s.wide, loading: !ready,
+      isHome: ready && tab === 'home', isSwipe: ready && tab === 'swipe', isTank: ready && tab === 'tank', isBreed: ready && tab === 'breed',
+      tabs,
+      statLine: `${s.swiped} swiped · ${hooked.length} hooked · ${s.thrown} thrown back`,
+      statShort: `${hooked.length} hooked`,
+      goSwipe: () => this.setState({ tab: 'swipe' }), goTank: () => this.setState({ tab: 'tank' }),
+      tierRows, poolFish, poolEmpty: !poolFish.length, poolCount: String(poolFish.length),
+      poolBg: s.drag && hv && hv.tier === 'pool' ? 'var(--hover)' : 'var(--pool)',
+      products,
+
+      countOpts: [1, 2, 4].map((n) => ({ label: String(n), bg: n === count ? '#FF8FB1' : 'transparent', ink: n === count ? '#3B2A3A' : 'var(--ink)', go: () => this.setState({ count: n, picked: 0 }) })),
+      axisOpts: AXES.map(([id, label]) => ({ label, bg: id === axis ? 'var(--ink)' : 'transparent', ink: id === axis ? 'var(--bg)' : 'var(--ink)', go: () => this.setState({ axis: id, picked: 0 }) })),
+      axisOpacity: count > 1 ? 1 : 0.4,
+      versionsWord: count === 1 ? 'version' : 'versions',
+      gridCols: count === 4 ? '1fr 1fr' : '1fr',
+      variantCells, hasCard: !!cur, noCard: ready && !cur, hasNext: !!s.deck[s.idx + 1],
+      cardRef: this.cardRef, cardDown: this.cardDown, cardMove: this.cardMove, cardUp: this.cardUp,
+      p: this.view(cur),
+      pickHint: s.swiped >= 20 ? '' : multi ? 'tap the best version, then hook it' : 'set Show to 2 or 4 to compare',
+      like: () => this.fling(1), pass: () => this.fling(-1), undo: () => this.undo(),
+      undoOpacity: s.history.length ? 1 : 0.4,
+      noteBadge: noteSet.length > 0, noteBadgeText: '✎ ' + noteSet.length,
+      openNotes: () => this.setState({ sheet: 'notes' }),
+      stop: (e) => e.stopPropagation(),
+      openCardProfile: () => this.setState({ sheet: 'profile', sheetCode: cur, sheetTier: false }),
+
+      tankCodes: hooked.join(','), tankAnim: s.feeding ? 'eat' : 'swim', tankEmpty: !hooked.length,
+      tankLine: `${hooked.length} residents. Zero rent paid.`,
+      feedLabel: s.feeding ? 'Stop the buffet' : 'Feed them',
+      toggleFeed: () => { this.setState({ feeding: !s.feeding }); if (!s.feeding) this.say('Nom nom nom.'); },
+
+      slots: [slotOf(s.breedA, 'Fish A'), { isOp: true, isSlot: false, op: '+' }, slotOf(s.breedB, 'Fish B'), { isOp: true, isSlot: false, op: '=' }, slotOf(s.baby, '?', true)],
+      singles: hooked.map((code) => ({
+        code, name: this.prof(code)?.name ?? '',
+        ring: code === s.breedA || code === s.breedB ? 'inset 0 0 0 4px #FF8FB1' : 'none',
+        pick: () => {
+          if (code === s.breedA) return this.setState({ breedA: null, baby: null });
+          if (code === s.breedB) return this.setState({ breedB: null, baby: null });
+          this.setState(!s.breedA ? { breedA: code, baby: null } : { breedB: code, baby: null });
+        },
+      })),
+      hookedCount: String(hooked.length),
+      breedLabel: s.baby ? 'Again, but weirder' : canBreed ? 'Make it happen' : 'Pick two fish',
+      breedBg: canBreed ? '#FF8FB1' : 'var(--soft2)', breedInk: canBreed ? '#3B2A3A' : 'var(--mut)',
+      doBreed: () => {
+        if (!canBreed) return this.say('It takes two.');
+        try { this.setState({ baby: this.lib.breed(s.breedA, s.breedB, seed()) }); this.say("It's a fish!"); } catch (e) { this.say('They just want to be friends.'); }
+      },
+      hasBaby: !!s.baby, baby: this.view(s.baby),
+      keepBaby: () => { this.setState({ tiers: { ...s.tiers, pool: [s.baby, ...s.tiers.pool] }, baby: null, breedA: null, breedB: null }, () => this.persist()); this.say('Welcome to the bucket.'); },
+
+      dragging: !!s.drag, dragCode: s.drag ? s.drag.code : '',
+      ghostX: s.drag ? s.drag.x - 36 + 'px' : '0px', ghostY: s.drag ? s.drag.y - 36 + 'px' : '0px',
+
+      sheetOpen: !!s.sheet, isProfileSheet: s.sheet === 'profile', isNotesSheet: s.sheet === 'notes',
+      sp: this.view(s.sheetCode), sheetFromTier: !!s.sheetTier,
+      closeSheet: () => this.setState({ sheet: null }),
+      releaseFish: () => {
+        const t = {};
+        for (const k of Object.keys(s.tiers)) t[k] = s.tiers[k].filter((c) => c !== s.sheetCode);
+        this.setState({ tiers: t, sheet: null }, () => this.persist());
+        this.say('Swim free, little guy.');
+      },
+      noteChips: NOTES.map((label) => {
+        const on = noteSet.includes(label);
+        return { label, bg: on ? '#FF8FB1' : 'var(--soft)', ink: on ? '#3B2A3A' : 'var(--ink)', toggle: () => {
+          const k = s.deck[s.idx];
+          const next = on ? noteSet.filter((n) => n !== label) : [...noteSet, label];
+          this.setState({ notes: { ...s.notes, [k]: next } });
+        } };
+      }),
+      passFromSheet: () => { this.setState({ sheet: null }); setTimeout(() => this.fling(-1), 120); },
+      likeFromSheet: () => { this.setState({ sheet: null }); setTimeout(() => this.fling(1), 120); },
+
+      hasToast: !!s.toast, toast: s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

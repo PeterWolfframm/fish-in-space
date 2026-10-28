@@ -113,6 +113,64 @@ function showName() {
   if (!named) return;
   $('fishName').textContent = state.gen.name(state.genome);
   $('fishGenes').textContent = state.gen.describe ? state.gen.describe(state.genome) : '';
+  const names = state.gen.names?.(state.genome);
+  $('fishBinomial').textContent = names?.binomial ?? '';
+  const sig = state.gen.signatureOf?.(state.genome);
+  $('fishSignature').hidden = !sig?.label;
+  $('fishSignature').textContent = sig?.label ?? '';
+  $('nameRow').classList.toggle('signed', Boolean(sig?.label));
+  showEcology();
+  showLore();
+}
+
+/** Ecology chips. Each one's tooltip names the traits that decided it, so a fish can be read. */
+const ECO_CHIPS = [['diet', 'diet'], ['feeding', 'feeds'], ['level', 'level'], ['temperament', 'temper'], ['sociality', 'kept'], ['activity', 'active'], ['depth', 'depth'], ['salinity', 'water'], ['temp', 'temp'], ['current', 'current']];
+function showEcology() {
+  const box = $('fishEco');
+  const eco = state.gen.ecology?.(state.genome);
+  box.hidden = !eco;
+  if (!eco) return;
+  box.replaceChildren(...ECO_CHIPS.map(([k, label]) => {
+    const li = document.createElement('li');
+    li.className = 'eco-chip';
+    const why = eco[k].because;
+    if (why.some((b) => b.field === 'signature' || b.field === 'relic')) li.classList.add('sig');
+    li.innerHTML = '<span></span><b></b>';
+    li.firstChild.textContent = label;
+    li.lastChild.textContent = eco[k].value;
+    li.title = `${k}: ${eco[k].value} — ${why.map((b) => b.label).join(', ')}`;
+    return li;
+  }));
+  const care = eco.care;
+  const li = document.createElement('li');
+  li.className = 'eco-chip';
+  li.innerHTML = '<span>tank</span><b></b>';
+  li.lastChild.textContent = `${care.litres} L · ${care.tempC[0]}–${care.tempC[1]} °C · pH ${care.pH[0]}–${care.pH[1]}`;
+  li.title = `grows to ${care.cm} cm; ${care.group > 1 ? `keep ${care.group}` : 'keep alone'}`;
+  box.append(li);
+}
+
+/** The catalogue entry, in a collapsible block. */
+function showLore() {
+  const lore = state.gen.lore?.(state.genome);
+  $('fishLore').hidden = !lore;
+  if (!lore) return;
+  const line = (cls, text) => {
+    const p = document.createElement('p');
+    p.className = cls;
+    p.textContent = text;
+    return p;
+  };
+  const parts = [line('lore-designation', lore.designation)];
+  if (lore.quote) {
+    const q = line('lore-quote', `“${lore.quote.text}”`);
+    if (lore.quote.by) q.append(Object.assign(document.createElement('cite'), { textContent: ` — ${lore.quote.by}` }));
+    parts.push(q);
+  }
+  for (const c of lore.codex) parts.push(line('lore-codex', c.text));
+  parts.push(line('lore-edict', lore.edict.text));
+  if (lore.legend) parts.push(line('lore-legend', lore.legend.text));
+  $('fishLoreBody').replaceChildren(...parts);
 }
 
 /** A genome with the forced size class and look, where forced. */
@@ -376,7 +434,9 @@ function renderGallery() {
       r.textContent = { uncommon: '★', rare: '★★', myth: '★★★' }[rarity] ?? '';
       cell.append(r);
     }
-    const named = state.gen.name ? `${state.gen.name(entry.genome)}\n` : '';
+    const sig = state.gen.signatureOf?.(entry.genome);
+    if (sig?.label) cell.classList.add('signed');
+    const named = state.gen.name ? `${state.gen.name(entry.genome)}\n${sig?.label ? `${sig.label}\n` : ''}` : '';
     const events = entry.events?.length ? `\n${entry.events.map((e) => `• ${e.text}`).join('\n')}` : '';
     cell.title = `${named}${entry.seed ?? ''}\n${codeOf(entry.genome)}${events}`;
     cell.addEventListener('click', (e) => {

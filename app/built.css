@@ -1107,10 +1107,12 @@
   --accent-ink: var(--text-on-accent);
   --sel: var(--semantic-success);
   --mark: var(--semantic-danger);
+  --sig-gold: #b8860b;
   color-scheme: light;
 }
 [data-theme="dark"] {
   color-scheme: dark;
+  --sig-gold: #e0ad2a;
   --black: #f3efe6;
   --white: #1b1916;
   --grey-950: #f8f4ec;
@@ -1550,6 +1552,10 @@ input[type="checkbox"] {
   opacity: 0.85;
   text-shadow: 0 1px 0 #000;
 }
+.cell.signed {
+  border-color: var(--sig-gold);
+  box-shadow: 0 0 0 1px var(--sig-gold) inset;
+}
 .rarity {
   position: absolute;
   right: 5px;
@@ -1898,6 +1904,19 @@ input[type="checkbox"] {
 }
 .card-title span {
   color: var(--text-muted);
+}
+.card-lore {
+  margin: 0;
+  font: var(--font-body-sm);
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card.signed {
+  border-color: var(--sig-gold);
+  box-shadow: var(--shadow-hard-md), 0 0 0 2px var(--sig-gold) inset;
 }
 .bars {
   display: grid;
@@ -2447,6 +2466,95 @@ input[type="checkbox"] {
   gap: 8px;
   align-items: baseline;
   flex-wrap: wrap;
+}
+.dossier {
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: var(--border-width-sm) solid var(--border-subtle);
+  background: var(--surface-sunken);
+}
+.dossier.signed {
+  border-color: var(--sig-gold);
+  box-shadow: 0 0 0 1px var(--sig-gold) inset, 0 0 14px -4px var(--sig-gold);
+}
+.dossier-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.fish-binomial {
+  font: italic 500 var(--text-xs) / 1.3 var(--font-body, serif);
+  color: var(--text-muted);
+}
+.fish-signature {
+  margin-left: auto;
+  font: 600 var(--text-2xs) / 1 var(--font-mono);
+  color: var(--sig-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.eco-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.eco-chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: baseline;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: var(--border-width-sm) solid var(--border-subtle);
+  background: var(--surface-card);
+  font: 500 var(--text-2xs) / 1.4 var(--font-mono);
+  cursor: help;
+}
+.eco-chip span {
+  color: var(--text-muted);
+}
+.eco-chip.sig {
+  border-color: var(--sig-gold);
+  color: var(--sig-gold);
+}
+.lore summary {
+  cursor: pointer;
+  font: 600 var(--text-2xs) / 1.4 var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.lore-body {
+  display: grid;
+  gap: 4px;
+  padding-top: 6px;
+  font: var(--font-body-sm);
+}
+.lore-body p {
+  margin: 0;
+}
+.lore-designation {
+  font: 500 var(--text-2xs) / 1.4 var(--font-mono);
+  color: var(--text-muted);
+}
+.lore-quote {
+  font-style: italic;
+}
+.lore-quote cite {
+  font-style: normal;
+  color: var(--text-muted);
+}
+.lore-edict {
+  font-weight: 600;
+}
+.lore-legend {
+  color: var(--sig-gold);
 }
 .fish-name {
   font: 600 var(--text-md) / var(--leading-snug) var(--font-display);

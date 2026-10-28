@@ -142,6 +142,7 @@ function makeCard(r) {
     <span class="note-badge" hidden>✎</span>
     <footer>
       <div class="card-title"><b></b><span></span></div>
+      <p class="card-lore" hidden></p>
       <div class="bars">
         <div class="bar pub" title="What everyone's model thinks"><span>Public</span><i><s></s></i><em></em></div>
         <div class="bar you" title="What your model thinks"><span>You</span><i><s></s></i><em></em></div>
@@ -151,6 +152,15 @@ function makeCard(r) {
   el.querySelector('.card-title b').textContent = gen.label;
   const style = gen.sizeField ? [r.genome[gen.sizeField], r.genome.look].filter(Boolean).join(' · ') : 'v1';
   el.querySelector('.card-title span').textContent = style;
+  if (gen.name) {
+    // Named creatures: the name leads, with one line from its codex entry under it.
+    el.querySelector('.card-title b').textContent = gen.name(r.genome);
+    const lore = gen.lore?.(r.genome);
+    const line = el.querySelector('.card-lore');
+    line.textContent = lore?.codex[0]?.text ?? '';
+    line.hidden = !line.textContent;
+    if (gen.signatureOf?.(r.genome).label) el.classList.add('signed');
+  }
   el.title = `${r.kind} ${r.code}`;
   const player = new Player(el.querySelector('canvas'));
   const card = { ...r, gen, el, player, notes: { fix: new Set(), instead: {}, asKind: '', note: '', canned: new Set() } };

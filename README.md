@@ -1,6 +1,6 @@
 # pixel art generator
 
-for some reason, specialed in fish!
+for some reason, specialised in fish!
 
 Procedural pixel art for pilots, fish, and plants. Each family has a frozen v1 and a lit v2 remaster. The app look is the local Keypad kit (`@keypad/ui`), with a light and a dark theme.
 

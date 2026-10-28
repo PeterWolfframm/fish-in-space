@@ -1,7 +1,7 @@
 {
   "name": "pixelforge",
   "version": "0.1.0",
-  "description": "pixel art generator. for some reason, specialed in fish!",
+  "description": "pixel art generator. for some reason, specialised in fish!",
   "type": "module",
   "private": true,
   "exports": {

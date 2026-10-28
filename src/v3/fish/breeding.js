@@ -16,7 +16,7 @@ import { BODY_COLORS, MARK_COLORS } from '../../gen/fish/palettes.js';
 import { fish3Traits, STEP_IDS, stepOf, NOT_LOOKS } from './genome.js';
 import { HYBRIDS, hybridOf } from './bodies.js';
 import { blendSwatch } from './colors.js';
-import { genetics } from './phenotype.js';
+import { genetics, phenotype } from './phenotype.js';
 
 const T = fish3Traits;
 const ids = (field) => T.fieldById(field).choices.map((c) => c.id);
@@ -136,7 +136,7 @@ export function breedDetailed(a, b, seed) {
   child.size = SIZES[size];
 
   // --- mutation: re-roll a few fields, never ones the parents agree on -------------------------
-  const keep = new Set([...NOT_LOOKS, ...PROPORTIONS, 'chonk', 'size', 'hybrid', 'rarity', 'morph', 'iridescence']);
+  const keep = new Set([...NOT_LOOKS, ...PROPORTIONS, 'chonk', 'size', 'hybrid', 'rarity', 'morph', 'iridescence', 'signature', 'relic']);
   const varied = T.vary(child, 0.08 * chaosK, `${seed}:mut`);
   for (const f of T.fields) {
     if (keep.has(f.id) || A[f.id] === B[f.id]) continue;
@@ -167,7 +167,26 @@ export function breedDetailed(a, b, seed) {
   if (child.hybrid !== 'none') rarity = Math.max(rarity, 2);
   if (child.morph !== 'auto') rarity = Math.max(rarity, 1);
   if (child.iridescence !== 'none') rarity = Math.max(rarity, 2);
+  // A signature is not a gene: it passes only between two parents who both bear one, and is
+  // otherwise only ever a sport. A rare child without one gets its own (phenotype's auto pick).
+  if (chance(0.01 * sportK, 207)) {
+    rarity = Math.max(rarity, 2);
+    child.signature = 'auto';
+    say('sport', 'sport: hatched with a signature');
+  }
   child.rarity = RARITY[clamp(rarity, 0, 3)];
+  const pa = phenotype(A);
+  const pb = phenotype(B);
+  child.signature = 'auto';
+  child.relic = 'auto';
+  if (pa.signature !== 'none' && pb.signature !== 'none' && rarity >= 2) {
+    child.signature = pa.signature === pb.signature ? pa.signature : chance(0.5, 230) ? pa.signature : pb.signature;
+    say('signature', `inherited signature: ${labelOf('signature', child.signature).toLowerCase()}`);
+  }
+  if (pa.relic !== 'none' && pb.relic !== 'none' && rarity >= 3) {
+    child.relic = pa.relic === pb.relic ? pa.relic : chance(0.5, 231) ? pa.relic : pb.relic;
+    say('relic', `inherited relic: ${labelOf('relic', child.relic).toLowerCase()}`);
+  }
 
   // --- life and lineage ------------------------------------------------------------------------
   child.stage = 'fry';

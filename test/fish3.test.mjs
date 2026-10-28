@@ -10,8 +10,13 @@ import { fish3Traits as T, NEW_BODIES } from '../src/v3/fish/genome.js';
 import { BODIES, HYBRIDS } from '../src/v3/fish/bodies.js';
 import { phenotype, genetics, CLASS_LEN } from '../src/v3/fish/phenotype.js';
 import { breedDetailed } from '../src/v3/fish/breeding.js';
-import { nameOf } from '../src/v3/fish/names.js';
-import { bioOf } from '../src/v3/fish/bio.js';
+import { readFileSync } from 'node:fs';
+import { nameOf, namesOf } from '../src/v3/fish/names.js';
+import { TAXA } from '../src/v3/fish/names-data.js';
+import { ecologyOf } from '../src/v3/fish/ecology.js';
+import { DIET_BY_JAW } from '../src/v3/fish/ecology-data.js';
+import { loreOf, loreText } from '../src/v3/fish/lore.js';
+import { jitterKey, SIGNATURES, RELICS } from '../src/v3/fish/genome.js';
 
 const gen = generator('fish3');
 const same = (a, b) => a.w === b.w && a.h === b.h && a.data.every((v, i) => v === b.data[i]);
@@ -109,34 +114,106 @@ test('fish3 bigger classes are bigger canvases at the same density', () => {
   assert.ok(huge > small * 3);
 });
 
-test('fish3 names are stable, varied and styled', () => {
+test('fish3 names are stable, varied and come from the body', () => {
   const names = new Set();
   for (let i = 0; i < 60; i++) {
     const g = gen.fromSeed(`name-${i}`);
+    const n = namesOf(g);
     assert.equal(nameOf(g), nameOf(g));
-    names.add(nameOf(g));
+    assert.equal(nameOf(g), n.full);
+    const ph = phenotype(g);
+    const taxon = TAXA[ph.body] ?? TAXA[HYBRIDS[ph.body]?.a];
+    assert.ok(taxon.nouns.some((w) => n.common.endsWith(w)), `${n.common} ends with a ${ph.body} noun`);
+    assert.ok(n.binomial.startsWith(taxon.genus), n.binomial);
+    assert.match(n.slug, /^[a-z0-9]+(-[a-z0-9]+)+$/);
+    names.add(n.full);
   }
   assert.ok(names.size > 50);
-  const g = gen.fromSeed('styled');
-  assert.match(nameOf(g, 'repo'), /^[a-z0-9]+(-[a-z0-9]+)+$/);
-  assert.match(nameOf(g, 'guide'), /^[A-Z]/);
   // Looks-only changes keep the name: the camera is not the fish.
+  const g = gen.fromSeed('styled');
   assert.equal(nameOf({ ...g, swim: 'cartoon' }), nameOf({ ...g, swim: 'side' }));
 });
 
-test('fish3 bios are stable, varied and not the camera', () => {
-  const bios = new Set();
-  for (let i = 0; i < 60; i++) {
-    const g = gen.fromSeed(`bio-${i}`);
-    assert.equal(bioOf(g), bioOf(g));
-    const bio = bioOf(g);
-    assert.ok(bio.length > 0);
-    assert.ok(bio.split('\n').length >= 2);
-    bios.add(bio);
+test('fish3 ecology is read off the body, with evidence', () => {
+  for (let i = 0; i < 200; i++) {
+    const g = gen.fromSeed(`eco-${i}`);
+    const e = ecologyOf(g);
+    assert.deepEqual(ecologyOf(g), e);
+    for (const k of ['diet', 'feeding', 'level', 'temperament', 'sociality', 'activity', 'depth', 'salinity', 'temp', 'current', 'hardness']) {
+      assert.ok(e[k].value, k);
+      assert.ok(e[k].because.length > 0, `${k} has evidence`);
+    }
+    const ph = phenotype(g);
+    if (ph.signature !== 'none' || ph.relic !== 'none') continue;
+    if (['fangs', 'piranha'].includes(ph.jaw)) assert.ok(['piscivore', 'carnivore'].includes(e.diet.value), `${ph.jaw} eats meat`);
+    if (T.normalize(g).snout === 'under' || ph.extras === 'barbels') assert.equal(e.level.value, 'bottom');
+    if (ph.extras === 'barbels' && !DIET_BY_JAW[ph.jaw]) assert.equal(e.diet.value, 'detritivore');
+    if (T.normalize(g).markings === 'photophores' && ph.extras !== 'lure') assert.ok(['twilight', 'abyss'].includes(e.depth.value));
   }
-  assert.ok(bios.size > 50);
-  const g = gen.fromSeed('bio-styled');
-  assert.equal(bioOf({ ...g, swim: 'cartoon' }), bioOf({ ...g, swim: 'side' }));
+});
+
+test('fish3 signatures: only rare fish, always rare fish; relics only myth', () => {
+  for (let i = 0; i < 3000; i++) {
+    const g = gen.fromSeed(`sig-${i}`);
+    const ph = phenotype(g);
+    const rare = ['rare', 'myth'].includes(ph.set.rarity);
+    assert.equal(ph.signature !== 'none', rare, `${ph.set.rarity}: ${ph.signature}`);
+    assert.equal(ph.relic !== 'none', ph.set.rarity === 'myth', `${ph.set.rarity}: ${ph.relic}`);
+  }
+  // A lock can't sneak one onto a common fish.
+  const g = T.normalize({ ...gen.fromSeed('sig-lock'), rarity: 'common', signature: 'crown', relic: 'eclipse' });
+  assert.equal(phenotype(g).signature, 'none');
+  assert.equal(phenotype(g).relic, 'none');
+});
+
+test('fish3 signatures and relics draw every frame, inside the window', () => {
+  for (const [sig] of SIGNATURES) {
+    for (const [relic] of [['auto'], ...RELICS]) {
+      const base = T.normalize({ ...gen.fromSeed(`sigdraw-${sig}`), rarity: 'myth', signature: sig, relic, size: 'medium' });
+      const plain = T.normalize({ ...base, rarity: 'uncommon' });
+      for (const a of gen.anims) {
+        const img = gen.frame(base, a.id, 0);
+        assert.ok(!edgePaint(img), `${sig}/${relic} ${a.id} paints the edge`);
+      }
+      assert.ok(!same(gen.frame(base, 'swim', 0), gen.frame(plain, 'swim', 0)), `${sig}/${relic} changes pixels`);
+    }
+  }
+});
+
+test('fish3 signatures leave existing fish pixels alone (jitter key fixture)', () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/fish3-jitter.json', import.meta.url)));
+  for (const [code, key] of Object.entries(fixture)) assert.equal(jitterKey(T.decode(code)), key, code);
+});
+
+test('fish3 breeding: two commons never make a signature except by a sport', () => {
+  const a = T.normalize({ ...gen.fromSeed('sb-a'), rarity: 'common', morph: 'auto', iridescence: 'none', hybrid: 'none', body: 'torpedo' });
+  const b = T.normalize({ ...gen.fromSeed('sb-b'), rarity: 'common', morph: 'auto', iridescence: 'none', hybrid: 'none', body: 'torpedo', sex: 'm' });
+  for (let i = 0; i < 300; i++) {
+    const { child, events } = breedDetailed(a, b, `sb-${i}`);
+    if (phenotype(child).signature !== 'none') assert.ok(events.some((e) => e.kind === 'sport'), 'signature without a sport');
+    assert.ok(!events.some((e) => e.kind === 'signature'));
+  }
+  const ra = T.normalize({ ...a, rarity: 'rare', signature: 'crown' });
+  const rb = T.normalize({ ...b, rarity: 'rare', signature: 'halo' });
+  const kids = Array.from({ length: 40 }, (_, i) => phenotype(breedDetailed(ra, rb, `sr-${i}`).child).signature);
+  assert.ok(kids.every((s) => s !== 'none'));
+  assert.ok(kids.includes('crown') && kids.includes('halo'));
+});
+
+test('fish3 lore: complete, stable, no stray tokens, not the camera', () => {
+  for (let i = 0; i < 80; i++) {
+    const g = gen.fromSeed(`lore-${i}`);
+    const l = loreOf(g);
+    assert.deepEqual(loreOf(g), l);
+    assert.equal(l.codex.length, 3);
+    assert.ok(l.codex[0].key.startsWith('diet.'));
+    assert.ok(l.edict.text);
+    assert.equal(Boolean(l.legend), ['rare', 'myth'].includes(T.normalize(g).rarity));
+    const text = loreText(g);
+    assert.doesNotMatch(text, /\{\w+\}/, text);
+  }
+  const g = gen.fromSeed('lore-styled');
+  assert.equal(loreText({ ...g, swim: 'cartoon' }), loreText({ ...g, swim: 'side' }));
 });
 
 test('fish3 genes: two carriers make a recessive about one time in four', () => {

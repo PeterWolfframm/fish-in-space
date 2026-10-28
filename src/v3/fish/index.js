@@ -1,6 +1,7 @@
 // Fish v3 (fish3): v1's cute fish, grown up. 32 bodies plus bred hybrids, six size classes at
 // constant pixel density, a physically modelled swim in three looks (raised camera, pure side,
-// cartoon wag), Mendelian colour genes, lines and sports when bred, and names.
+// cartoon wag), Mendelian colour genes, lines and sports when bred, and names, ecology and lore
+// read off the body.
 // Reads v1 fish codes too: the same fish, upgraded.
 
 import { fish3Traits, fromV1Code, jitterKey } from './genome.js';
@@ -8,8 +9,9 @@ import { BODIES } from './bodies.js';
 import { phenotype, CLASS_LEN, describeGenes } from './phenotype.js';
 import { drawFish3 } from './draw.js';
 import { breed, breedDetailed } from './breeding.js';
-import { nameOf } from './names.js';
-import { bioOf } from './bio.js';
+import { nameOf, namesOf } from './names.js';
+import { loreOf, loreText } from './lore.js';
+import { ecologyOf, describeEcology } from './ecology.js';
 import { keyed } from './keys.js';
 import { anim, poseAt } from '../../v2/anim/rig.js';
 import { cruise, sprint, burstCoast, loiter, uTurn, feed, blinkOnce, lookBack, glowBreath, sheenSweep, lifeStages } from './motions.js';
@@ -17,7 +19,7 @@ import { roundUp, crop } from '../../v2/kit/sizes.js';
 import { roller } from '../../pixel/rng.js';
 import { rarityScore } from '../../gen/fish/genome.js';
 
-export { fish3Traits, fromV1Code, phenotype, CLASS_LEN, drawFish3, breedDetailed, nameOf, describeGenes, bioOf };
+export { fish3Traits, fromV1Code, phenotype, CLASS_LEN, drawFish3, breedDetailed, nameOf, namesOf, describeGenes, loreOf, loreText, ecologyOf, describeEcology };
 
 const T = fish3Traits;
 
@@ -131,7 +133,14 @@ export default {
   breedDetailed,
   name: (genome) => nameOf(genome),
   describe: (genome) => describeGenes(T.normalize(genome)),
-  bio: (genome) => bioOf(genome),
+  names: (genome) => namesOf(genome),
+  ecology: (genome) => ecologyOf(genome),
+  lore: (genome) => loreOf(genome),
+  signatureOf: (genome) => {
+    const ph = phenotype(genome);
+    const label = (f, id) => T.fieldById(f).choices.find((c) => c.id === id)?.label ?? id;
+    return { signature: ph.signature, relic: ph.relic, label: [ph.relic !== 'none' && label('relic', ph.relic), ph.signature !== 'none' && label('signature', ph.signature)].filter(Boolean).join(' · ') };
+  },
   fpsOf,
   rarity: rarityScore,
   anims: ANIMS,

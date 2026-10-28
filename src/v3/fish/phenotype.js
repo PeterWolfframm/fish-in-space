@@ -5,7 +5,7 @@
 // Pure and cached by code: the painter calls this once per frame.
 
 import { roller } from '../../pixel/rng.js';
-import { fish3Traits, stepOf, jitterKey } from './genome.js';
+import { fish3Traits, stepOf, jitterKey, SIGNATURES, RELICS } from './genome.js';
 import { archetypeOf, profileAt } from './bodies.js';
 import { paletteOf } from './colors.js';
 
@@ -172,10 +172,19 @@ function build(set, stageOverride) {
     back: (t) => height(back, t, s, beak, beakH, L),
     belly: (t) => height(belly, t, s, beak, beakH, L),
     rare: set.rarity === 'rare' || set.rarity === 'myth',
+    signature: resolved(set.signature, SIGNATURES, set.rarity === 'rare' || set.rarity === 'myth', jkey, 1),
+    relic: resolved(set.relic, RELICS, set.rarity === 'myth', jkey, 2),
     jitter: range,
   };
   ph.colors = paletteOf(set, ph);
   return ph;
+}
+
+/** A signature or relic: the one set, or for `auto` one picked from the fish's looks. */
+function resolved(id, list, allowed, jkey, salt) {
+  if (!allowed) return 'none';
+  if (id && id !== 'auto') return id;
+  return roller(jkey, 6600).pick(list.map(([x]) => x), salt);
 }
 
 /** A profile's height at t (t > 1 is the beak past the nose). */

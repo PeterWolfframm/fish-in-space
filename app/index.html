@@ -24,7 +24,7 @@
   <header class="top">
     <div class="brand">
       <h1>pixel art generator</h1>
-      <p>for some reason, specialed in fish!</p>
+      <p>for some reason, specialised in fish!</p>
     </div>
     <nav class="tabs" id="tabs" aria-label="Views">
       <a href="#" data-view="forge">Forge</a>
@@ -67,7 +67,12 @@
         <label class="wide">Code <input id="code" type="text" spellcheck="false" autocomplete="off"></label>
         <button id="copy" class="btn" type="button">Copy</button>
       </div>
-      <div class="row" id="nameRow" hidden><span id="fishName" class="fish-name"></span><span id="fishGenes" class="fish-genes"></span></div>
+      <div class="row dossier" id="nameRow" hidden>
+        <div class="dossier-head"><span id="fishName" class="fish-name"></span><i id="fishBinomial" class="fish-binomial"></i><span id="fishSignature" class="fish-signature" hidden></span></div>
+        <span id="fishGenes" class="fish-genes"></span>
+        <ul id="fishEco" class="eco-chips" aria-label="Ecology"></ul>
+        <details id="fishLore" class="lore"><summary>Codex entry</summary><div id="fishLoreBody" class="lore-body"></div></details>
+      </div>
       <div class="row" id="options"></div>
       <div class="row" id="styleRow">
         <label id="lookWrap" title="Force one look on every roll">Look <select id="look"><option value="auto">as rolled</option><option value="lit">lit</option><option value="comic">comic</option><option value="clean">clean</option></select></label>
