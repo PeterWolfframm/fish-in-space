@@ -1,5 +1,5 @@
-// The aquarium stays locked until this browser has kept a fish. Every approved fish swims here.
-// Plants and pilots stay in Likes; only the fish family fills the tank.
+// Every approved fish swims here. Plants and pilots stay in Likes; only the fish family fills the tank.
+// The tab itself is members-only; an empty tank is just empty.
 
 import { generator } from '../src/gen/registry.js';
 import { swipes, on, call } from './pixelgen.js';
@@ -24,8 +24,6 @@ export function tankFish() {
   return out;
 }
 
-export const aquariumOpen = () => tankFish().length > 0;
-
 const hash01 = (s) => {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
@@ -38,14 +36,9 @@ const swimmers = new Map();
 
 function syncTab() {
   const n = tankFish().length;
-  const tab = document.querySelector('[data-view="tank"]');
-  const open = n > 0;
-  tab.classList.toggle('locked', !open);
-  tab.setAttribute('aria-disabled', open ? 'false' : 'true');
-  $('tankLock').hidden = open;
   const count = $('tankCount');
-  count.textContent = open ? String(n) : '';
-  count.hidden = !open;
+  count.textContent = n ? String(n) : '';
+  count.hidden = !n;
 }
 
 function paintCopy() {
@@ -127,8 +120,7 @@ function step() {
 export function mountTank() {
   on('swipes', () => {
     const n = tankFish().length;
-    if (known != null && known === 0 && n > 0) say('Aquarium unlocked. Your fish is in.');
-    else if (known != null && n > known) say('Added to the aquarium.');
+    if (known != null && n > known) say('Added to the aquarium.');
     known = n;
     reconcile();
   });

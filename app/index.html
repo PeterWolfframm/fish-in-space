@@ -24,20 +24,20 @@
 </head>
 <body>
   <header class="top">
-    <div class="logo">PIXELFORGE</div>
+    <a class="logo" href="#forge">PIXELFORGE</a>
     <nav class="tabs" id="tabs" aria-label="Views">
-      <a href="#home" data-view="home">Home</a>
-      <a href="#swipe" data-view="swipe">Swipe</a>
-      <a href="#tank" data-view="tank" class="locked" aria-disabled="true">Aquarium <span class="tab-lock" id="tankLock" aria-hidden="true">🔒</span><span class="count" id="tankCount" hidden></span></a>
-      <a href="#likes" data-view="likes">Likes <span class="count" id="likeCount" hidden></span></a>
-      <a href="#breed" data-view="breed">Breed</a>
       <a href="#forge" data-view="forge">Forge</a>
+      <a href="#swipe" data-view="swipe" data-member hidden>Swipe</a>
+      <a href="#tank" data-view="tank" data-member hidden>Tank <span class="count" id="tankCount" hidden></span></a>
+      <a href="#likes" data-view="likes" data-member hidden>Likes <span class="count" id="likeCount" hidden></span></a>
+      <a href="#breed" data-view="breed" data-member hidden>Breed</a>
+      <a href="#home" data-view="home" data-member hidden>Home</a>
       <a href="#admin" data-view="admin" hidden>Admin</a>
     </nav>
     <div class="tools">
-      <button id="themeToggle" class="theme-toggle" type="button">☾ Dark</button>
+      <button id="themeToggle" class="icon-btn" type="button" aria-label="Switch to dark">☾</button>
       <div class="account">
-        <button id="acctChip" class="chip-btn" type="button" aria-haspopup="dialog">…</button>
+        <button id="acctChip" class="chip-btn" type="button" aria-haspopup="dialog" aria-expanded="false">Sign in</button>
         <div id="acctSheet" class="acct-sheet panel" role="dialog" aria-label="Account" hidden></div>
       </div>
     </div>

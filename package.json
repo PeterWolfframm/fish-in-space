@@ -22,6 +22,7 @@
     "pb": "node scripts/get-pocketbase.mjs && .pocketbase/pocketbase serve --http 127.0.0.1:8090 --dir .pocketbase/pb_data --migrationsDir pb_migrations",
     "trainer": "node server/trainer.mjs",
     "pixelgen:admin": "node scripts/pixelgen-admin.mjs",
+    "pixelgen:user": "node scripts/pixelgen-user.mjs",
     "export-swipes": "node scripts/export-swipes.mjs",
     "forge": "node cli/forge.mjs",
     "test": "node --test test/*.test.mjs",

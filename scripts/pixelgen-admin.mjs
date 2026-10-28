@@ -22,7 +22,7 @@ const user = await pb
   .getFirstListItem(pb.filter('email = {:email}', { email }))
   .catch(() => null);
 if (!user) {
-  console.error(`no user with email ${email} — sign up in the app first (Swipe → account)`);
+  console.error(`no user with email ${email} — create one with: npm run pixelgen:user ${email} <password>`);
   process.exit(1);
 }
 if (!demote) {

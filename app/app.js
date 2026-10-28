@@ -11,7 +11,7 @@
 import { GENERATORS, generator, breedWith, fromCode, sizeOf } from '../src/gen/registry.js';
 import { toCanvas, toSheet } from '../src/pixel/blit.js';
 import { hasStyle } from '../src/pixelgen/features.js';
-import { startSession, mountAccount, onAuth, isAdmin } from './auth.js';
+import { startSession, mountAccount, openAccount, onAuth, isAdmin, isMember } from './auth.js';
 import { call, on as onPixelgen, swipes } from './pixelgen.js';
 import { canvasOf } from './sprites.js';
 import { mountSwipe, showSwipe } from './swipe.js';
@@ -19,8 +19,7 @@ import { mountLikes, showLikes } from './likes.js';
 import { mountAdmin, showAdmin } from './admin.js';
 import { mountHome, showHome } from './home.js';
 import { mountBreed, showBreed } from './breed.js';
-import { mountTank, showTank, aquariumOpen } from './tank.js';
-import { say } from './toast.js';
+import { mountTank, showTank } from './tank.js';
 
 const $ = (id) => document.getElementById(id);
 const GALLERY = 24;
@@ -584,15 +583,27 @@ function wire() {
   window.addEventListener('hashchange', fromHash);
 }
 
-/** Show one view: forge, swipe, likes or admin. */
+/** Show one view. Forge is public. Everything else needs a member account. */
+const MEMBER = new Set(['home', 'swipe', 'tank', 'likes', 'breed', 'admin']);
+let pendingHash = null; // a member view asked for before the session was restored
 let wantsAdmin = false; // #admin asked for before the session said who this is
+function paintMembers() {
+  const member = isMember();
+  document.body.classList.toggle('member', member);
+  for (const a of document.querySelectorAll('[data-member]')) a.hidden = !member;
+}
 function showView(view) {
-  wantsAdmin = view === 'admin' && !isAdmin();
-  if (wantsAdmin) view = 'forge';
-  if (view === 'tank' && !aquariumOpen()) {
-    say('Swipe a fish to unlock the aquarium.');
-    view = 'swipe';
-    if (location.hash === '#tank') history.replaceState(null, '', '#swipe');
+  if (MEMBER.has(view) && !isMember()) {
+    pendingHash = view;
+    openAccount();
+    view = 'forge';
+  } else if (view === 'admin' && !isAdmin()) {
+    wantsAdmin = true;
+    pendingHash = null;
+    view = 'forge';
+  } else {
+    pendingHash = null;
+    wantsAdmin = false;
   }
   state.view = view;
   for (const v of Object.keys(VIEWS)) {
@@ -616,7 +627,7 @@ function paintLikeCount() {
 function fromHash() {
   const hash = decodeURIComponent(location.hash.slice(1));
   if (hash in VIEWS) return showView(hash), true;
-  if (!hash) return showView('home'), true;
+  if (!hash) return showView('forge'), true;
   showView('forge');
   const [id, code] = hash.split('/');
   if (!id || !generator(id)) return false;
@@ -656,7 +667,8 @@ const savedTheme = () => {
 };
 const applyTheme = (theme) => {
   document.documentElement.dataset.theme = theme;
-  $('themeToggle').textContent = theme === 'dark' ? '☀ Light' : '☾ Dark';
+  $('themeToggle').textContent = theme === 'dark' ? '☀' : '☾';
+  $('themeToggle').setAttribute('aria-label', theme === 'dark' ? 'Switch to light' : 'Switch to dark');
 };
 applyTheme(document.documentElement.dataset.theme || (themeMedia.matches ? 'dark' : 'light'));
 $('themeToggle').addEventListener('click', () => {
@@ -678,21 +690,22 @@ mountHome();
 mountBreed();
 mountTank();
 mountSwipe();
-document.addEventListener('click', (e) => {
-  const link = e.target.closest('a[href="#tank"]');
-  if (!link || aquariumOpen()) return;
-  e.preventDefault();
-  say('Swipe a fish to unlock the aquarium.');
-});
 mountLikes();
 mountAdmin();
 onPixelgen('swipes', paintLikeCount);
 paintLikeCount();
 onAuth(() => {
+  paintMembers();
   document.querySelector('[data-view="admin"]').hidden = !isAdmin();
-  if (wantsAdmin && isAdmin()) location.hash = 'admin';
-  else if (state.view === 'admin' && !isAdmin()) location.hash = 'swipe';
+  if (isMember() && pendingHash) {
+    const next = pendingHash;
+    pendingHash = null;
+    if (location.hash.slice(1) !== next) location.hash = next;
+    else showView(next);
+  } else if (wantsAdmin && isAdmin()) location.hash = 'admin';
+  else if (state.view === 'admin' && !isAdmin()) location.hash = 'forge';
 });
+paintMembers();
 fromHash();
 if (!state.genome) selectGenerator(GENERATORS[0].id);
 requestAnimationFrame(tick);

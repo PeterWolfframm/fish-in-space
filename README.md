@@ -107,6 +107,10 @@ set `PB_SUPERUSER_EMAIL` / `PB_SUPERUSER_PASSWORD`. To use a different server, s
 
 The app's tabs:
 
+- **Forge** is public. Every generator can be rolled, edited and exported with no account.
+- **Swipe**, **Tank**, **Likes**, **Breed** and **Home** need a member account. There is no public
+  sign-up. Create accounts with `npm run pixelgen:user <email> <password> [name]` while PocketBase
+  is running, or from the dashboard at `/_/`.
 - **Swipe**: an animated deck of every kind.
   - Drag or fling a card, or use ← / →. **U** undoes the last swipe.
   - **N** (or dragging up) opens notes: flag traits, pick what a trait should be *instead*,
@@ -124,9 +128,8 @@ The app's tabs:
 
 How accounts and the models work:
 
-- **Accounts**: every visitor gets a guest session at once. "Save account" turns the guest into
-  an email/password account and keeps its swipes. Without PocketBase the app still works, and
-  keeps swipes and the personal model in the browser.
+- **Accounts**: the Forge works signed out, including when PocketBase is down. Swipes belong to
+  member accounts only. The public API cannot create users.
 - **Admin**: `npm run pixelgen:admin <email>` makes an account admin. Reload the page afterwards.
 - **Public model**: trained by the trainer on everyone's swipes. Each person's weight is
   1/√(their swipe count), so one heavy swiper does not define public taste.
@@ -169,15 +172,16 @@ fly deploy --ha=false        # first deploy also creates the 1GB pb_data volume
 Change `primary_region` in `fly.toml` before the first deploy if Frankfurt is the wrong region.
 
 - App: `https://pixelforge.fly.dev/app/`
-- PocketBase dashboard: `https://pixelforge.fly.dev/_/`
-- Admin, after that person has signed up in the app: `fly ssh console -C "node /app/scripts/pixelgen-admin.mjs you@example.com"`, then reload
+- PocketBase dashboard: `https://pixelforge.fly.dev/_/` (the superuser from the secrets above)
+- A member, so they can swipe: `fly ssh console -C "node /app/scripts/pixelgen-user.mjs you@example.com 'a long password' Ada"`
+- Admin, for someone who already has an account: `fly ssh console -C "node /app/scripts/pixelgen-admin.mjs you@example.com"`, then reload
 
 Redeploy with `fly deploy --ha=false`. Do not `fly scale count 2`.
 
-Fly keeps volume snapshots for five days. That is not a backup. SMTP is optional; guest accounts
-use `@guest.pixelforge.local` and never send mail. After the first boot, in the PocketBase
-dashboard (Settings → Application): turn the rate limiter on, and set the user IP proxy header
-to `X-Forwarded-For`.
+Fly keeps volume snapshots for five days. That is not a backup. SMTP is optional; members sign in
+with the email and password you created, and the app does not send mail. After the first boot, in
+the PocketBase dashboard (Settings → Application): turn the rate limiter on, and set the user IP
+proxy header to `X-Forwarded-For`.
 
 ## Adding an animation
 

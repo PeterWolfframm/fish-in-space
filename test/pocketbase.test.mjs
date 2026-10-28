@@ -36,13 +36,14 @@ after(() => {
   if (dir) rmSync(dir, { recursive: true, force: true });
 });
 
-/** A signed-in guest, made the way the app makes one. */
+/** A signed-in user, created by the superuser the way `npm run pixelgen:user` does. */
 async function guest(tag) {
+  const su = await adminClient(URL_, SU);
   const pb = new PocketBase(URL_);
   pb.autoCancellation(false);
   const email = `guest-${tag}-${Date.now()}@guest.pixelforge.local`;
   const password = `pw-${tag}-0123456789`;
-  await pb.collection('users').create({ email, password, passwordConfirm: password, guest: true, name: `Guest ${tag}` });
+  await su.collection('users').create({ email, password, passwordConfirm: password, guest: true, name: `Guest ${tag}`, emailVisibility: false });
   await pb.collection('users').authWithPassword(email, password);
   return pb;
 }
@@ -66,8 +67,9 @@ test('guests: own swipes only, no role, can upgrade', { skip }, async () => {
   await fails(a.collection('swipes').update(mine.id, { verdict: 'pass' }));
   await a.collection('swipes').delete(mine.id); // undo
 
-  // role can't be set, at sign-up or after
+  // the public API cannot create accounts at all
   await fails(new PocketBase(URL_).collection('users').create({ email: 'x@y.z', password: '0123456789', passwordConfirm: '0123456789', role: 'admin' }));
+  await fails(new PocketBase(URL_).collection('users').create({ email: 'y@z.w', password: '0123456789', passwordConfirm: '0123456789', name: 'Nope' }));
   await fails(a.collection('users').update(a.authStore.record.id, { role: 'admin' }));
   await fails(a.collection('users').getOne(b.authStore.record.id));
 
