@@ -3,9 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>pixel art generator</title>
+  <title>PIXELFORGE — the best AI pixel art generation</title>
+  <meta name="description" content="PixelForge is the best AI pixel art generation. Swipe a fish you want to keep and it swims in your aquarium.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Pixelify+Sans:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
   <script>
     /* Set the theme before first paint. app.js keeps this in sync when the switch is used. */
     (function () {
@@ -22,30 +24,64 @@
 </head>
 <body>
   <header class="top">
-    <div class="brand">
-      <h1>pixel art generator</h1>
-      <p>for some reason, specialised in fish!</p>
-    </div>
+    <div class="logo">PIXELFORGE</div>
     <nav class="tabs" id="tabs" aria-label="Views">
-      <a href="#" data-view="forge">Forge</a>
+      <a href="#home" data-view="home">Home</a>
       <a href="#swipe" data-view="swipe">Swipe</a>
-      <a href="#likes" data-view="likes">My likes</a>
+      <a href="#tank" data-view="tank" class="locked" aria-disabled="true">Aquarium <span class="tab-lock" id="tankLock" aria-hidden="true">🔒</span><span class="count" id="tankCount" hidden></span></a>
+      <a href="#likes" data-view="likes">Likes <span class="count" id="likeCount" hidden></span></a>
+      <a href="#breed" data-view="breed">Breed</a>
+      <a href="#forge" data-view="forge">Forge</a>
       <a href="#admin" data-view="admin" hidden>Admin</a>
     </nav>
     <div class="tools">
-      <div class="theme" role="group" aria-label="Appearance">
-        <button type="button" data-theme-choice="light">Light</button>
-        <button type="button" data-theme-choice="dark">Dark</button>
-      </div>
+      <button id="themeToggle" class="theme-toggle" type="button">☾ Dark</button>
       <div class="account">
         <button id="acctChip" class="chip-btn" type="button" aria-haspopup="dialog">…</button>
         <div id="acctSheet" class="acct-sheet panel" role="dialog" aria-label="Account" hidden></div>
       </div>
     </div>
-    <nav id="kinds" class="kinds" aria-label="Generator"></nav>
   </header>
 
-  <main class="layout view" id="forge">
+  <main class="view home" id="home">
+    <div class="home-col">
+      <section class="hero">
+        <h1>The best AI pixel art generation.</h1>
+        <p>PixelForge rolls pixel sprites from a seed. Swipe a fish you want to keep, and the aquarium unlocks with that fish in it.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#swipe">Start swiping</a>
+          <a class="btn" href="#tank">The aquarium</a>
+        </div>
+      </section>
+
+      <section class="tier-section">
+        <div class="section-head">
+          <h2>Your tier list</h2>
+          <span class="hint">Drag fish between rows. They won't take it personally.</span>
+        </div>
+        <div id="tierRows" class="tier-rows"></div>
+        <div id="tierPool" class="pool" data-tier="pool">
+          <div class="pool-title">The bucket <span id="poolCount"></span></div>
+          <span class="hint">Fresh catches, unranked. Tap one to read its profile.</span>
+          <div id="poolWell" class="tier-well"></div>
+        </div>
+      </section>
+
+      <section class="why">
+        <h2>Why is there swiping?</h2>
+        <p>Because quality is a taste call, and generators can’t judge their own work. Every hook or nope is a vote on what reads well and what looks broken. Those votes steer the generators, so the next batch is better than the last.</p>
+      </section>
+
+      <section class="sim-section">
+        <h2>The sims</h2>
+        <div id="sims" class="sims"></div>
+      </section>
+      <p class="stat-line" id="homeStats"></p>
+    </div>
+  </main>
+
+  <main class="layout view" id="forge" hidden>
+    <nav id="kinds" class="kinds" aria-label="Generator"></nav>
     <section class="stage panel">
       <div class="preview-wrap" id="previewWrap">
         <canvas id="preview" aria-label="Sprite preview"></canvas>
@@ -114,7 +150,7 @@
     </div>
     <div class="sheet-backdrop" id="filterBackdrop" hidden></div>
     <div class="filter-sheet panel" id="filterSheet" hidden>
-      <header><h2>Filters</h2><button class="btn ghost" id="filterClose" type="button" aria-label="Close filters">✕</button></header>
+        <header><h2>Filters</h2><button class="sheet-x" id="filterClose" type="button" aria-label="Close filters">✕</button></header>
       <label class="filter-row">Kind <select id="deckKind"></select></label>
       <label class="filter-row compare-row"><input id="deckCompare" type="checkbox"> Compare every algorithm &amp; look of the same creature</label>
       <div class="filter-row"><span class="filter-label">Deck</span><div class="seg" id="deckMode" role="group" aria-label="Deck"></div></div>
@@ -137,9 +173,42 @@
     <div class="toast" id="deckToast" role="status"></div>
   </main>
 
+  <main class="view breed" id="breed" hidden>
+    <div class="breed-col">
+      <div class="section-head">
+        <h1>Matchmaker</h1>
+        <span class="hint">Pick two of your catches. Genetics handles the awkward part.</span>
+      </div>
+      <div id="breedSlots" class="breed-slots"></div>
+      <div class="breed-actions">
+        <button id="doBreed" class="btn breed-go" type="button">Pick two fish</button>
+        <button id="keepBaby" class="btn" type="button" hidden>Keep the baby</button>
+      </div>
+      <div id="babyCard" class="baby-card" hidden></div>
+      <div class="section-head">
+        <h2>Eligible singles <span id="singleCount" class="count"></span></h2>
+      </div>
+      <div id="singles" class="singles"></div>
+    </div>
+  </main>
+
+  <main class="view tank" id="tank" hidden>
+    <div class="tank-col">
+      <div class="section-head">
+        <h1>The aquarium</h1>
+        <span class="hint" id="tankLine"></span>
+      </div>
+      <div class="tank-stage" id="tankStage">
+        <div class="tank-water" id="tankWater"></div>
+        <div class="tank-sand"></div>
+        <p class="tank-empty" id="tankEmpty" hidden>Just water. Swipe a fish to fill it.</p>
+      </div>
+    </div>
+  </main>
+
   <main class="view likes" id="likes" hidden>
     <div class="panel">
-      <div class="panel-head"><h2>My likes</h2><span class="hint">hover to play</span></div>
+      <div class="panel-head"><h2>Your collection</h2><span class="hint">hover to play</span></div>
       <nav class="filter-chips" id="likeKinds" aria-label="Filter by kind"></nav>
       <p class="hint" id="likesEmpty">Nothing liked yet. Swipe right on a sprite you like.</p>
       <div class="like-grid" id="likeGrid"></div>
@@ -180,6 +249,31 @@
       <button id="adminMore" class="btn" type="button" hidden>Show more</button>
     </section>
   </main>
+
+  <div id="sheetBackdrop" class="sheet-backdrop" hidden></div>
+  <div id="profileSheet" class="profile-sheet" hidden>
+    <div class="profile-head">
+      <div id="profileName" class="profile-name"></div>
+      <button id="profileClose" class="sheet-x" type="button" aria-label="Close">✕</button>
+    </div>
+    <div id="profileArt" class="profile-art"></div>
+    <div id="profileSub" class="profile-sub"></div>
+    <div class="panel tight">
+      <div class="kicker">About me</div>
+      <div id="profileBio" class="profile-bio"></div>
+    </div>
+    <div id="profileScores" class="panel tight" hidden>
+      <div class="kicker">Compatibility</div>
+      <div class="compat">
+        <span>Public</span><div class="compat-track"><div data-bar="pub"></div></div><span data-num="pub"></span>
+        <span>You</span><div class="compat-track"><div data-bar="you"></div></div><span data-num="you"></span>
+      </div>
+    </div>
+    <div id="profileChips" class="chips"></div>
+    <button id="profileRelease" class="btn release" type="button">Release into the wild</button>
+  </div>
+  <div id="dragGhost" class="drag-ghost" hidden></div>
+  <div id="appToast" class="toast" role="status"></div>
 
   <script type="module" src="app.js"></script>
 </body>

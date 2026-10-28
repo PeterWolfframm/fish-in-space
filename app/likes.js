@@ -40,7 +40,9 @@ function render() {
 function cell(s) {
   const box = document.createElement('figure');
   box.className = 'like-cell';
-  box.append(thumb(s.kind, s.code, 120));
+  const art = thumb(s.kind, s.code, 120);
+  art.style.background = 'var(--water)';
+  box.append(art);
   const cap = document.createElement('figcaption');
   cap.innerHTML = `<span>${generator(s.kind)?.label ?? s.kind}</span>
     <span class="like-acts">

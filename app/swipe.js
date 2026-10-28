@@ -137,7 +137,7 @@ function makeCard(r) {
   el.className = 'card';
   el.innerHTML = `
     <div class="card-art"><canvas></canvas></div>
-    <span class="stamp like" aria-hidden="true">LIKE</span>
+    <span class="stamp like" aria-hidden="true">HOOKED</span>
     <span class="stamp nope" aria-hidden="true">NOPE</span>
     <span class="note-badge" hidden>✎</span>
     <footer>
@@ -148,7 +148,7 @@ function makeCard(r) {
         <div class="bar you" title="What your model thinks"><span>You</span><i><s></s></i><em></em></div>
       </div>
     </footer>`;
-  el.querySelector('.card-art').style.background = gen.bg;
+  el.querySelector('.card-art').style.background = 'var(--water)';
   el.querySelector('.card-title b').textContent = gen.label;
   const style = gen.sizeField ? [r.genome[gen.sizeField], r.genome.look].filter(Boolean).join(' · ') : 'v1';
   el.querySelector('.card-title span').textContent = style;
@@ -472,8 +472,8 @@ function openNotes() {
   const families = [...new Set(GENERATORS.map((g) => g.family))].filter((f) => f !== gen.family);
   const famLabel = (f) => GENERATORS.find((g) => g.family === f && g.version === 2)?.label.replace(/ v2$/, '') ?? f;
   sheet.innerHTML = `
-    <header><h2>What would make it better?</h2><button class="btn ghost" data-close type="button" aria-label="Close notes">✕</button></header>
-    <p class="hint">Flag what's off, and pick what it should be instead to preview it.</p>
+    <header><h2>Notes for the forge</h2><button class="sheet-x" data-close type="button" aria-label="Close notes">✕</button></header>
+    <p class="hint">What's off? Saved with your swipe.</p>
     <div class="note-group canned-group"><h3>Quick take</h3><div class="chips">${CANNED_NOTES.map((c) => `<button type="button" class="chip" data-canned="${c}" aria-pressed="${notes.canned.has(c)}">${c}</button>`).join('')}</div></div>
     <div class="note-groups">${[...groups]
       .map(

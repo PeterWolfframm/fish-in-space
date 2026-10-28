@@ -12,11 +12,15 @@ import { GENERATORS, generator, breedWith, fromCode, sizeOf } from '../src/gen/r
 import { toCanvas, toSheet } from '../src/pixel/blit.js';
 import { hasStyle } from '../src/pixelgen/features.js';
 import { startSession, mountAccount, onAuth, isAdmin } from './auth.js';
-import { call, on as onPixelgen } from './pixelgen.js';
+import { call, on as onPixelgen, swipes } from './pixelgen.js';
 import { canvasOf } from './sprites.js';
 import { mountSwipe, showSwipe } from './swipe.js';
 import { mountLikes, showLikes } from './likes.js';
 import { mountAdmin, showAdmin } from './admin.js';
+import { mountHome, showHome } from './home.js';
+import { mountBreed, showBreed } from './breed.js';
+import { mountTank, showTank, aquariumOpen } from './tank.js';
+import { say } from './toast.js';
 
 const $ = (id) => document.getElementById(id);
 const GALLERY = 24;
@@ -47,7 +51,7 @@ const savePrefs = () => {
     localStorage.setItem('pixelforge.forge', JSON.stringify({ look: state.look, beautify: state.beautify }));
   } catch {}
 };
-const VIEWS = { forge: null, swipe: showSwipe, likes: showLikes, admin: showAdmin };
+const VIEWS = { home: showHome, forge: null, swipe: showSwipe, tank: showTank, likes: showLikes, breed: showBreed, admin: showAdmin };
 
 const FAMILY_LABEL = { pilot: 'Pilots', fish: 'Fish', waterplant: 'Tank plants', plant: 'Garden plants' };
 
@@ -585,19 +589,34 @@ let wantsAdmin = false; // #admin asked for before the session said who this is
 function showView(view) {
   wantsAdmin = view === 'admin' && !isAdmin();
   if (wantsAdmin) view = 'forge';
+  if (view === 'tank' && !aquariumOpen()) {
+    say('Swipe a fish to unlock the aquarium.');
+    view = 'swipe';
+    if (location.hash === '#tank') history.replaceState(null, '', '#swipe');
+  }
   state.view = view;
   for (const v of Object.keys(VIEWS)) {
     $(v).hidden = v !== view;
-    document.querySelector(`[data-view="${v}"]`).setAttribute('aria-current', v === view ? 'page' : 'false');
+    const tab = document.querySelector(`[data-view="${v}"]`);
+    if (v === view) tab.setAttribute('aria-current', 'page');
+    else tab.removeAttribute('aria-current');
   }
   $('kinds').hidden = view !== 'forge';
   for (const [v, show] of Object.entries(VIEWS)) show?.(v === view);
   if (view === 'forge' && state.genome) writeHash();
 }
 
+function paintLikeCount() {
+  const n = swipes().filter((s) => s.verdict === 'approve').length;
+  const el = $('likeCount');
+  el.textContent = n ? String(n) : '';
+  el.hidden = !n;
+}
+
 function fromHash() {
   const hash = decodeURIComponent(location.hash.slice(1));
   if (hash in VIEWS) return showView(hash), true;
+  if (!hash) return showView('home'), true;
   showView('forge');
   const [id, code] = hash.split('/');
   if (!id || !generator(id)) return false;
@@ -637,18 +656,14 @@ const savedTheme = () => {
 };
 const applyTheme = (theme) => {
   document.documentElement.dataset.theme = theme;
-  for (const b of document.querySelectorAll('[data-theme-choice]')) {
-    b.setAttribute('aria-pressed', String(b.dataset.themeChoice === theme));
-  }
+  $('themeToggle').textContent = theme === 'dark' ? '☀ Light' : '☾ Dark';
 };
 applyTheme(document.documentElement.dataset.theme || (themeMedia.matches ? 'dark' : 'light'));
-for (const b of document.querySelectorAll('[data-theme-choice]')) {
-  b.addEventListener('click', () => {
-    const theme = b.dataset.themeChoice;
-    try { localStorage.setItem(THEME_KEY, theme); } catch {}
-    applyTheme(theme);
-  });
-}
+$('themeToggle').addEventListener('click', () => {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  applyTheme(theme);
+});
 themeMedia.addEventListener('change', () => {
   if (!savedTheme()) applyTheme(themeMedia.matches ? 'dark' : 'light');
 });
@@ -659,9 +674,20 @@ mountAccount($('acctChip'), $('acctSheet'));
 document.addEventListener('pointerdown', (e) => {
   if (!e.target.closest('.account')) $('acctSheet').hidden = true;
 });
+mountHome();
+mountBreed();
+mountTank();
 mountSwipe();
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href="#tank"]');
+  if (!link || aquariumOpen()) return;
+  e.preventDefault();
+  say('Swipe a fish to unlock the aquarium.');
+});
 mountLikes();
 mountAdmin();
+onPixelgen('swipes', paintLikeCount);
+paintLikeCount();
 onAuth(() => {
   document.querySelector('[data-view="admin"]').hidden = !isAdmin();
   if (wantsAdmin && isAdmin()) location.hash = 'admin';
