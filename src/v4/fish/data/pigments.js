@@ -9,8 +9,8 @@
 export const PIGMENTS = [
   { id: 'fish3', label: 'Fish3 swatch', hex: null },
   // lava
-  { id: 'obsidian', label: 'Obsidian', hex: '#2e2833', terrain: 'lava' },
-  { id: 'basalt', label: 'Basalt', hex: '#4c4349', terrain: 'lava' },
+  { id: 'obsidian', label: 'Obsidian', hex: '#433a4c', terrain: 'lava' },
+  { id: 'basalt', label: 'Basalt', hex: '#5f5459', terrain: 'lava' },
   { id: 'magma', label: 'Magma', hex: '#e4532a', terrain: 'lava' },
   { id: 'cinder', label: 'Cinder', hex: '#9c3d26', terrain: 'lava' },
   { id: 'ash', label: 'Ash', hex: '#a59d96', terrain: 'lava' },
@@ -29,7 +29,7 @@ export const PIGMENTS = [
   { id: 'thorium', label: 'Thorium', hex: '#c9d7a2', terrain: 'nuclear' },
   { id: 'radium', label: 'Radium', hex: '#7df1c4', terrain: 'nuclear' },
   // aether
-  { id: 'voidink', label: 'Void-ink', hex: '#1b1731', terrain: 'aether' },
+  { id: 'voidink', label: 'Void-ink', hex: '#2a2550', terrain: 'aether' },
   { id: 'starlight', label: 'Starlight', hex: '#e9e5ff', terrain: 'aether' },
 ];
 

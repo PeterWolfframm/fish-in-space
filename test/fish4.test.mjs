@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generator, fromCode } from '../src/gen/registry.js';
-import gen4, { fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, profile, DEFAULT_RULES } from '../src/v4/fish/index.js';
+import gen4, { fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, profile, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
 import { namesOf } from '../src/v3/fish/names.js';
 import { fish3Traits as T3 } from '../src/v3/fish/genome.js';
 import { FEATURES } from '../src/v4/fish/features/registry.js';
@@ -60,7 +60,7 @@ test('params move odds, not salts: the same seed stays recognisably the same fis
   let shared = 0;
   let total = 0;
   for (let i = 0; i < 40; i++) {
-    const a = fromSeed(`rel-${i}`, 'classic');
+    const a = fromSeed(`rel-${i}`, 'ecotype');
     const b = fromSeed(`rel-${i}`, 'vivid');
     for (const f of ['body', 'size', 'tail', 'dorsal', 'pattern', 'jaw', 'scales']) {
       total++;
@@ -150,7 +150,7 @@ test('every stat is in range, has evidence, and is the same every time', () => {
 });
 
 test('genes move stats: aggression follows its locus, diet rules follow the jaw', () => {
-  const base = T.normalize({ ...fromSeed('genes'), body: 'tetra', jaw: 'plain', chaos: 'normal' });
+  const base = T.normalize({ ...fromSeed('genes'), form: 'fish3', body: 'tetra', jaw: 'plain', chaos: 'normal' });
   const hot = statsOf({ ...base, aggressionA: 'a15', aggressionB: 'a15' }).aggression.value;
   const cold = statsOf({ ...base, aggressionA: 'a0', aggressionB: 'a0' }).aggression.value;
   assert.ok(hot - cold > 0.3, `${hot} ${cold}`);
@@ -180,7 +180,7 @@ test('rules are data: removing one changes only what it touched; chance rules pi
 });
 
 test('sterile hybrids have no fertility; rarer tiers mature slower', () => {
-  const moon = T.normalize({ ...fromSeed('moon'), body: 'mola', hybrid: 'moonblob' });
+  const moon = T.normalize({ ...fromSeed('moon'), form: 'fish3', body: 'mola', hybrid: 'moonblob' });
   if (moon.hybrid === 'moonblob') assert.equal(statsOf(moon).fertility.value, 0);
   const set = fromSeed('tiers');
   assert.ok(statsOf(set, { tier: 'myth' }).maturationMul.value > statsOf(set, { tier: 'common' }).maturationMul.value);
@@ -190,12 +190,12 @@ test('sterile hybrids have no fertility; rarer tiers mature slower', () => {
 test('taxonomy: fish3 binomials kept, every body has an order and family, hybrids marked', () => {
   const bodies = T.fieldById('body').choices.map((c) => c.id);
   for (const body of bodies) {
-    const set = T.normalize({ ...fromSeed(`tax-${body}`), body, hybrid: 'none', helmet: 'none' });
+    const set = T.normalize({ ...fromSeed(`tax-${body}`, 'classic'), body, hybrid: 'none', helmet: 'none' });
     const p = profile(set);
     assert.ok(p.taxonomy.order.id && p.taxonomy.family.id, body);
     assert.equal(p.names.binomial, namesOf(toFish3(set)).binomial, body);
   }
-  const hy = T.normalize({ ...fromSeed('tax-hy'), body: 'piranha', hybrid: 'chompball' });
+  const hy = T.normalize({ ...fromSeed('tax-hy'), form: 'fish3', body: 'piranha', hybrid: 'chompball' });
   if (hy.hybrid === 'chompball') assert.ok(profile(hy).names.binomial.startsWith('× '));
 });
 
@@ -207,4 +207,72 @@ test('helmets rename (Cosmonaut, astro-) and nicknames respect humour', () => {
   assert.equal(p.names.nickname.id, 'cosmonaut');
   assert.equal(profile(set, { humour: 0 }).names.nickname.id, 'any');
   assert.equal(profile({ ...set, helmet: 'none' }).names.common, namesOf(toFish3(set)).common);
+});
+
+// ---------- ecotype: terrains, species, clustering --------------------------------------------
+
+test('ecotype: lava, sand and nuclear fish turn up by default, each in its own terrain', () => {
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) {
+    const f = fromSeed(`ter-${i}`);
+    seen.add(f.terrain);
+    const rec = NEW_FORMS.find((b) => b.id === f.form);
+    if (rec) assert.equal(rec.terrain, f.terrain, `ter-${i}`);
+  }
+  for (const t of ['water', 'lava', 'sand', 'nuclear']) assert.ok(seen.has(t), t);
+  assert.ok(!seen.has('aether'), 'aether is locked by default');
+  assert.ok(Array.from({ length: 200 }, (_, i) => fromSeed(`ter-${i}`, 'frontier').terrain).includes('aether'));
+  for (let i = 0; i < 100; i++) assert.equal(fromSeed(`wo-${i}`, 'water').terrain, 'water');
+});
+
+test('ecotype: fish of one species share a body and most of a look', () => {
+  const by = {};
+  for (let i = 0; i < 800; i++) {
+    const f = fromSeed(`sp-${i}`);
+    (by[speciesKey(f)] ??= []).push(f);
+  }
+  const rate = (pairs, k) => pairs.filter(([a, b]) => a[k] === b[k]).length / pairs.length;
+  const within = Object.values(by).flatMap((g) => g.slice(1).map((f) => [g[0], f]));
+  const all = Object.values(by).map((g) => g[0]);
+  const between = all.flatMap((a, i) => all.slice(i + 1, i + 4).map((b) => [a, b]));
+  assert.equal(rate(within, 'form'), 1);
+  assert.equal(rate(within, 'body'), 1);
+  for (const k of ['pattern', 'tail', 'skin', 'dorsal']) {
+    assert.ok(rate(within, k) >= 0.7, `${k} within ${rate(within, k)}`);
+    assert.ok(rate(within, k) > 3 * rate(between, k), `${k} within ${rate(within, k)} vs between ${rate(between, k)}`);
+  }
+  // Cohesion is a dial: at 0 a species shares only its body.
+  const loose = { base: 'ecotype', clusters: { cohesion: 0 } };
+  const lb = {};
+  for (let i = 0; i < 400; i++) {
+    const f = fromSeed(`sp-${i}`, loose);
+    (lb[speciesKey(f)] ??= []).push(f);
+  }
+  const lw = Object.values(lb).flatMap((g) => g.slice(1).map((f) => [g[0], f]));
+  assert.ok(rate(lw, 'pattern') < rate(within, 'pattern') - 0.2);
+});
+
+test('ecotype: a place can be pinned, and mutation pressure raises the sport rate', () => {
+  const place = { terrain: 'nuclear', region: 'reactorlake', niche: 'ornament' };
+  const neon = (P) => Array.from({ length: 600 }, (_, i) => fromSeed(`mut-${i}`, P, place)).filter((f) => f.morph === 'neon').length;
+  for (let i = 0; i < 20; i++) {
+    const f = fromSeed(`pin-${i}`, null, place);
+    assert.equal(f.region, 'reactorlake');
+    assert.equal(f.niche, 'ornament');
+  }
+  assert.ok(neon({ base: 'ecotype', mutation: { sport: 0.3 } }) > neon({ base: 'ecotype', mutation: { sport: 0 } }) + 20);
+});
+
+test('every fish4 body draws at every size, inside its window', () => {
+  for (const b of NEW_FORMS) {
+    for (const size of ['tiny', 'small', 'medium', 'large', 'huge', 'giant']) {
+      const set = T.normalize({ ...fromSeed(`body-${b.id}`, null, { terrain: b.terrain }), form: b.id, body: b.kin, size, hybrid: 'none' });
+      const box = windowOf(set);
+      for (const anim of ['swim', 'happy', 'dead']) {
+        const img = frame(set, anim, 1);
+        assert.equal(img.w, box.w, `${b.id} ${size} ${anim}`);
+        assert.ok(drawn(img) > 10, `${b.id} ${size} ${anim}`);
+      }
+    }
+  }
 });

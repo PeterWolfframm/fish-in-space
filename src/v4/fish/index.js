@@ -3,7 +3,8 @@
 // (stats.js), a shallow taxonomy, continuous rarity in six tiers, reproduction and value genes,
 // feature modules (the space helmet), expressions (happy, tired, dead) and generation params.
 //
-// Reads f4., f3. and v1 fish codes. Under the `classic` params a seed rolls fish3's fish.
+// Reads f4., f3. and v1 fish codes. Under the default `ecotype` params a seed picks a place and a
+// species first (ecotype.js); under `classic` it rolls fish3's fish.
 
 import { roller } from '../../pixel/rng.js';
 import { fish3Traits } from '../../v3/fish/genome.js';
@@ -18,7 +19,7 @@ import { anim, poseAt } from '../../v2/anim/rig.js';
 import { roundUp, crop } from '../../v2/kit/sizes.js';
 import { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, FISH3_IDS, V4_IDS, FEATURE_IDS } from './genome.js';
 import { latentLoci, lociOf, LOCI } from './loci.js';
-import { resolveParams, PRESETS, chromaOf, spreadBell, paramsHash } from './params.js';
+import { resolveParams, PRESETS, DEFAULT_PRESET, chromaOf, spreadBell, paramsHash } from './params.js';
 import { drawFish4, finishFrame, EXPRESSIONS } from './frame.js';
 import { expression, wiggle, droop, floatDead } from './motions.js';
 import { FEATURES } from './features/registry.js';
@@ -27,8 +28,10 @@ import { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RUL
 import { taxonomyOf, ORDERS, FAMILIES } from './taxonomy.js';
 import { namesOf4 } from './names.js';
 import { extOf, bodyOf, BODY_RECORDS, NEW_FORMS } from './bodies/index.js';
+import { ecotypeFromSeed, placeOf, protoOf, speciesKey } from './ecotype.js';
+import { TERRAINS, REGIONS, NICHES } from './data/terrains.js';
 
-export { extOf, bodyOf, BODY_RECORDS, NEW_FORMS };
+export { extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
 export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
 export { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, lociOf, LOCI, PRESETS, resolveParams, paramsHash, FEATURES, EXPRESSIONS, TIERS, TIER_LABELS, FISH3_IDS, V4_IDS, FEATURE_IDS };
 
@@ -51,12 +54,14 @@ export function weightOf(f, ci, P, set = {}) {
 }
 
 /**
- * A fresh fish. Every field rolls on its own salt (fish3's for fish3's fields), only the odds
+ * A fresh fish. Under `ecotype` params (the default) a seed picks a place and a species first:
+ * see ecotype.js; `place` can pin `{ terrain, region, niche, clade }`. Under `classic`, every field rolls on its own salt (fish3's for fish3's fields), only the odds
  * change with params; bodies then lean toward their own looks, as in fish3. Loci are rolled from
  * the finished look, so a fish rolled here and the same fish imported from fish3 share its genes.
  */
-export function fromSeed(seed, params) {
+export function fromSeed(seed, params, place) {
   const P = resolveParams(paramsFromOpts(params));
+  if (P.algo === 'ecotype') return ecotypeFromSeed(seed, P, weightOf, place);
   const { weighted } = roller(seed, 0);
   const out = {};
   for (const f of T.fields) {
@@ -217,7 +222,7 @@ export default {
   anchor: 'center',
   bg: '#1e3c5a',
   traits: T,
-  options: Object.values(PRESETS).filter((p) => p.id !== 'classic').map((p) => ({ id: p.id, label: p.label })),
+  options: Object.values(PRESETS).filter((p) => p.id !== DEFAULT_PRESET).map((p) => ({ id: p.id, label: p.label })),
   fromSeed,
   fromCode: decodeAny,
   normalize: T.normalize,

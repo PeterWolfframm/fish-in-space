@@ -9,13 +9,37 @@
 import { hash01 } from '../../pixel/rng.js';
 import { oklab } from '../../v3/fish/colors.js';
 
-/** The full shape with fish3's own odds: `classic` is exactly fish3's roll. */
+/** The full shape with fish3's own odds: `classic` is exactly fish3's roll (ecotype builds on it). */
 export const BASE_PARAMS = {
   id: 'classic',
   label: 'Classic (fish3)',
   note: 'fish3 rolls exactly, plus fish4 genes and features at their base odds.',
   /** Choice-weight multipliers: `{ fieldId: { choiceId: × } }`. */
   weights: {},
+  /**
+   * How a seed becomes a fish: `classic` rolls every field on its own (fish3's roll), `ecotype`
+   * picks a place and a species first (ecotype.js) so fish cluster into kinds.
+   */
+  algo: 'classic',
+  /** Terrain odds (ecotype): `{ water, lava, sand, nuclear, aether }`; missing = the terrain's default. */
+  terrains: {},
+  /** Locked terrains to open (ecotype): `['aether']`. */
+  unlocked: [],
+  /** Region, niche and body odds multipliers (ecotype): `{ id: × }`. */
+  regions: {},
+  niches: {},
+  bodies: {},
+  /**
+   * Clustering (ecotype). `cohesion` 0..1: how much a fish looks like its species. `speciesPerNiche`
+   * 1..8 clades per niche, Zipf-weighted (`zipf`: higher = one dominant species). `drift`: how far
+   * proportions wander. `lociStrength`: how hard the niche shifts the gene bells. `stick`: per-group
+   * stickiness overrides (see ecotype.js STICK).
+   */
+  clusters: { cohesion: 0.9, speciesPerNiche: 4, zipf: 1.1, drift: 1, lociStrength: 1, stick: {} },
+  /** Biome palettes (ecotype): how hard a region pulls colours toward its own (0 = not at all). */
+  palette: { strength: 1 },
+  /** Mutation pressure (ecotype): exponent on each region's pressure, and the base sport chance. */
+  mutation: { strength: 1, sport: 0.03 },
   /** Rarity roll odds per tier (relative). Mythic is mainly bred: see `mythic`. */
   rarity: { common: 70, uncommon: 22, rare: 7, epic: 0, legendary: 0, myth: 1 },
   /** Proportion bells: 1 = fish3, > 1 flatter (wilder shapes), < 1 tighter. */
@@ -85,35 +109,62 @@ const merge = (a, b) => {
   return out;
 };
 
+/** fish4's own roll: places, species and clustering, with lava, sand and nuclear fish on. */
+const ECOTYPE = merge(BASE_PARAMS, {
+  id: 'ecotype',
+  label: 'Ecotype (fish4)',
+  note: 'Fish come from places: terrain, region, niche and species. Lava, sand and nuclear fish included.',
+  algo: 'ecotype',
+});
+
 export const PRESETS = {
+  ecotype: ECOTYPE,
   classic: BASE_PARAMS,
-  vivid: merge(BASE_PARAMS, {
+  frontier: merge(ECOTYPE, {
+    id: 'frontier',
+    label: 'Frontier',
+    note: 'Ecotype with the void opened: aether fish drift in, mutation runs higher.',
+    unlocked: ['aether'],
+    terrains: { aether: 6 },
+    mutation: { strength: 1.3, sport: 0.05 },
+  }),
+  water: merge(ECOTYPE, {
+    id: 'water',
+    label: 'Water only',
+    note: 'Ecotype, water terrains only: rivers, reefs, open ocean, the deep, cloud seas, under the ice.',
+    terrains: { lava: 0, sand: 0, nuclear: 0 },
+  }),
+  vivid: merge(ECOTYPE, {
     id: 'vivid',
     label: 'Vivid (v1 colour)',
-    note: "fish3's shapes with v1's colourful palette: saturated swatches favoured, chroma gene on.",
+    note: "Ecotype with v1's colourful palette: saturated swatches favoured, chroma gene on.",
     color: { vivid: 0.8, chroma: [1, 3, 4, 4, 3, 1, 0.4] },
   }),
-  wild: merge(BASE_PARAMS, {
+  wild: merge(ECOTYPE, {
     id: 'wild',
     label: 'Wild',
     note: 'Wider proportions, more odd bits, more mutable fish, more helmets.',
     spread: 1.7,
     bodyPrefer: 0.35,
+    clusters: { cohesion: 0.6, speciesPerNiche: 6, drift: 1.6 },
+    mutation: { strength: 1.4, sport: 0.06 },
     weights: { quirk: { wonky: 2.5 }, chaos: { chaotic: 2 }, eyeMount: { telescope: 2, tubular: 2 }, forehead: { wen: 2, crested: 2 }, extras: { horns: 2, nosehorn: 2 } },
     color: { vivid: 0.4, chroma: [3, 2, 2, 1, 1, 0.5, 0.2] },
     features: { helmet: 3 },
     loci: { spread: 1.6 },
   }),
-  curated: merge(BASE_PARAMS, {
+  curated: merge(ECOTYPE, {
     id: 'curated',
     label: 'Curated',
     note: 'Fewer wonky ones: tighter proportions, no odd eyes or wear, neat fish favoured.',
     spread: 0.7,
     bodyPrefer: 0.8,
+    clusters: { cohesion: 0.95, speciesPerNiche: 3 },
+    mutation: { strength: 0.6, sport: 0.01 },
     weights: { quirk: { neat: 2, wonky: 0.2 }, damage: { warts: 0.1, scar: 0.2, notched: 0.2 }, eyeColor2: { jet: 0, amber: 0, copper: 0 }, eyeStyle: { googly: 0.4 } },
     color: { vivid: 0.25, chroma: [3, 2, 1, 0, 0, 0, 0] },
   }),
-  seedfall: merge(BASE_PARAMS, {
+  seedfall: merge(ECOTYPE, {
     id: 'seedfall',
     label: 'Seedfall (game)',
     note: 'The game: a touch more colour, no wild-caught Mythics (they are bred), a few wild Epics.',
@@ -122,12 +173,15 @@ export const PRESETS = {
   }),
 };
 
-/** Params from a preset id, a partial object (over `base` or `classic`), or nothing. */
+/** The preset a seed rolls under when nothing is said. */
+export const DEFAULT_PRESET = 'ecotype';
+
+/** Params from a preset id, a partial object (over `base`, else the default preset), or nothing. */
 export function resolveParams(p) {
-  if (!p) return PRESETS.classic;
-  if (typeof p === 'string') return PRESETS[p] ?? PRESETS.classic;
+  if (!p) return PRESETS[DEFAULT_PRESET];
+  if (typeof p === 'string') return PRESETS[p] ?? PRESETS[DEFAULT_PRESET];
   const { base, ...rest } = p;
-  return merge(PRESETS[base] ?? PRESETS[p.id] ?? BASE_PARAMS, rest);
+  return merge(PRESETS[base] ?? PRESETS[p.id] ?? PRESETS[DEFAULT_PRESET], rest);
 }
 
 /** Stable JSON: keys sorted, so equal params give equal text. */
