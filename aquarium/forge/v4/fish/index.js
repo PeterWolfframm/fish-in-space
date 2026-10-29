@@ -9,7 +9,6 @@ import { roller } from '../../pixel/rng.js';
 import { fish3Traits } from '../../v3/fish/genome.js';
 import { BODIES } from '../../v3/fish/bodies.js';
 import { CLASS_LEN, describeGenes } from '../../v3/fish/phenotype.js';
-import { nameOf, namesOf } from '../../v3/fish/names.js';
 import { ecologyOf } from '../../v3/fish/ecology.js';
 import { loreOf } from '../../v3/fish/lore.js';
 import { keyed } from '../../v3/fish/keys.js';
@@ -24,7 +23,11 @@ import { drawFish4, finishFrame, EXPRESSIONS } from './frame.js';
 import { expression, wiggle, droop, floatDead } from './motions.js';
 import { FEATURES } from './features/registry.js';
 import { TIERS, TIER_LABELS } from './rules.js';
+import { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES } from './stats.js';
+import { taxonomyOf, ORDERS, FAMILIES } from './taxonomy.js';
+import { namesOf4 } from './names.js';
 
+export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
 export { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, lociOf, LOCI, PRESETS, resolveParams, paramsHash, FEATURES, EXPRESSIONS, TIERS, TIER_LABELS, FISH3_IDS, V4_IDS, FEATURE_IDS };
 
 const T = fish4Traits;
@@ -172,6 +175,28 @@ export function frame(genome, animId, i = 0, opts) {
 
 const f3 = (genome) => toFish3(T.normalize(genome));
 
+/** Options for the text side: params (or a preset id) plus optional studio rules / flavour. */
+const textOpts = (opts) => {
+  const P = resolveParams(paramsFromOpts(opts));
+  return { rules: opts?.rules ?? (Array.isArray(P.rules) ? P.rules : undefined), humour: opts?.humour ?? P.text?.humour ?? 0.5, flavour: opts?.flavour, tier: opts?.tier };
+};
+
+/** Names with a nickname, which needs the fish's stats. */
+export function names(genome, opts) {
+  const set = T.normalize(genome);
+  const o = textOpts(opts);
+  return namesOf4(set, { look: statsOf(set, o).look, humour: o.humour, flavour: o.flavour });
+}
+
+/** Everything about a fish as plain JSON: stats, names, taxonomy, ecology, the summary line. */
+export function profile(genome, opts) {
+  const set = T.normalize(genome);
+  const o = textOpts(opts);
+  const stats = statsOf(set, o);
+  const n = namesOf4(set, { look: stats.look, humour: o.humour, flavour: o.flavour });
+  return { code: T.encode(set), names: n, taxonomy: n.taxonomy, stats, rulesFired: stats.rulesFired, summary: summaryOf(stats), loci: lociOf(set), ecology: ecologyOf(toFish3(set)) };
+}
+
 export default {
   id: 'fish4',
   version: 4,
@@ -193,12 +218,17 @@ export default {
   fromSeed,
   fromCode: decodeAny,
   normalize: T.normalize,
-  name: (genome) => nameOf(f3(genome)),
+  name: (genome) => namesOf4(T.normalize(genome)).full,
   describe: (genome) => describeGenes(f3(genome)),
-  names: (genome) => namesOf(f3(genome)),
+  names,
   ecology: (genome) => ecologyOf(f3(genome)),
   lore: (genome) => loreOf(f3(genome)),
   loci: (genome) => lociOf(T.normalize(genome)),
+  stats: (genome, opts) => statsOf(T.normalize(genome), textOpts(opts)),
+  behaviour: (genome, opts) => behaviourProfile(T.normalize(genome), textOpts(opts)),
+  taxonomy: (genome) => namesOf4(T.normalize(genome)).taxonomy,
+  summary: (genome, opts) => summaryOf(statsOf(T.normalize(genome), textOpts(opts))),
+  profile,
   fpsOf,
   anims: ANIMS,
   frame,
