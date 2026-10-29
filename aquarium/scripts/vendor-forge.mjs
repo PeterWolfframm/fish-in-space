@@ -19,6 +19,7 @@ const COPY = [
   'pixelgen',
   'v3/fish',
   'v3/plant',
+  'v4/fish',
   'v2/anim',
   'v2/kit',
   'v2/waterplant',

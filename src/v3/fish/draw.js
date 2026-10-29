@@ -70,42 +70,61 @@ function subdivide(points, closed = true) {
 
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * The painter's parts, back to front: `{ id, paint(ctx) }`. Later generators (fish4) splice their
+ * own parts in by id, so this order is the layering contract.
+ */
+export const PARTS = [
+  { id: 'relicBehind', paint: (ctx) => relicBehind(ctx) },
+  { id: 'pelvicFar', paint: (ctx) => pelvicFins(ctx, 'far') },
+  { id: 'tailFin', paint: (ctx) => tailFin(ctx) },
+  { id: 'dorsalFin', paint: (ctx) => dorsalFin(ctx) },
+  { id: 'analFin', paint: (ctx) => analFin(ctx) },
+  { id: 'smallFins', paint: (ctx) => smallFins(ctx) },
+  { id: 'body', paint: (ctx) => body(ctx) },
+  { id: 'scales', paint: (ctx) => scales(ctx) },
+  { id: 'pattern', paint: (ctx) => pattern(ctx) },
+  { id: 'morphOverlay', paint: (ctx) => morphOverlay(ctx) },
+  { id: 'markings', paint: (ctx) => markings(ctx) },
+  { id: 'wear', paint: (ctx) => wear(ctx) },
+  { id: 'ghostBones', paint: (ctx) => ghostBones(ctx) },
+  { id: 'revenant', paint: (ctx) => revenant(ctx) },
+  { id: 'forehead', paint: (ctx) => forehead(ctx) },
+  { id: 'gill', paint: (ctx) => gill(ctx) },
+  { id: 'pectoralFin', paint: (ctx) => pectoralFin(ctx) },
+  { id: 'pelvicNear', paint: (ctx) => pelvicFins(ctx, 'near') },
+  { id: 'eye', paint: (ctx) => eye(ctx) },
+  { id: 'mouth', paint: (ctx) => mouth(ctx) },
+  { id: 'extras', paint: (ctx) => extras(ctx) },
+  { id: 'flourish', paint: (ctx) => flourish(ctx) },
+  { id: 'signature', paint: (ctx) => signature(ctx) },
+  { id: 'orbit', paint: (ctx) => orbit(ctx) },
+];
+
 /** One frame. Returns `{ img, origin }` on the scratch canvas. */
 export function drawFish3(genome, pose, look) {
+  return paintFish(genome, pose, look, PARTS);
+}
+
+/**
+ * Paint a fish with any list of parts (fish3's own, or a superset). `prepare(ctx)` runs before the
+ * parts (to retint the palette); `finish(grid, ctx)` runs after the turn squash and before the
+ * outlines, and may return a replacement grid (to flip a dead fish).
+ */
+export function paintFish(genome, pose, look, parts, { prepare, finish } = {}) {
   const ph = phenotype(genome, pose.stage ?? -1);
   const set = ph.set;
   const sc = scratchOf(phenotype(genome, 3), ph);
   const g = new Grid(sc.w, sc.h);
   const K = columns(ph, pose, sc.origin, look ?? set.swim ?? 'raised');
   const ctx = makeCtx(g, ph, K, pose);
+  if (prepare) prepare(ctx);
 
-  relicBehind(ctx);
-  pelvicFins(ctx, 'far');
-  tailFin(ctx);
-  dorsalFin(ctx);
-  analFin(ctx);
-  smallFins(ctx);
-  body(ctx);
-  scales(ctx);
-  pattern(ctx);
-  morphOverlay(ctx);
-  markings(ctx);
-  wear(ctx);
-  ghostBones(ctx);
-  revenant(ctx);
-  forehead(ctx);
-  gill(ctx);
-  pectoralFin(ctx);
-  pelvicFins(ctx, 'near');
-  eye(ctx);
-  mouth(ctx);
-  extras(ctx);
-  flourish(ctx);
-  signature(ctx);
-  orbit(ctx);
+  for (const part of parts) part.paint(ctx);
 
   let out = g;
   if (pose.turn) out = squash(g, pose.turn, sc.origin.x - ph.L / 2);
+  if (finish) out = finish(out, ctx) ?? out;
   if (set.glow === 'edge' || set.glow === 'full') {
     const pulse = 0.6 + (pose.glow - 0.5) * 0.8;
     out.outline(out.color(mix(ph.colors.mark, HIGHLIGHT, 0.45), Math.round(Math.max(120, Math.min(255, 160 + pulse * 95)))), { inward: true });
@@ -115,7 +134,7 @@ export function drawFish3(genome, pose, look) {
 }
 
 /** Shared state for the parts: colours, the body mask, body-space lookups. */
-function makeCtx(g, ph, K, pose) {
+export function makeCtx(g, ph, K, pose) {
   const pal = ph.colors;
   const set = ph.set;
   const rampCache = new Map();

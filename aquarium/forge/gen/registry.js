@@ -15,7 +15,7 @@
 // v1 IS FROZEN. src/gen/** holds the historic algorithms and must keep drawing exactly what it
 // draws today (test/parity.test.mjs, test/v1-frozen.test.mjs). New work goes in src/v2/.
 //
-// generation: 'old' marks those painters. fish3 and plant3 grow the same creatures and stay on that line.
+// generation: 'old' marks those painters. fish3, fish4 and plant3 grow the same creatures and stay on that line.
 
 import pilot from './pilot.js';
 import fish from './fish.js';
@@ -24,6 +24,7 @@ import plant, { plant32 } from './plant.js';
 import pilot2 from '../v2/pilot/index.js';
 import fish2 from '../v2/fish/index.js';
 import fish3 from '../v3/fish/index.js';
+import fish4 from '../v4/fish/index.js';
 import plant3 from '../v3/plant/index.js';
 import waterplant2 from '../v2/waterplant/index.js';
 import plant2 from '../v2/plant/index.js';
@@ -41,6 +42,7 @@ export const GENERATORS = [
   v2old(pilot2),
   v2old(fish2),
   fish3,
+  fish4,
   plant3,
   v2old(waterplant2),
   v2old(plant2),
