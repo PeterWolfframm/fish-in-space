@@ -34,7 +34,10 @@ import { rarityOf, tierOf, RARITY_COLORS } from './rarity.js';
 import { reproduction, canBreed } from './reproduction.js';
 import { breed as breed4, breedClutch, breedProblem, mythicChance } from './breeding.js';
 import { valueOf, eggCost } from './economy.js';
+import { characterOf, compatibility, blurbOf } from './character.js';
+import { textOf, textFor, POOLS as TEXT_POOLS } from './text.js';
 
+export { characterOf, compatibility, blurbOf, textOf, textFor, TEXT_POOLS };
 export { rarityOf, tierOf, RARITY_COLORS, reproduction, canBreed, breed4, breedClutch, breedProblem, mythicChance, valueOf, eggCost };
 export { weightOf, ecology4Of, careLine, extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
 export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
@@ -184,14 +187,30 @@ export function names(genome, opts) {
   return namesOf4(set, { look: statsOf(set, o).look, humour: o.humour, flavour: o.flavour });
 }
 
-/** Everything about a fish as plain JSON: stats, names, taxonomy, ecology, the summary line. */
+/** Everything about a fish as plain JSON: stats, names, taxonomy, ecology, character, text, rarity, value. */
 export function profile(genome, opts) {
   const set = T.normalize(genome);
   const o = textOpts(opts);
   const stats = statsOf(set, o);
   const n = namesOf4(set, { look: stats.look, humour: o.humour, flavour: o.flavour });
   const rarity = rarityOf(set);
-  return { code: T.encode(set), names: n, taxonomy: n.taxonomy, stats, rulesFired: stats.rulesFired, summary: summaryOf(stats), loci: lociOf(set), ecology: ecology4Of(set), rarity, reproduction: reproduction(set, undefined, stats), value: valueOf(set, { stats, rarity }) };
+  const character = characterOf(set, { ...o, stats, params: paramsFromOpts(opts) });
+  return {
+    code: T.encode(set),
+    names: n,
+    taxonomy: n.taxonomy,
+    stats,
+    rulesFired: stats.rulesFired,
+    summary: summaryOf(stats),
+    blurb: blurbOf(set, { character }),
+    loci: lociOf(set),
+    ecology: ecology4Of(set),
+    character,
+    text: textOf(set, { character }),
+    rarity,
+    reproduction: reproduction(set, undefined, stats),
+    value: valueOf(set, { stats, rarity }),
+  };
 }
 
 export default {
@@ -237,6 +256,10 @@ export default {
   breedClutch,
   breedProblem,
   value: (genome, opts) => valueOf(T.normalize(genome), opts),
+  character: (genome, opts) => characterOf(T.normalize(genome), { ...textOpts(opts), params: paramsFromOpts(opts) }),
+  compatibility: (a, b, opts) => compatibility(T.normalize(a), T.normalize(b), textOpts(opts)),
+  blurb: (genome, opts) => blurbOf(T.normalize(genome), { ...textOpts(opts), params: paramsFromOpts(opts) }),
+  text: (genome, opts) => textOf(T.normalize(genome), { ...textOpts(opts), params: paramsFromOpts(opts) }),
   fpsOf,
   anims: ANIMS,
   frame,

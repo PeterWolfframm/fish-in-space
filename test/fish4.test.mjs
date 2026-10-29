@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generator, fromCode } from '../src/gen/registry.js';
-import gen4, { fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, STATS_VERSION, profile, ecology4Of, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
+import gen4, { textFor, fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, STATS_VERSION, profile, ecology4Of, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
 import { namesOf } from '../src/v3/fish/names.js';
 import { fish3Traits as T3 } from '../src/v3/fish/genome.js';
 import { FEATURES } from '../src/v4/fish/features/registry.js';
@@ -394,4 +394,67 @@ test('scaled detail: the same fish below large, coarser texture on giants; ecoty
   assert.ok(!same(fish('giant', 'v3'), fish('giant', 'v4')));
   assert.equal(fromSeed('detail-1').detail, 'v4');
   assert.equal(fromSeed('detail-1', 'classic').detail, 'v3');
+});
+
+test('character: deterministic, complete, with evidence, and different across niches', () => {
+  const archetypes = new Map();
+  for (let i = 0; i < 120; i++) {
+    const s = fromSeed(`char-${i}`);
+    const c = gen4.character(s);
+    assert.deepEqual(JSON.parse(JSON.stringify(gen4.character(s))), JSON.parse(JSON.stringify(c)));
+    for (const [id, a] of Object.entries(c.personality)) {
+      assert.ok(a.value >= 0 && a.value <= 1, id);
+      assert.ok(a.because.length > 0, id);
+    }
+    assert.ok(c.traits.length >= 3 && c.traits.length <= 5, `${c.traits.length} traits`);
+    assert.ok(c.traits.every((t) => t.because));
+    assert.ok(c.quirks.length >= 1 && c.quirks.length <= 3);
+    if (s.terrain !== 'water') assert.ok(c.quirks.some((q) => /lava|sand|nuc|aether/.test(q.id) || q.id.startsWith(s.terrain)), `${s.terrain} quirk`);
+    assert.ok(c.archetype.label && c.social.label && c.care.medium && c.story.species);
+    if (s.terrain === 'nuclear') assert.ok(c.care.radiation, 'nuclear fish are radiant');
+    const blurb = gen4.blurb(s);
+    assert.ok(!/\{|\}|undefined|null|NaN/.test(blurb), blurb);
+    const k = s.niche;
+    if (!archetypes.has(k)) archetypes.set(k, new Set());
+    archetypes.get(k).add(c.archetype.id);
+  }
+  // Niches lean personality: drifters are calmer than pursuers on average.
+  const mean = (niche, axis) => {
+    const xs = [];
+    for (let i = 0; i < 60; i++) xs.push(gen4.character(fromSeed(`niche-${niche}-${i}`, undefined, { niche, region: niche === 'pursuit' ? 'pelagic' : 'deep', terrain: 'water' })).personality[axis].value);
+    return xs.reduce((a, b) => a + b, 0) / xs.length;
+  };
+  assert.ok(mean('pursuit', 'energy') > mean('drifter', 'energy') + 0.05);
+});
+
+test('compatibility: other worlds score 0, kin school together, scores in range', () => {
+  const lava = fromSeed('cmp', undefined, { terrain: 'lava' });
+  const water = fromSeed('cmp', undefined, { terrain: 'water' });
+  const x = gen4.compatibility(lava, water);
+  assert.equal(x.score, 0);
+  assert.match(x.reasons[0].text, /own tank/);
+  for (let i = 0; i < 30; i++) {
+    const a = fromSeed(`cmp-a${i}`, undefined, { terrain: 'water' });
+    const b = fromSeed(`cmp-b${i}`, undefined, { terrain: 'water' });
+    const c = gen4.compatibility(a, b);
+    assert.ok(c.score >= 0 && c.score <= 1 && c.verdict);
+    assert.equal(gen4.compatibility(b, a).score, c.score);
+  }
+});
+
+test('text: every pool fills, no stray tokens, terrain lines for terrain fish, custom libraries', () => {
+  for (let i = 0; i < 80; i++) {
+    const s = fromSeed(`text-${i}`);
+    const t = gen4.text(s);
+    for (const [pool, v] of Object.entries(t)) {
+      assert.ok(v && v.text, pool);
+      assert.ok(!/\{\w+\}|undefined|NaN/.test(v.text), `${pool}: ${v.text}`);
+    }
+    if (s.terrain !== 'water' && s.terrain !== 'aether') assert.ok(Object.values(t).some((v) => v.id.includes(s.terrain)), `${s.terrain}: ${Object.values(t).map((v) => v.id)}`);
+  }
+  const s = fromSeed('text-lib');
+  const lib = [{ id: 'mine', pool: 'tagline', when: true, lines: ['Hello, {archetype}.'] }];
+  assert.match(textFor(s, 'tagline', { library: lib }).text, /^Hello, [a-z-]+\.$/);
+  // Nothing matches: fish3's lore fills in.
+  assert.ok(textFor(s, 'codex', { library: lib }).id.startsWith('lore:'));
 });
