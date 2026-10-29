@@ -7,6 +7,8 @@ import * as W from '../../game';
 import { FishTile, Heading } from '../kit';
 import { alleleColor, labelOf, shows } from '../genes';
 import { Heritage } from '../heritage';
+import { PinButton } from '../pins';
+import { pairDraft } from '../pindrafts';
 
 /** The colour of a Punnett cell: what the egg would show, or slate for wild type. */
 function cellStyle(x: string, y: string) {
@@ -110,6 +112,9 @@ function PairPreview() {
               <b class="numeral">{pct}%</b>
             </div>
           ))}
+      </div>
+      <div class="lab-go-row">
+        <PinButton draft={() => pairDraft(fa, fb)} label="Pin goal" />
       </div>
       {why ? <p class="note warn">{why}</p> : <p class="note">Tap the heart between the tanks. The eggs land in their Hatchery tank.</p>}
     </>

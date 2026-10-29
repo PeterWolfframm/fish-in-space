@@ -17,7 +17,7 @@ interface Swipe {
   created?: string;
 }
 
-const gen = generator('fish3');
+const gen = generator('fish4');
 let pub: Model | null = null;
 let personal: Model | null = null;
 

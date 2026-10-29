@@ -1,8 +1,8 @@
-// Fish Tinder's state: the deck of fresh rolls, every swipe, the tier list, and the taste net.
+// Fish-der's state: the deck of fresh rolls, every swipe, the tier list, and the taste net.
 //
 // Swipes and tiers cache in IndexedDB. For a signed-in member PocketBase is canonical (`swipes`,
-// `tinder_state`); the trainer reads only Fish Tinder swipes from `swipes`,
-// so Fish Tinder is the one source the pixelgen net learns from. The personal net trains in a worker
+// `tinder_state`); the trainer reads only Fish-der swipes from `swipes`,
+// so Fish-der is the one source the pixelgen net learns from. The personal net trains in a worker
 // a moment after each swipe and scores the cards in view.
 
 import { signal, computed } from '@preact/signals';
@@ -25,6 +25,8 @@ export const training = signal(false);
 export const publicModel = signal<{ swipes: number; users: number } | null>(null);
 /** The last match, for the "It's a match" screen. */
 export const match = signal<T.TinderSwipe | null>(null);
+/** Which screen of the app is up: the deck, the gallery of likes, your stats, or the tier list. */
+export const tab = signal<'swipe' | 'gallery' | 'stats' | 'tiers'>('swipe');
 
 export const liked = computed(() => swipes.value.filter((s) => s.verdict === 'approve').reverse());
 export const matches = computed(() => liked.value.filter((s) => s.matched));
@@ -176,7 +178,7 @@ async function upload(s: T.TinderSwipe) {
   }
 }
 
-/** Pull Fish Tinder state from PocketBase; push any swipes still local-only. */
+/** Pull Fish-der state from PocketBase; push any swipes still local-only. */
 async function syncAccount() {
   const uid = mine();
   if (!uid) return;

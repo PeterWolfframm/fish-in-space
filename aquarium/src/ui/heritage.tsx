@@ -124,7 +124,7 @@ function FamilyTree() {
               aria-label={`${n.name}${n.alive ? '' : ', no longer aboard'}, generation ${n.gen}`}
             >
               <span class="spr">
-                <SpriteArt family="fish3" code={n.code} anim="swim" />
+                <SpriteArt family="fish4" code={n.code} anim="swim" />
               </span>
               <span class="nm">
                 {g.sex === 'f' ? '♀' : '♂'} {n.name}

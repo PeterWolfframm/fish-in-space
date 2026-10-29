@@ -8,6 +8,8 @@ import * as W from '../game';
 import { SpriteArt } from './Art';
 import { mmss, regionName, statusOf } from './kit';
 import { labelOf, shows } from './genes';
+import { PinButton } from './pins';
+import { fishDraft } from './pindrafts';
 
 const STAGE: Record<string, string> = { fry: 'Fry', juvenile: 'Juvenile', adult: 'Adult', elder: 'Elder' };
 const RARITY_COLOR: Record<string, string> = { common: 'var(--ink-dim)', uncommon: 'var(--bloom)', rare: 'var(--lilac)', myth: 'var(--gold)' };
@@ -141,7 +143,12 @@ export function FishPost() {
               </button>
             </>
           )}
-          <SpriteArt family="fish3" code={f.code} anim="swim" animate scale={8} class="post-sprite" />
+          <SpriteArt family="fish4" code={f.code} anim="swim" animate scale={8} class="post-sprite" />
+          {!gone && (
+            <div class="post-pin">
+              <PinButton draft={() => fishDraft(f, 'fish')} label="Pin portrait" />
+            </div>
+          )}
         </div>
         {mates.length > 1 && (
           <div class="post-dots" aria-hidden="true">
@@ -225,7 +232,7 @@ export function FishPost() {
                   const here = s.fish.find((x) => x.id === p.id);
                   return (
                     <button key={p.id} type="button" class={`chip family ${here ? '' : 'gone'}`} disabled={!here} onClick={() => here && (selected.value = here.id)}>
-                      <SpriteArt family="fish3" code={p.code} anim="swim" class="mini" />
+                      <SpriteArt family="fish4" code={p.code} anim="swim" class="mini" />
                       {W.genomeOf(p.code).sex === 'f' ? '♀' : '♂'} {p.name}
                       {!here && <small> · departed</small>}
                     </button>

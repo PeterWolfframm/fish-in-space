@@ -1,19 +1,17 @@
-// Fish Tinder: fresh procgen fish, one profile at a time. Nothing here comes from the tanks: every card
-// is a plain fish3 roll from a random seed, so the swipes describe the generator, not your breeding.
+// Fish-der: fresh procgen fish, one profile at a time. Nothing here comes from the tanks: every card
+// is a fish4 ecotype roll from a random seed, so the swipes describe the generator, not your breeding.
 // Swipes are the only thing the pixelgen net learns from (store/tinder.ts, server/trainer.mjs).
 //
 // The profile is read off the genome: name, an "age" from the life stage, how far below the station
 // it would live, a bio in its own voice, interests from its ecology, and its care edict as
-// dealbreakers. Whether it likes you back is seeded by its code, so undo and redo agree.
+// dealbreakers. The full dossier (factsOf) is the same genome laid out section by section.
 
 import { hash01 } from '@forge/pixel/rng.js';
-import { fishTraits } from '@forge/gen/fish.js';
-import { fish2Traits } from '@forge/v2/fish/index.js';
-import { CLASS_LEN } from '@forge/v3/fish/index.js';
-import { fish, genomeOf, codeOf, withSize, withStage } from './fish';
+import { WORDS } from '@forge/v3/fish/ecology-data.js';
+import { fish, genomeOf, codeOf, ecoOf, withStage, cap, signatureLabel } from './fish';
 import type { Stage } from './types';
 
-export const TINDER_KIND = 'fish3';
+export const TINDER_KIND = 'fish4';
 export const TINDER_MODE = 'fishtinder';
 
 export type Verdict = 'approve' | 'pass';
@@ -42,7 +40,7 @@ export type Rank = (typeof RANKS)[number] | 'pool';
 export type Tiers = Record<Rank, string[]>;
 export const emptyTiers = (): Tiers => ({ S: [], A: [], B: [], C: [], D: [], pool: [] });
 
-/** A card for a seed: the fish3 roll as the generator makes it, nothing else. */
+/** A card for a seed: the fish4 roll as the generator makes it, nothing else. */
 export function roll(seed: string): Card {
   return { seed, code: codeOf(fish.fromSeed(seed)) };
 }
@@ -124,20 +122,20 @@ export function profileOf(code: string): Profile {
   const [a0, a1] = AGES[g.stage] ?? [3, 9];
   const [k0, k1] = KM[v('depth')] ?? [5, 30];
   const where = DEPTH[v('depth')] ?? 'the sea';
-  const sig = (fish as unknown as { signatureOf(g: unknown): { label: string } }).signatureOf(g).label;
+  const sig = signatureLabel(code);
   const qi = Math.floor(hash01(code, 5) * PROMPTS.length);
   const answers = [
     pick(DATE, code, 6)(where),
     `${v('temperament') === 'peaceful' ? 'Never once bit a tank mate.' : 'Honest about my teeth.'}`,
     `${e.care.tempC[0]}–${e.care.tempC[1]} °C water. Get it right and I am yours.`,
-    `I live in ${where}. I am ${e.care.cm} cm long. I have never seen a cat.`,
+    `I live in ${where}. I am ${(e.care as { cm?: number }).cm ?? 10} cm long. I have never seen a cat.`,
   ];
   const interests = [
     DIET[v('diet')],
-    { fresh: 'Fresh water', marine: 'Salt life', brackish: 'Estuaries', any: 'Any water, really' }[v('salinity')],
-    { cold: 'Cold plunges', temperate: 'Mild weather', tropical: 'Tropical heat', volcanic: 'Hot vents' }[v('temp')],
-    { still: 'Still water', gentle: 'Gentle currents', strong: 'Strong currents', torrent: 'White water' }[v('current')],
-    { top: 'Surface life', mid: 'Midwater', bottom: 'Bottom dwelling', above: 'Jumping out' }[v('level')],
+    ({ fresh: 'Fresh water', marine: 'Salt life', brackish: 'Estuaries', any: 'Any water, really' } as Record<string, string>)[v('salinity')],
+    ({ cold: 'Cold plunges', temperate: 'Mild weather', tropical: 'Tropical heat', volcanic: 'Hot vents' } as Record<string, string>)[v('temp')],
+    ({ still: 'Still water', gentle: 'Gentle currents', strong: 'Strong currents', torrent: 'White water' } as Record<string, string>)[v('current')],
+    ({ top: 'Surface life', mid: 'Midwater', bottom: 'Bottom dwelling', above: 'Jumping out' } as Record<string, string>)[v('level')],
     g.geneA !== 'wild' || g.geneB !== 'wild' ? 'Rare genes' : '',
   ].filter((x): x is string => !!x);
   const p: Profile = {
@@ -167,75 +165,115 @@ export const likesBack = (code: string, superlike = false) => superlike || hash0
 
 // ---------- photos ----------
 
-/** One picture on a card. Tapping the photo walks this list, like Tinder's photos. */
-export type Photo =
-  | { id: 'rolled'; label: 'Now'; kind: 'rolled' }
-  | { id: 'fry' | 'juvenile' | 'grown' | 'elder'; label: string; kind: 'stage'; stage: Stage }
-  | { id: 'ages'; label: 'Ages'; kind: 'ages' }
-  | { id: 'sizes'; label: 'Sizes'; kind: 'sizes' }
-  | { id: 'v1'; label: 'v1'; kind: 'v1' }
-  | { id: 'v2'; label: 'v2'; kind: 'v2' };
-
-export const PHOTOS: Photo[] = [
-  { id: 'rolled', label: 'Now', kind: 'rolled' },
-  { id: 'fry', label: 'Fry', kind: 'stage', stage: 'fry' },
-  { id: 'juvenile', label: 'Juvenile', kind: 'stage', stage: 'juvenile' },
-  { id: 'grown', label: 'Grown', kind: 'stage', stage: 'adult' },
-  { id: 'elder', label: 'Elder', kind: 'stage', stage: 'elder' },
-  { id: 'ages', label: 'Ages', kind: 'ages' },
-  { id: 'sizes', label: 'Sizes', kind: 'sizes' },
-  { id: 'v1', label: 'v1', kind: 'v1' },
-  { id: 'v2', label: 'v2', kind: 'v2' },
-];
-
-/** Size classes, tiny through giant, in the order the painter measures them. */
-export const SIZES = Object.keys(CLASS_LEN);
-
-export interface PhotoSprite {
-  family: 'fish3' | 'fish' | 'fish2';
+export interface Shot {
   code: string;
-  /** Caption under one fish in a comparison photo. */
+  anim: string;
+  /** A caption under the shot, for the stage pairs. */
   caption?: string;
-  /** Swim loop. A comparison row stays on the first frame so the sizes stay readable. */
-  animate: boolean;
+}
+export interface Photo {
+  label: string;
+  shots: Shot[];
 }
 
-type TraitSys = {
-  normalize(g: unknown): Record<string, unknown>;
-  encode(g: unknown): string;
-};
-
-const PAINTERS: Record<'fish' | 'fish2', TraitSys> = { fish: fishTraits, fish2: fish2Traits };
+const STAGES: Stage[] = ['fry', 'juvenile', 'adult', 'elder'];
 
 /**
- * The same fish as a v1 or v2 code. A choice the older painter doesn't have falls back to that
- * field's default, so a v3-only body still draws as the shared traits.
+ * The "photos" of a profile, one per pip: the fish as rolled, then its life stages two at a time,
+ * then every animation it has.
  */
-export function projectCode(code: string, painter: 'fish' | 'fish2'): string {
-  const traits = PAINTERS[painter];
-  return traits.encode(traits.normalize(genomeOf(code)));
-}
-
-/** The fish with the feedback sheet's "instead" picks applied. Empty picks leave the code alone. */
-export function withInstead(code: string, instead: Record<string, string>): string {
-  const picks = Object.fromEntries(Object.entries(instead).filter(([, v]) => v));
-  if (!Object.keys(picks).length) return code;
-  return codeOf({ ...genomeOf(code), ...picks });
-}
-
-/** What one photo draws. */
-export function spritesOf(code: string, photo: Photo): PhotoSprite[] {
-  if (photo.kind === 'stage') return [{ family: 'fish3', code: withStage(code, photo.stage), animate: true }];
-  if (photo.kind === 'ages') {
-    return [
-      { family: 'fish3', code: withStage(code, 'juvenile'), caption: 'Juvenile', animate: false },
-      { family: 'fish3', code: withStage(code, 'adult'), caption: 'Grown', animate: false },
-    ];
+export function photosOf(code: string): Photo[] {
+  const pairs: Photo[] = [];
+  for (let i = 0; i < STAGES.length; i += 2) {
+    const two = STAGES.slice(i, i + 2);
+    pairs.push({ label: two.join(' · '), shots: two.map((st) => ({ code: withStage(code, st), anim: 'swim', caption: st })) });
   }
-  if (photo.kind === 'sizes') return SIZES.map((size) => ({ family: 'fish3', code: withSize(code, size), caption: size, animate: false }));
-  if (photo.kind === 'v1') return [{ family: 'fish', code: projectCode(code, 'fish'), animate: true }];
-  if (photo.kind === 'v2') return [{ family: 'fish2', code: projectCode(code, 'fish2'), animate: true }];
-  return [{ family: 'fish3', code, animate: true }];
+  const anims = fish.anims.map((a) => ({ label: a.id, shots: [{ code, anim: a.id }] }));
+  return [{ label: 'profile', shots: [{ code, anim: 'swim' }] }, ...pairs, ...anims];
+}
+
+// ---------- the full dossier ----------
+
+export interface FactSection {
+  title: string;
+  rows: [string, string][];
+}
+
+const word = (k: string, v: string) => (WORDS as Record<string, Record<string, string>>)[k]?.[v] ?? v;
+const choice = (field: string, id: string) => fish.traits.fieldById(field)?.choices.find((c) => c.id === id)?.label ?? id;
+
+const facts = new Map<string, FactSection[]>();
+
+/** Everything the generator knows about a fish, in labelled sections; empty rows are left out. */
+export function factsOf(code: string): FactSection[] {
+  const hit = facts.get(code);
+  if (hit) return hit;
+  const g = genomeOf(code);
+  const p = profileOf(code);
+  const e = fish.ecology(g) as unknown as Record<string, { value: string }> & {
+    care: { cm: number; group: number; litres: number; tempC: [number, number]; pH: [number, number] };
+  };
+  const v = (k: string) => e[k]?.value ?? '';
+  const w = (k: string) => cap(word(k, v(k)));
+  const c = e.care;
+  const genes = [g.geneA, g.geneB].filter((a) => a !== 'wild');
+  const out: FactSection[] = [
+    {
+      title: 'Identity',
+      rows: [
+        ['Species', p.binomial],
+        ['Title', p.title ?? ''],
+        ['Life stage', `${cap(p.stage)}, ${p.age}`],
+        ['Sex', p.sex === 'f' ? 'Female' : 'Male'],
+        ['Rarity', cap(p.rarity)],
+        ['Signature', p.signature],
+        ['Generation', String(g.generation ?? '')],
+      ],
+    },
+    {
+      title: 'Lifestyle',
+      rows: [
+        ['Diet', w('diet')],
+        ['Feeding', w('feeding')],
+        ['Swims', w('level')],
+        ['Active', w('activity')],
+        ['Social', w('sociality')],
+        ['Temperament', w('temperament')],
+      ],
+    },
+    {
+      title: 'Habitat',
+      rows: [
+        ['Water', w('salinity')],
+        ['Temperature', `${w('temp')}, ${c.tempC[0]}–${c.tempC[1]} °C`],
+        ['pH', `${c.pH[0]}–${c.pH[1]}`],
+        ['Hardness', w('hardness')],
+        ['Current', w('current')],
+        ['Depth', w('depth')],
+      ],
+    },
+    {
+      title: 'Care',
+      rows: [
+        ['Grows to', `${c.cm} cm`],
+        ['Tank', `${c.litres} L`],
+        ['Keep', c.group > 1 ? `${c.group} together` : 'alone'],
+      ],
+    },
+    {
+      title: 'Genes',
+      rows: [
+        ['Body', cap(choice('body', g.body))],
+        ['Hybrid', g.hybrid && g.hybrid !== 'none' ? cap(choice('hybrid', g.hybrid)) : ''],
+        ['Alleles', genes.length ? genes.join(' / ') : 'wild / wild'],
+        ['Expressed', (fish as unknown as { describe(genome: typeof g): string }).describe(g)],
+      ],
+    },
+  ];
+  for (const s of out) s.rows = s.rows.filter(([, x]) => !!x);
+  if (facts.size > 400) facts.clear();
+  facts.set(code, out);
+  return out;
 }
 
 // ---------- feedback ----------
@@ -284,7 +322,7 @@ export interface TraitGroup {
 
 let groups: TraitGroup[] | null = null;
 
-/** Fish3 traits, in their groups, for the feedback chips. */
+/** Fish4 traits, in their groups, for the feedback chips. */
 export function traitGroups(): TraitGroup[] {
   if (groups) return groups;
   const fields = fish.traits.fields;
@@ -304,6 +342,13 @@ export function traitGroups(): TraitGroup[] {
 }
 
 export const fieldValue = (code: string, id: string) => String(genomeOf(code)[id] ?? '');
+
+/** The fish with the feedback sheet's "instead" picks applied. Empty picks leave the code alone. */
+export function withInstead(code: string, instead: Record<string, string>): string {
+  const picks = Object.fromEntries(Object.entries(instead).filter(([, v]) => v));
+  if (!Object.keys(picks).length) return code;
+  return codeOf({ ...genomeOf(code), ...picks });
+}
 
 export interface CloudSwipe {
   note?: string | null;
@@ -329,6 +374,52 @@ export function readCloudSwipe(rec: CloudSwipe): { superlike: boolean; feedback?
   const feedback = text || fix.length || asKind || Object.keys(instead).length ? { canned: [] as string[], note: text, fix, instead, asKind } : undefined;
   const score = typeof scores.personal === 'number' ? scores.personal : null;
   return { superlike, feedback, score };
+}
+
+// ---------- what you go for ----------
+
+export interface Preference {
+  trait: string;
+  rows: { value: string; likes: number; total: number }[];
+}
+
+/** The traits a swipe is judged on in the stats, with how each is read off a code. */
+const TRAITS: [string, (code: string) => string][] = [
+  ['Diet', (c) => ecoOf(c).diet],
+  ['Temperament', (c) => ecoOf(c).temperament],
+  ['Depth', (c) => ecoOf(c).depth],
+  ['Water', (c) => ecoOf(c).salinity],
+  ['Climate', (c) => ecoOf(c).temp],
+  ['Social', (c) => ecoOf(c).sociality],
+  ['Active', (c) => ecoOf(c).activity],
+  ['Swims', (c) => ecoOf(c).level],
+  ['Body', (c) => choice('body', genomeOf(c).body)],
+  ['Life stage', (c) => genomeOf(c).stage],
+  ['Rarity', (c) => genomeOf(c).rarity],
+  ['Sex', (c) => (genomeOf(c).sex === 'f' ? 'female' : 'male')],
+];
+
+/**
+ * How often you like each value of each trait. A super like counts twice, as it does for the taste
+ * net. Values seen fewer than `min` times are left out; rows run from most to least liked.
+ */
+export function preferences(swipes: TinderSwipe[], min = 2): Preference[] {
+  return TRAITS.map(([trait, read]) => {
+    const tally = new Map<string, { likes: number; total: number }>();
+    for (const s of swipes) {
+      const n = s.superlike ? 2 : 1;
+      const k = read(s.code);
+      const t = tally.get(k) ?? { likes: 0, total: 0 };
+      t.total += n;
+      if (s.verdict === 'approve') t.likes += n;
+      tally.set(k, t);
+    }
+    const rows = [...tally]
+      .filter(([, t]) => t.total >= min)
+      .map(([value, t]) => ({ value, ...t }))
+      .sort((a, b) => b.likes / b.total - a.likes / a.total || b.total - a.total);
+    return { trait, rows };
+  }).filter((p) => p.rows.length > 0);
 }
 
 // ---------- tiers ----------

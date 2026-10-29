@@ -3,10 +3,10 @@
 
 import { signal } from '@preact/signals';
 import * as W from '../game';
-import { game } from './signals';
+import { focusRegion, game } from './signals';
 import { sfx } from '../audio/sfx';
 
-export type Topic = 'advice' | 'news' | 'archive' | 'log' | 'stats' | 'settings';
+export type Topic = 'plan' | 'advice' | 'news' | 'archive' | 'log' | 'stats' | 'settings';
 export interface ChatMsg {
   key: number;
   from: 'pip' | 'you';
@@ -15,6 +15,7 @@ export interface ChatMsg {
 }
 
 export const PHRASES: { topic: Topic; say: string }[] = [
+  { topic: 'plan', say: 'What should I breed?' },
   { topic: 'advice', say: 'What should I send where?' },
   { topic: 'news', say: 'Any news?' },
   { topic: 'archive', say: 'Open the archive.' },
@@ -23,7 +24,7 @@ export const PHRASES: { topic: Topic; say: string }[] = [
   { topic: 'settings', say: 'Settings, please.' },
 ];
 
-const LINES: Record<Exclude<Topic, 'advice'>, string[]> = {
+const LINES: Record<Exclude<Topic, 'advice' | 'plan'>, string[]> = {
   news: [
     'X-change bulletin, freshly scraped. PIP has read every word. Twice.',
     'News! PIP loves news. Here is the bulletin. PIP has highlighted the numbers.',
@@ -55,12 +56,20 @@ const ADVICE_NO = [
   'PIP has looked everywhere. Nothing fits anywhere. PIP is sad about it.',
   'Bad news, phrased kindly: nobody aboard can go anywhere useful right now.',
 ];
+const PLAN_YES = [
+  'PIP has a breeding plan for {place}. {sims} test clutches per pair. Needs: {needs}.',
+  'For {place}, PIP found pairs whose test eggs fit. {sims} simulations each. They want: {needs}.',
+];
+const PLAN_NO = [
+  '{place} needs {needs}, and nobody aboard can breed that. PIP has a shopping list instead.',
+  'For {place}: {needs}. PIP could not find a good pair aboard. Pin the list and go shopping.',
+];
 const CORRECTIONS = [
   'Correction: "sure" was a strong word. PIP has updated its beliefs.',
   'PIP has double-checked and is now 4% less confident. Still recommends it.',
   'Update: PIP misread one decimal. Not that one. A different one. It is fine.',
 ];
-const HELLO = 'PIP online. Ask PIP anything. PIP knows six things, and they are below.';
+const HELLO = 'PIP online. Ask PIP anything. PIP knows seven things, and they are below.';
 
 let key = 0;
 let said = 0;
@@ -70,6 +79,10 @@ export const chat = signal<ChatMsg[]>([msg('pip', HELLO)]);
 export const pipMood = signal<'calm' | 'talk' | 'grin' | 'alarm'>('calm');
 export const pipThinking = signal(false);
 
+/** The region PIP's breeding plan is about: picked in the plan folder, else the Bridge's focus, else PIP's choice. */
+export const planRegion = signal<string | null>(null);
+export const planTargetOf = (s: W.State) => W.planTarget(s, planRegion.value ?? focusRegion.value);
+
 let moodTimer: ReturnType<typeof setTimeout> | undefined;
 function emote(m: typeof pipMood.value, ms = 2400) {
   pipMood.value = m;
@@ -78,6 +91,7 @@ function emote(m: typeof pipMood.value, ms = 2400) {
 }
 
 const line = (list: string[]) => list[said++ % list.length];
+const fill = (t: string) => t;
 
 /** You say a phrase; PIP thinks for a beat and answers, usually with a folder or cards attached. */
 export function ask(topic: Topic) {
@@ -96,6 +110,23 @@ export function ask(topic: Topic) {
       const out = [msg('pip', line(yes ? ADVICE_YES : ADVICE_NO), 'advice')];
       if (yes && said % 3 === 0) out.push(msg('pip', line(CORRECTIONS)));
       chat.value = [...chat.value, ...out].slice(-40);
+    } else if (topic === 'plan') {
+      const s = game.peek();
+      const region = planTargetOf(s);
+      if (!region) {
+        emote('alarm');
+        chat.value = [...chat.value, msg('pip', 'No water on Mirelle is open yet. PIP will plan when there is somewhere to plan for.')].slice(-40);
+        return;
+      }
+      planRegion.value = region.id;
+      const plan = W.breedPlan(s, region, Date.now());
+      const good = plan.pairs.length > 0 && !plan.seek;
+      emote(good ? 'grin' : 'alarm');
+      const t = line(good ? PLAN_YES : PLAN_NO)
+        .replace('{place}', W.regionLabel(region))
+        .replace('{sims}', String(plan.sims))
+        .replace('{needs}', plan.target.needs.map((n) => n.label.toLowerCase()).join(', '));
+      chat.value = [...chat.value, msg('pip', fill(t), 'plan')].slice(-40);
     } else {
       emote('talk');
       chat.value = [...chat.value, msg('pip', line(LINES[topic]), topic)].slice(-40);

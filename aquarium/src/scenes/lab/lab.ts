@@ -47,7 +47,7 @@ class Occupant {
   update(dt: number, tank: Tank, quiet: boolean) {
     if (!this.code) return void (this.sprite.visible = false);
     if (!this.s) {
-      this.s = sheet('fish3', this.code, 'swim');
+      this.s = sheet('fish4', this.code, 'swim');
       if (!this.s) return;
       retain(this.s);
     }

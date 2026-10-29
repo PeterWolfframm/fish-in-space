@@ -40,7 +40,12 @@ export function breed(state: State, aId: string, bId: string, now: number): Resu
   const b = state.fish.find((f) => f.id === bId);
   const problem = breedProblem(state, a, b, now);
   if (problem || !a || !b) return { error: problem ?? 'Pick two fish.' };
-  const { child, events } = fish.breedDetailed(genomeOf(a.code), genomeOf(b.code), `${state.seed}:brood${state.nextId}`);
+  const bred = fish.breedDetailed(genomeOf(a.code), genomeOf(b.code), `${state.seed}:brood${state.nextId}`);
+  if (!bred.child) {
+    const why = bred.problem ?? bred.events.find((e) => e.kind === 'refused')?.text;
+    return { error: why ?? 'They refused to spawn.' };
+  }
+  const { child, events } = bred;
   const code = codeOf({ ...child, stage: 'fry' });
   const r = rng(`${state.seed}:egg${state.nextId}`);
   const egg: Egg = { id: `e${state.nextId++}`, code, tank: a.tank, hatchAt: now + EGG_HATCH, x: 0.15 + r() * 0.7, laid: now,

@@ -1,13 +1,21 @@
-app = 'fish-in-space'
+# Fly.io app (org: pete / pete-868). PocketBase data lives on the pb_data volume.
+# Required secrets: PB_SUPERUSER_EMAIL, PB_SUPERUSER_PASSWORD (see docs/fly-deploy.md).
+
+app = 'aquarium-3d0uzq'
 primary_region = 'ams'
 
 [build]
 
 [env]
-  NODE_ENV = 'production'
   HOST = '0.0.0.0'
-  PORT = '8080'
+  NODE_ENV = 'production'
   PB_DATA = '/data/pb_data'
+  PORT = '8080'
+
+[[mounts]]
+  source = 'pb_data'
+  destination = '/data'
+  initial_size = '1gb'
 
 [http_service]
   internal_port = 8080
@@ -17,16 +25,11 @@ primary_region = 'ams'
   min_machines_running = 1
 
   [[http_service.checks]]
-    grace_period = '30s'
     interval = '15s'
     timeout = '5s'
+    grace_period = '30s'
     method = 'GET'
     path = '/health'
-
-[[mounts]]
-  source = 'pb_data'
-  destination = '/data'
-  initial_size = '1gb'
 
 [[vm]]
   size = 'shared-cpu-1x'

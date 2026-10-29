@@ -28,7 +28,7 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 /** How many viewport-widths across the tank is, capped at 1.5x so there is always glass and frame
  * in view. Jerry's solo '1x1' tank needs no room to swim in and stays smaller than the rest. */
-const SPAN: Record<string, number> = { '1x1': 1, '2x1': 1.3, '1x2': 1.15, '2x2': 1.25, '3x1': 1.5 };
+export const SPAN: Record<string, number> = { '1x1': 1, '2x1': 1.3, '1x2': 1.15, '2x2': 1.25, '3x1': 1.5 };
 
 export function layout(viewW: number, viewH: number, shape = '1x2'): HatcheryLayout {
   const span = SPAN[shape] ?? SPAN['1x2'];

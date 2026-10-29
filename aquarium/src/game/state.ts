@@ -2,11 +2,12 @@
 
 import { BASE_CAPACITY, GROW, SAVE_VERSION, START_CREDITS, AMBIENT_MIN, ANNEX_BERTHS, TANK_CAPACITY } from './constants';
 import { BIOMES, PHASES, PLANET, biomeById } from './biomes';
-import { codeOf, ecoOf, fish, genomeOf, nameOf, rollForBiome, rollWild, stageOf, allelesOf } from './fish';
+import { codeOf, decodes, ecoOf, fish, genomeOf, nameOf, rollForBiome, rollWild, stageOf, allelesOf } from './fish';
 import { rng } from './rng';
 import { planetRegions } from '../planet/gen';
 import { regionNames } from '../content/names';
 import { plantCode, starterPlants } from './plants';
+import { sanePins } from './pins';
 import type { DecorSlot, Fish, Region, State, Stage, Tank } from './types';
 
 /** Plant slots: 0..5 sit on the sand inside the tank, 6..9 on the lit shelf behind the glass. */
@@ -127,6 +128,7 @@ export function newGame(now: number, seed = String(now)): State {
     upgrades: { feeder: false, heater: false, annex: false, feederOrbit: 0, extendBerths: 0 },
     fieldNotes: { species: [], bodies: [], alleles: [], regions: [], lore: [] },
     patches: [],
+    pins: [],
     settings: { muted: false, batterySaver: false, shortPods: false, uiScale: 1, tankMenuEdge: 'right' },
   };
   state.capacity = totalCapacity(state);
@@ -150,13 +152,6 @@ export function newGame(now: number, seed = String(now)): State {
 type Json = Record<string, unknown>;
 const isObj = (v: unknown): v is Json => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
-const decodes = (c: unknown) => {
-  try {
-    return typeof c === 'string' && Boolean(fish.traits.decode(c));
-  } catch {
-    return false;
-  }
-};
 
 /** A v1 (v2 vanilla build) save brought forward: each old biome's bloom goes to its first region. */
 function migrateV1(s: Json, now: number): Json {
@@ -250,6 +245,7 @@ export function restore(raw: unknown, now = Date.now()): State | null {
   if (!UI_SCALES.includes(st.settings?.uiScale)) st.settings.uiScale = 1;
   st.log = Array.isArray(st.log) ? st.log.slice(0, 80) : [];
   st.planet ||= PLANET_SEED;
+  st.pins = sanePins(st.pins, st.tanks);
   return st;
 }
 

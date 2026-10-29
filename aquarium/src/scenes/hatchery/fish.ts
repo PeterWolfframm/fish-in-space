@@ -67,8 +67,8 @@ export class FishActor {
   }
 
   bind() {
-    if (!this.swim && (this.swim = sheet('fish3', this.code, 'swim'))) retain(this.swim);
-    if (!this.eat && (this.eat = sheet('fish3', this.code, 'eat'))) retain(this.eat);
+    if (!this.swim && (this.swim = sheet('fish4', this.code, 'swim'))) retain(this.swim);
+    if (!this.eat && (this.eat = sheet('fish4', this.code, 'eat'))) retain(this.eat);
   }
 
   private drop() {

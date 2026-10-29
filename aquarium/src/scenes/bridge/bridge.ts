@@ -492,7 +492,7 @@ export class BridgeScene implements Scene {
   /** The fish's swim frames, once baked. */
   private fishTex(sp: Splash) {
     if (!sp.sheet) {
-      sp.sheet = sheet('fish3', sp.code, 'swim');
+      sp.sheet = sheet('fish4', sp.code, 'swim');
       if (sp.sheet) retain(sp.sheet);
     }
     return sp.sheet ? sp.sheet.frames[Math.floor(this.t * sp.sheet.fps) % sp.sheet.n] : null;

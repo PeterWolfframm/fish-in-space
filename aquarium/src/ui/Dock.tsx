@@ -7,7 +7,7 @@ const ROOMS: { id: Room; label: string; ico: string; pip?: boolean }[] = [
   { id: 'interchange', label: 'X-change', ico: '🧺' },
   { id: 'pip', label: 'PIP', ico: '📡', pip: true },
   { id: 'lab', label: 'Lab', ico: '🧬' },
-  { id: 'tinder', label: 'Tinder', ico: '💘' },
+  { id: 'tinder', label: 'Fish-der', ico: '💘' },
 ];
 
 export function Dock() {

@@ -1,10 +1,21 @@
-// Facts about a fish, read off its fish3 code and cached by code.
+// Facts about a fish, read off its fish4 code (f4., f3., or v1) and cached by code.
 
-import fish3 from '@forge/v3/fish/index.js';
+import fish4 from '@forge/v4/fish/index.js';
+import { extOf } from '@forge/v4/fish/bodies/index.js';
+import { toFish3 } from '@forge/v4/fish/genome.js';
+import { phenotype } from '@forge/v3/fish/phenotype.js';
 import { biomeById, condOf, type Biome } from './biomes';
 import type { Req, Stage } from './types';
 
-export const fish = fish3 as Fish3;
+/** Pin ecotype rolls to Mirelle's aquarium water (still full fish4 species clustering). */
+export const WATER_PLACE = { terrain: 'water' } as const;
+/** Colony orders and shop stock: classic fish4 rolls that always fit a biome's water. */
+export const BIOME_ROLL = 'classic';
+
+export const fish = fish4 as Fish3;
+
+/** Whether a string is a fish code this build understands. */
+export const decodes = (c: unknown) => typeof c === 'string' && Boolean(fish.fromCode(c));
 
 export interface Fish3 {
   traits: {
@@ -15,8 +26,8 @@ export interface Fish3 {
   };
   normalize(g: unknown): Genome;
   fromCode(c: string): Genome;
-  fromSeed(s: string): Genome;
-  breedDetailed(a: Genome, b: Genome, seed: string): { child: Genome; events: { text: string }[] };
+  fromSeed(s: string, params?: string, place?: Record<string, string>): Genome;
+  breedDetailed(a: Genome, b: Genome, seed: string): { child: Genome | null; events: { kind?: string; text: string }[]; problem?: string };
   name(g: Genome): string;
   names(g: Genome): { common: string; binomial: string; title: string | null; full: string };
   ecology(g: Genome): FishEcology;
@@ -125,6 +136,14 @@ export function ecoOf(code: string): Eco {
 }
 
 export const nameOf = (code: string) => fish.name(genomeOf(code));
+
+/** Signature / relic label for UI copy (Fish Tinder, dossiers). */
+export function signatureLabel(code: string): string {
+  const set = fish.normalize(genomeOf(code));
+  const ph = phenotype(toFish3(set), extOf(set));
+  const label = (field: string, id: string) => fish.traits.fieldById(field).choices.find((c) => c.id === id)?.label ?? id;
+  return [ph.relic !== 'none' && label('relic', ph.relic), ph.signature !== 'none' && label('signature', ph.signature)].filter(Boolean).join(' · ');
+}
 export const generationOf = (g: Genome) => Number(String(g.generation).slice(1)) || 0;
 export const allelesOf = (code: string) => {
   const g = genomeOf(code);
@@ -175,7 +194,7 @@ export const score = (code: string, reqs: Req[]) => reqs.filter((q) => meets(cod
 export function rollForBiome(biome: Biome, phase: number, seed: string, stage: Stage = 'juvenile'): string {
   let last = '';
   for (let i = 0; i < 400; i++) {
-    const g = fish.fromSeed(`${seed}:${i}`);
+    const g = fish.fromSeed(`${seed}:${i}`, BIOME_ROLL);
     last = codeOf({ ...g, stage });
     if (fitsBiome(last, biome, phase)) return last;
   }

@@ -6,7 +6,7 @@ describe('bake', () => {
   it('bakes every family into a padded strip', () => {
     const g = newGame(1000, 'bake');
     const jobs: [Parameters<typeof bake>[0], string, string][] = [
-      ['fish3', g.fish[0].code, 'swim'],
+      ['fish4', g.fish[0].code, 'swim'],
       ...g.decor.map((p) => [p.family, p.code, p.family === 'plant3' ? 'idle' : 'sway'] as [any, string, string]),
       ['pilot2', 'wren-halloway|tutor', 'talk'],
     ];

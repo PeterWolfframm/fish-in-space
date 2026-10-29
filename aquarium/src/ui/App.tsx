@@ -22,9 +22,10 @@ import { BridgePanel } from './rooms/Bridge';
 import { InterchangePanel, VialScreen } from './rooms/Interchange';
 import { PipPanel } from './rooms/Pip';
 import { LabPanel } from './rooms/Lab';
-import { TinderPanel, TinderDeck } from './rooms/Tinder';
+import { Fishder } from './rooms/Tinder';
+import { PinBoard, PinToggle } from './pins';
 
-const PANELS = { hatchery: HatcheryPanel, bridge: BridgePanel, interchange: InterchangePanel, pip: PipPanel, lab: LabPanel, tinder: TinderPanel };
+const PANELS = { hatchery: HatcheryPanel, bridge: BridgePanel, interchange: InterchangePanel, pip: PipPanel, lab: LabPanel };
 
 export function App() {
   const host = useRef<HTMLDivElement>(null);
@@ -50,24 +51,29 @@ export function App() {
 
   batterySaver.value = game.value.settings.batterySaver;
   if (typeof document !== 'undefined') document.documentElement.style.setProperty('--ui-scale', String(game.value.settings.uiScale));
-  const Panel = PANELS[room.value];
+  const Panel = PANELS[room.value as keyof typeof PANELS];
   const open = panelOpen.value;
   const fishOpen = selected.value != null || recall.value != null;
-  const rail = game.value.settings.tankMenuEdge === 'left' ? 'left' : 'right';
   return (
     <div
-      class={`station room-${room.value}${open ? ' sheet-open' : ''}${fishOpen ? ' has-fish' : ''} rail-${rail}`}
+      class={`station room-${room.value}${open ? ' sheet-open' : ''}${fishOpen ? ' has-fish' : ''}`}
       data-ready={ready.value ? '1' : '0'}
     >
       <div class="scene">
         <div class="scene-host" ref={host} />
+        {room.value === 'hatchery' && (
+          <>
+            <PinBoard />
+            <PinToggle />
+          </>
+        )}
         {room.value === 'hatchery' && tankPan.value != null && (
           <div class="tank-pan" aria-hidden="true">
             <i style={{ left: `${tankPan.value * 100}%` }} />
           </div>
         )}
         {room.value === 'interchange' && <VialScreen />}
-        {room.value === 'tinder' && <TinderDeck />}
+        {room.value === 'tinder' && <Fishder />}
         {waking.value && (
           <div class="wake" aria-hidden="true">
             <i />
@@ -77,9 +83,11 @@ export function App() {
       </div>
       <StatusStrip />
       {room.value === 'hatchery' && <HatcheryBanners />}
-      <section class={`detail-sheet${open ? ' open' : ''}`} aria-label={`${room.value} controls`} aria-hidden={!open || fishOpen}>
-        <Panel />
-      </section>
+      {Panel && (
+        <section class={`detail-sheet${open ? ' open' : ''}`} aria-label={`${room.value} controls`} aria-hidden={!open || fishOpen}>
+          <Panel />
+        </section>
+      )}
       <Dock />
       <FishPost />
       <ComicStrip />

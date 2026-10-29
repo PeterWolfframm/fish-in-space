@@ -67,7 +67,7 @@ export function FishTile({
     >
       {ring === 'best' && <span class="best-plate">Best fit</span>}
       <span class={`glow r-${g.rarity}`}>
-        <SpriteArt family="fish3" code={f.code} anim="swim" animate={size !== 'sm'} />
+        <SpriteArt family="fish4" code={f.code} anim="swim" animate={size !== 'sm'} />
       </span>
       <span class="nm">
         {g.sex === 'f' ? '♀' : '♂'} {W.fishName(f)}

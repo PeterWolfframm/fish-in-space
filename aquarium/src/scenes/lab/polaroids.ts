@@ -155,8 +155,8 @@ export class PolaroidWall {
   private async bindPhoto(p: Polaroid) {
     if (p.sheet) release(p.sheet);
     p.sheet = null;
-    const hit = sheet('fish3', p.code, 'swim');
-    const s = hit ?? (await load('fish3', p.code, 'swim'));
+    const hit = sheet('fish4', p.code, 'swim');
+    const s = hit ?? (await load('fish4', p.code, 'swim'));
     if (!s || !this.items.has(p.id) || this.items.get(p.id)!.code !== p.code) {
       if (s && !hit) release(s);
       return;

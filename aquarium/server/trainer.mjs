@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Retrain the public pixelgen model from swipes in PocketBase. Only Fish Tinder swipes count (mode
-// "fishtinder", kind fish3): fresh procgen rolls judged on their own, never bred fish or other tools'
+// "fishtinder", kind fish4): fresh procgen rolls judged on their own, never bred fish or other tools'
 // swipes. A super like is heard twice.
 
 import { adminClient, PB_URL } from './pb.mjs';
@@ -18,7 +18,7 @@ const log = (...a) => console.log(`[trainer ${new Date().toLocaleTimeString()}]`
 
 export async function round(pb) {
   const rows = await pb.collection('swipes').getFullList({
-    filter: 'mode = "fishtinder" && kind = "fish3"',
+    filter: 'mode = "fishtinder" && (kind = "fish4" || kind = "fish3")',
     sort: 'created',
     fields: 'id,user,kind,code,verdict,note,created',
     batch: 500,

@@ -3,12 +3,12 @@
 
 import fishV1, { fishTraits } from '@forge/gen/fish.js';
 import fish2 from '@forge/v2/fish/index.js';
-import fish3 from '@forge/v3/fish/index.js';
+import fish4 from '@forge/v4/fish/index.js';
 import waterplant2 from '@forge/v2/waterplant/index.js';
 import plant3 from '@forge/v3/plant/index.js';
 import pilot2 from '@forge/v2/pilot/index.js';
 
-export type Family = 'fish3' | 'fish' | 'fish2' | 'waterplant2' | 'plant3' | 'pilot2';
+export type Family = 'fish4' | 'fish' | 'fish2' | 'waterplant2' | 'plant3' | 'pilot2';
 
 interface Frame {
   w: number;
@@ -33,7 +33,7 @@ const fish: Gen = {
   frame: (g, anim, i) => fishV1.frame(g, anim, i),
 };
 
-const GENS: Record<Family, Gen> = { fish3, fish, fish2, waterplant2, plant3, pilot2 };
+const GENS: Record<Family, Gen> = { fish4, fish, fish2, waterplant2, plant3, pilot2 };
 
 /** A character code is `seed|figure`; the portrait framing is always used. */
 function genomeOf(family: Family, code: string): unknown {

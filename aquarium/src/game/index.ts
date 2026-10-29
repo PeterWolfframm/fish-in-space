@@ -18,3 +18,5 @@ export * from './comms';
 export * from './story';
 export * from './advice';
 export * from './lineage';
+export * from './pins';
+export * from './breedplan';
