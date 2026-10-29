@@ -2,18 +2,18 @@
 
 export const C = {
   void: 0x04050b,
-  hull: 0x0b0f1c,
-  hullHi: 0x1d263c,
-  line: 0x2a3552,
-  lamp: 0xf0a24a,
+  hull: 0x10162a,
+  hullHi: 0x212c4e,
+  line: 0x3a4568,
+  lamp: 0xffa53d,
   peach: 0xf6c38d,
-  lilac: 0xb79cf0,
-  sky: 0x8fb4ff,
-  tank: 0x6fe0ee,
-  bloom: 0x8fe39a,
-  signal: 0xff8a76,
-  gold: 0xf3cf6a,
-  ink: 0xe6ecfa,
+  lilac: 0xb48cff,
+  sky: 0x6aa8ff,
+  tank: 0x3ee6f5,
+  bloom: 0x6ff28a,
+  signal: 0xff6b8b,
+  gold: 0xffd84a,
+  ink: 0xf4f7ff,
 } as const;
 
 export const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;

@@ -25,7 +25,7 @@ export function superuser({ create = false } = {}) {
   }
   if (existsSync(SU_FILE)) return JSON.parse(readFileSync(SU_FILE, 'utf8'));
   if (!create) throw new Error('no superuser: set PB_SUPERUSER_EMAIL/PB_SUPERUSER_PASSWORD or run `npm run app` once');
-  const su = { email: 'trainer@pixelforge.local', password: randomBytes(18).toString('base64url') };
+  const su = { email: 'trainer@fish-in-space.local', password: randomBytes(18).toString('base64url') };
   mkdirSync(PB_DIR, { recursive: true });
   writeFileSync(SU_FILE, JSON.stringify(su, null, 2), { mode: 0o600 });
   return su;

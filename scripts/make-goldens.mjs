@@ -1,7 +1,7 @@
 // Render the parity cases with the ORIGINAL game code and write test/fixtures/*.json.
 //
 //   node scripts/make-goldens.mjs pilot          (imports ~/Code/yeswar/web directly)
-//   cd ~/Code/fish. && node_modules/.bin/vite-node ~/Code/pixelforge/scripts/make-goldens.mjs fish
+//   cd ~/Code/fish. && node_modules/.bin/vite-node ~/Code/fish-in-space/scripts/make-goldens.mjs fish
 //   node scripts/make-goldens.mjs v1             (the frozen v1 plants, from this repo; run once)
 //   node scripts/make-goldens.mjs v2             (v2 codes before new options were appended)
 //

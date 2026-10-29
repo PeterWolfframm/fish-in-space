@@ -1,4 +1,4 @@
-// One generator animation as a horizontal RGBA strip. Generic over the pixelforge families the game
+// One generator animation as a horizontal RGBA strip. Generic over the fish-in-space families the game
 // uses. Runs in the bake worker (and on the main thread as a fallback).
 
 import fish3 from '@forge/v3/fish/index.js';

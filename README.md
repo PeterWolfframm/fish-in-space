@@ -1,6 +1,6 @@
-# pixel art generator
+# FISH IN SPACE
 
-for some reason, specialised in fish!
+Procedural pixel art — for some reason, specialised in fish!
 
 Procedural pixel art for pilots, fish, and plants. Each family has a frozen v1 and a lit v2 remaster. The app look is the local Keypad kit (`@keypad/ui`), with a light and a dark theme.
 
@@ -82,9 +82,9 @@ npm ci
 npm run dev                     # http://localhost:5173/
 ```
 
-To open it through the PixelForge site instead, build it with `npm run build` in `aquarium/`,
+To open it through the Fish in Space site instead, build it with `npm run build` in `aquarium/`,
 then start the app server and visit `http://localhost:8017/aquarium/`. The landing page is at
-`http://localhost:8017/`; PixelForge is at `/app/#forge`.
+`http://localhost:8017/`; Fish in Space is at `/app/#forge`.
 
 The CLI writes PNGs plus `manifest.json` (seed → code → size → files) into `out/<kind>/`.
 `--size <class|all>` works on v2 kinds only. Contact sheets pad mixed sizes on the generator's
@@ -176,17 +176,17 @@ binary.
 brew install flyctl          # or https://fly.io/docs/flyctl/install/
 fly auth login
 
-fly apps create pixelforge   # if that name is taken, change `app` in fly.toml to match
+fly apps create fish-in-space   # if that name is taken, change `app` in fly.toml to match
 fly secrets set PB_SUPERUSER_EMAIL=you@example.com PB_SUPERUSER_PASSWORD='…'
 fly deploy --ha=false        # first deploy also creates the 1GB pb_data volume
 ```
 
 Change `primary_region` in `fly.toml` before the first deploy if Frankfurt is the wrong region.
 
-- Landing page: `https://pixelforge.fly.dev/`
-- PixelForge: `https://pixelforge.fly.dev/app/#forge`
-- Seedfall aquarium: `https://pixelforge.fly.dev/aquarium/`
-- PocketBase dashboard: `https://pixelforge.fly.dev/_/` (the superuser from the secrets above)
+- Landing page: `https://fish-in-space.fly.dev/`
+- Fish in Space: `https://fish-in-space.fly.dev/app/#forge`
+- Seedfall aquarium: `https://fish-in-space.fly.dev/aquarium/`
+- PocketBase dashboard: `https://fish-in-space.fly.dev/_/` (the superuser from the secrets above)
 - A member, so they can swipe: `fly ssh console -C "node /app/scripts/pixelgen-user.mjs you@example.com 'a long password' Ada"`
 - Admin, for someone who already has an account: `fly ssh console -C "node /app/scripts/pixelgen-admin.mjs you@example.com"`, then reload
 
@@ -227,8 +227,8 @@ Everything under `src/` is plain ES modules with no build step and no DOM, excep
   sizes: [{id, w, h}], sizeField, sizeOf(genome) → {w, h}, fromCode(code), anchor }
 ```
 
-`import { GENERATORS, generator, fromCode, sizeOf } from 'pixelforge/registry'`. `sizeOf(gen,
-genome)` works for every version. v2 modules are importable directly as `pixelforge/v2/...`.
+`import { GENERATORS, generator, fromCode, sizeOf } from 'fish-in-space/registry'`. `sizeOf(gen,
+genome)` works for every version. v2 modules are importable directly as `fish-in-space/v2/...`.
 
 The narrower exports are still there:
 - `pilotSpec`/`pilotFrame` (src/gen/pilot-pixel.js)

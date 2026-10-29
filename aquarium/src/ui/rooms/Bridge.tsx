@@ -4,18 +4,28 @@
 import { useEffect, useState } from 'preact/hooks';
 import { game, now, orbit, focusRegion, surface, tallies, watchPoll, castVote, launch, launching } from '../../store/signals';
 import * as W from '../../game';
-import { SpriteArt } from '../Art';
-import { mmss } from '../Sheet';
+import { Heading, FishTile, Pill, Stat, mmss } from '../kit';
 
-function FishPick({ fish, onPick }: { fish: W.Fish[]; onPick: (f: W.Fish) => void }) {
-  if (!fish.length) return <p class="empty">No fish in the tank fits yet.</p>;
+/**
+ * Fish that fit, best first. For a request every fit earns the same, so the best fit is the one worth
+ * least at today's valuation; for free seeding adults bring twice the bloom, so they lead.
+ */
+function FishPick({ fish, onPick, mode }: { fish: W.Fish[]; onPick: (f: W.Fish) => void; mode: 'order' | 'seed' }) {
+  const t = now.value;
+  if (!fish.length) return <p class="empty">No fish aboard fits yet.</p>;
+  const price = (f: W.Fish) => W.priceOf(f.code, t);
+  const ranked = [...fish].sort((a, b) => (mode === 'seed' ? Number(W.isAdult(b)) - Number(W.isAdult(a)) : 0) || price(a) - price(b));
   return (
-    <div class="fish-pick">
-      {fish.map((f) => (
-        <button key={f.id} class="btn ghost small" disabled={Boolean(launching.value)} onClick={() => onPick(f)}>
-          <SpriteArt family="fish3" code={f.code} anim="swim" class="mini" />
-          {W.nameOf(f.code)}
-        </button>
+    <div class="pick-grid best" role="group" aria-label="Fish that fit, best first">
+      {ranked.map((f, i) => (
+        <FishTile
+          key={f.id}
+          fish={f}
+          size="md"
+          ring={i === 0 ? 'best' : undefined}
+          badge={mode === 'seed' ? `+${W.isAdult(f) ? 8 : 4} ✿ · ${price(f)} ◎` : `worth ${price(f)} ◎`}
+          onClick={() => onPick(f)}
+        />
       ))}
     </div>
   );
@@ -36,15 +46,20 @@ function Requests() {
         const fits = s.fish.filter((x) => W.meetsAll(x.code, o.reqs));
         return (
           <div key={o.id} class={`card req ${live ? 'window' : ''}`}>
+            <div class="req-hero">
+              <div class="req-reward numeral">
+                +{o.reward} ◎ <span class="sm">+{o.bloom} ✿</span>
+              </div>
+              <Pill tone={live ? 'bloom' : 'ink-faint'} pulse={live}>
+                {live ? '● OPEN NOW' : `opens in ${mmss(wait)}`}
+              </Pill>
+            </div>
             <div class="top">
               <b>
                 {o.colony} · <button class="link" onClick={() => (focusRegion.value = o.region)}>{r ? W.regionLabel(r) : '—'}</button>
               </b>
-              <span class="reward">
-                {o.reward} ◎ · +{o.bloom}✿
-              </span>
+              <span class="due">due {mmss(Math.max(0, o.expires - t))}</span>
             </div>
-            <div class="flavor">{o.flavor}</div>
             <div class="chips">
               {o.reqs.map((q, i) => (
                 <span key={i} class="chip">
@@ -52,15 +67,16 @@ function Requests() {
                 </span>
               ))}
             </div>
-            <div class="top">
-              <span class="due">
-                {live ? '▲ window open' : `window in ${mmss(wait)}`} · due {mmss(Math.max(0, o.expires - t))}
-              </span>
-              <button class="btn small lamp" aria-expanded={open === o.id} onClick={() => setOpen(open === o.id ? null : o.id)}>
-                {fits.length ? `Send a fish (${fits.length})` : 'Who fits?'}
-              </button>
-            </div>
-            {open === o.id && <FishPick fish={fits} onPick={(x) => launch(x.id, o.region, o.id)} />}
+            <div class="flavor">{o.flavor}</div>
+            <button
+              class="btn lamp"
+              disabled={Boolean(launching.value)}
+              aria-expanded={open === o.id}
+              onClick={() => setOpen(open === o.id ? null : o.id)}
+            >
+              {fits.length ? `Send a fish (${fits.length} fit)` : 'Who fits?'}
+            </button>
+            {open === o.id && <FishPick mode="order" fish={fits} onPick={(x) => launch(x.id, o.region, o.id)} />}
           </div>
         );
       })}
@@ -84,9 +100,17 @@ function RegionPanel({ id }: { id: string }) {
   const tally = tallies.value[r.id] ?? W.localTally(r, t);
   const can = s.fish.filter((f) => !W.seedProblem(s, f, r));
   return (
-    <div class="card stack">
+    <div class="card stack region-card" style={{ '--k': biome?.color ?? 'var(--sky)' }}>
       <div class="region-head">
+        <span class="region-glyph" aria-hidden="true">
+          {biome?.icon ?? '◌'}
+        </span>
         <h3>{W.regionLabel(r)}</h3>
+        {r.opened && (
+          <Pill tone={live ? 'bloom' : 'ink-faint'} pulse={live}>
+            {live ? '● OPEN NOW' : `opens in ${mmss(wait)}`}
+          </Pill>
+        )}
         <button class="btn small ghost" onClick={() => (focusRegion.value = null)} aria-label="Close region">
           ✕
         </button>
@@ -94,52 +118,39 @@ function RegionPanel({ id }: { id: string }) {
       <div class="chips">
         <span class="chip water">{biome?.name ?? r.biome}</span>
         {biome && <span class="chip">{W.condWords(W.condOf(biome, s.phase))}</span>}
-        {r.opened ? <span class="chip">{live ? '▲ window open' : `window in ${mmss(wait)}`}</span> : <span class="chip">surveying</span>}
+        {!r.opened && <span class="chip">surveying</span>}
       </div>
       {r.opened ? (
         <>
-          <div>
-            <div class="note">
-              Life {Math.round(r.life)}/100 · {r.delivered} delivered
-            </div>
-            <span class="meter grow">
+          <div class="life-row">
+            <Stat value={`${Math.round(r.life)}%`} label={`life · ${r.delivered} delivered`} tone="bloom" />
+            <span class="meter life">
               <i style={{ width: `${Math.min(100, r.life)}%` }} />
             </span>
           </div>
           {r.poll && !r.name && (
             <div class="stack">
-              <div class="section-title">
-                <h3>Name this region</h3>
-                <span class="note">
-                  {r.poll.tokens} vote{r.poll.tokens === 1 ? '' : 's'} to spend · closes at Life 100
-                </span>
-              </div>
+              <Heading title="Name this region" emoji="🗳️🌍💫" note={`${r.poll.tokens} vote${r.poll.tokens === 1 ? '' : 's'} to spend`} />
               {r.poll.options.map((o) => {
                 const k = W.share(tally, o.id);
                 const mine = (r.poll!.spent[o.id] ?? 0) > 0;
                 return (
-                  <div key={o.id} class={`poll-opt ${mine ? 'mine' : ''}`}>
-                    <span>
-                      {o.name} <span class="note">{Math.round(k * 100)}%</span>
-                    </span>
-                    <button class="btn small signal" disabled={r.poll!.tokens <= 0} onClick={() => castVote(r.id, o.id)}>
-                      Vote
-                    </button>
+                  <button key={o.id} class={`poll-opt ${mine ? 'mine' : ''}`} disabled={r.poll!.tokens <= 0} onClick={() => castVote(r.id, o.id)}>
+                    <span class="nm">{o.name}</span>
+                    <span class="pct numeral">{Math.round(k * 100)}%</span>
                     <span class="bar">
                       <i style={{ width: `${k * 100}%` }} />
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           )}
-          <div class="row">
-            <button class="btn tank small" aria-expanded={seed} onClick={() => setSeed(!seed)}>
-              Seed a fish here (free)
-            </button>
-            <span class="note">{can.length} fit</span>
-          </div>
-          {seed && <FishPick fish={can} onPick={(f) => launch(f.id, r.id)} />}
+          <button class="btn tank" aria-expanded={seed} onClick={() => setSeed(!seed)}>
+            {seed ? 'Close' : `Seed a fish here · ${can.length} fit`}
+          </button>
+          {live && seed && <p class="note">The window is open: drops land clean for +25% life.</p>}
+          {seed && <FishPick mode="seed" fish={can} onPick={(f) => launch(f.id, r.id)} />}
         </>
       ) : (
         <p class="note">Still surveying. {biome?.name ?? 'This water'} opens in phase {W.PHASES[r.opensAt]?.name ?? r.opensAt}.</p>
@@ -168,10 +179,7 @@ export function BridgePanel() {
         </span>
       </div>
       {focus && <RegionPanel id={focus} />}
-      <div class="section-title">
-        <h3>Requests</h3>
-        <span class="note">launch while the window is open for a bonus</span>
-      </div>
+      <Heading title="Requests" emoji="🪐📡✨" note="launch while the window is open for a bonus" />
       <Requests />
     </div>
   );

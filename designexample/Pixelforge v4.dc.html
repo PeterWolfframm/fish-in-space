@@ -29,7 +29,7 @@
 <div data-theme="{{ theme }}" style="min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font-family:'Nunito',system-ui,sans-serif;font-size:17px;line-height:1.5;">
 
   <header style="position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 24px;padding:12px 16px;background:var(--bg);border-bottom:3px solid var(--line);">
-    <div style="font-family:'Silkscreen',monospace;font-size:22px;line-height:1;color:var(--logo);">PIXELFORGE</div>
+    <div style="font-family:'Silkscreen',monospace;font-size:22px;line-height:1;color:var(--logo);">FISH IN SPACE</div>
     <nav style="display:flex;gap:6px;padding:5px;background:var(--card);border:3px solid var(--line);border-radius:999px;">
       <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
         <sc-if value="{{ t.active }}"><button type="button" onClick="{{ t.go }}" style="height:48px;padding:0 22px;border:0;border-radius:999px;background:#FF8FB1;color:var(--dk);font-family:'Pixelify Sans',monospace;font-weight:600;font-size:20px;cursor:pointer;">{{ t.label }} <span style="font-size:14px;">{{ t.count }}</span></button></sc-if>
@@ -318,7 +318,7 @@ const NOPE = ['Thrown back.', 'Plenty more in the sea.', 'Not your type.', 'Swim
 const NOTES = ["Chef's kiss", 'Too busy', 'Colors off', 'Looks broken', 'Wrong species', 'Needs contrast'];
 const AXES = [['swim', 'Swim'], ['size', 'Size'], ['mood', 'Mood'], ['pattern', 'Pattern']];
 const STARTERS = [['kipper', 'S'], ['gilbert', 'A'], ['wanda', 'A'], ['captain', 'B'], ['sushi', 'C'], ['blub', 'D'], ['finnegan', 'pool'], ['marlo', 'pool'], ['pebble', 'pool']];
-const KEY = 'pixelforge.redesign.v1';
+const KEY = 'fish-in-space.redesign.v1';
 const rand = (a) => a[Math.floor(Math.random() * a.length)];
 const seed = () => Math.random().toString(36).slice(2, 8);
 const pctW = (n) => n + '%';
@@ -357,7 +357,7 @@ class Component extends DCLogic {
       for (const [s, t] of STARTERS) tiers[t].push(this.lib.roll(s));
     }
     const deck = Array.from({ length: 40 }, () => this.lib.roll(seed()));
-    const th = (() => { try { return localStorage.getItem('pixelforge.theme'); } catch (e) { return null; } })() || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const th = (() => { try { return localStorage.getItem('fish-in-space.theme'); } catch (e) { return null; } })() || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     this.setState({ theme: th, ready: true, tiers, deck, swiped: saved?.swiped ?? 14, thrown: saved?.thrown ?? 5 });
   }
   componentWillUnmount() {
@@ -566,7 +566,7 @@ class Component extends DCLogic {
 
     return {
       theme: s.theme || 'light', themeLabel: s.theme === 'dark' ? '☀ Light' : '☾ Dark',
-      toggleTheme: () => { const n = s.theme === 'dark' ? 'light' : 'dark'; this.setState({ theme: n }); try { localStorage.setItem('pixelforge.theme', n); } catch (e) {} },
+      toggleTheme: () => { const n = s.theme === 'dark' ? 'light' : 'dark'; this.setState({ theme: n }); try { localStorage.setItem('fish-in-space.theme', n); } catch (e) {} },
       isOpen: s.cardOpen, isClosed: !s.cardOpen, fishFlex: s.cardOpen ? '0 0 190px' : '1 1 0', panelFlex: s.cardOpen ? '1 1 0' : '0 0 auto',
       panelOverflow: s.cardOpen ? 'auto' : 'visible', cardTouch: s.cardOpen ? 'pan-y' : 'none',
       profileBtn: s.cardOpen ? 'Show less ▴' : 'Full profile ▾', toggleProfile: () => this.setState({ cardOpen: !s.cardOpen }),

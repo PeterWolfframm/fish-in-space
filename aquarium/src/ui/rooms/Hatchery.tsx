@@ -1,20 +1,24 @@
-import { game, now, selected, pairWith, placing, selectFish, cancelPair, feedTank } from '../../store/signals';
+import { useState } from 'preact/hooks';
+import { game, selected, pairWith, placing, selectFish, cancelPair, feedTank, activeTank } from '../../store/signals';
 import * as W from '../../game';
 import { SpriteArt } from '../Art';
-import { mmss } from '../Sheet';
+import { Heading, FishTile, Pill, Keepsake } from '../kit';
 
 export function HatcheryPanel() {
   const s = game.value;
-  const t = now.value;
   const pair = pairWith.value ? s.fish.find((f) => f.id === pairWith.value) : null;
   const cutting = placing.value != null ? s.ownedCuttings[placing.value] : null;
-  const hungry = s.fish.filter((f) => f.hunger > 0.5).length;
-  const cap = s.capacity;
+  const tank = s.tanks.find((k) => k.id === activeTank.value) ?? s.tanks[0];
+  const fish = s.fish.filter((f) => f.tank === tank.id);
+  const eggs = s.eggs.filter((g) => g.tank === tank.id);
+  const hungry = fish.filter((f) => f.hunger > 0.5).length;
+  const cap = W.tankCapacity(s, tank.id);
+  const [open, setOpen] = useState(fish.length <= 6);
   return (
-    <div class="stack">
+    <div class={`roster-sheet${open ? ' open' : ''}`}>
       {pair && (
         <div class="banner" role="status">
-          <span>♡ Pick a partner for {W.nameOf(pair.code)}: tap a fish of the other sex.</span>
+          <span>♡ Pick a partner for {W.fishName(pair)}: tap a fish of the other sex.</span>
           <button class="btn small ghost" onClick={cancelPair}>
             Cancel
           </button>
@@ -22,77 +26,76 @@ export function HatcheryPanel() {
       )}
       {cutting && (
         <div class="banner plant" role="status">
-          <span>✿ Tap a glowing slot {cutting.family === 'plant3' ? 'in the lid tray' : 'in the sand'} to plant {W.plantName(cutting.family, cutting.code)}.</span>
+          <span>✿ Tap a glowing slot in the sand to plant {W.itemName(cutting)}.</span>
           <button class="btn small ghost" onClick={() => (placing.value = null)}>
             Cancel
           </button>
         </div>
       )}
       <div class="tank-head">
-        <h3>Tank</h3>
-        <span class="count">
-          {s.fish.length}/{cap}
+        <h3>{tank.name}</h3>
+        <span class="count numeral">
+          {fish.length}/{cap}
         </span>
-        <span class="note">
-          {s.eggs.length ? `${s.eggs.length} clutch${s.eggs.length > 1 ? 'es' : ''} · ` : ''}
-          {hungry ? `${hungry} hungry` : 'all fed'}
-        </span>
-        <button class="btn tank small" onClick={feedTank} title="Or tap the water to drop a pinch">
-          Feed
+        {eggs.length > 0 && <span class="note">{eggs.length} clutch{eggs.length > 1 ? 'es' : ''}</span>}
+        {hungry > 0 && <Pill tone="signal">{hungry} hungry</Pill>}
+        <button class="btn tank" onClick={feedTank} title="Or tap the water to drop a pinch">
+          🍤 Feed
         </button>
+        {fish.length > 6 && (
+          <button class="btn small ghost roster-toggle" aria-expanded={open} aria-controls="hatchery-roster" onClick={() => setOpen((v) => !v)}>
+            {open ? 'Close' : 'Fish'}
+          </button>
+        )}
       </div>
-      {s.fish.length ? (
-        <div class="roster" role="group" aria-label="Fish in the tank">
-          {s.fish.map((f) => {
-            const g = W.genomeOf(f.code);
-            const stage = W.stageOf(f.code);
-            const resting = f.spawnReadyAt > t && W.isAdult(f);
-            return (
-              <button
-                key={f.id}
-                aria-pressed={selected.value === f.id}
-                class={pairWith.value === f.id ? 'pairing' : ''}
-                onClick={() => selectFish(f.id)}
-                aria-label={`${W.nameOf(f.code)}, ${g.sex === 'f' ? 'female' : 'male'} ${stage}${f.hunger > 0.5 ? ', hungry' : ''}`}
-              >
-                <SpriteArt family="fish3" code={f.code} anim="swim" />
-                <span class={`nm ${f.hunger > 0.5 ? 'hungry' : ''}`}>
-                  {g.sex === 'f' ? '♀' : '♂'} {W.nameOf(f.code)}
-                </span>
-                <span class="sub">{resting ? `rest ${mmss(f.spawnReadyAt - t)}` : stage}</span>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <p class="empty">The tank is empty. The Interchange has roe to thaw.</p>
-      )}
-      {s.ownedCuttings.length > 0 && (
-        <>
-          <div class="section-title">
-            <h3>Cuttings</h3>
-            <span class="note">tap one, then a slot</span>
-          </div>
-          <div class="row">
-            {s.ownedCuttings.map((c, i) => (
-              <button key={i} class="btn small ghost" aria-pressed={placing.value === i} onClick={() => (placing.value = placing.value === i ? null : i)}>
-                <SpriteArt family={c.family} code={c.code} anim={c.family === 'plant3' ? 'idle' : 'sway'} class="mini" />
-                {W.plantName(c.family, c.code)}
-              </button>
+      {open && (
+        <div id="hatchery-roster">
+          <Heading title="Tank roster" emoji="🐟🐠🫧" />
+          {fish.length ? (
+            <div class="roster" role="group" aria-label="Fish in the tank">
+              {fish.map((f) => (
+                <FishTile
+                  key={f.id}
+                  fish={f}
+                  size="md"
+                  selected={selected.value === f.id}
+                  ring={pairWith.value === f.id ? 'pairing' : undefined}
+                  onClick={() => selectFish(f.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p class="empty">The tank is empty. The Interchange has roe to thaw.</p>
+          )}
+          {s.ownedCuttings.length > 0 && (
+            <>
+              <Heading title="Cuttings" emoji="🌱🪴✂️" note="tap one, then a slot" />
+              <div class="roster cuttings" role="group" aria-label="Cuttings to plant">
+                {s.ownedCuttings.map((c, i) => (
+                  <button key={i} class="fish-tile md" aria-pressed={placing.value === i} onClick={() => (placing.value = placing.value === i ? null : i)}>
+                    <span class="glow">
+                      {c.family === 'object' ? (
+                        <Keepsake code={c.code} />
+                      ) : (
+                        <SpriteArt family={c.family} code={c.code} anim={c.family === 'plant3' ? 'idle' : 'sway'} />
+                      )}
+                    </span>
+                    <span class="nm">{W.itemName(c)}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <Heading title="Station log" emoji="📜🛰️🕰️" />
+          <div class="log-list">
+            {s.log.slice(-6).reverse().map((l, i) => (
+              <div key={i} class="log-list-entry">
+                {l.icon} {l.text}
+              </div>
             ))}
           </div>
-        </>
+        </div>
       )}
-      <div class="section-title">
-        <h3>Station log</h3>
-      </div>
-      <div>
-        {s.log.slice(-6).reverse().map((l, i) => (
-          <div key={i} class="note" style={{ padding: '2px 0' }}>
-            {l.icon} {l.text}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

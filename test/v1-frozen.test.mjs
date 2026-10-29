@@ -1,4 +1,4 @@
-// v1 is frozen. The game ports are held by parity.test.mjs; the pixelforge-native v1 plants are
+// v1 is frozen. The game ports are held by parity.test.mjs; the fish-in-space-native v1 plants are
 // held here to fingerprints rendered from their own code before v2 existed. New work goes in v2.
 
 import { test } from 'node:test';

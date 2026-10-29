@@ -7,12 +7,63 @@ const T0 = 1_800_000_000_000;
 describe('v2 rules, ported', () => {
   test('a new game has a breedable pair of lake fish and money', () => {
     const s = W.newGame(T0, 'test');
-    expect(s.fish.length).toBe(5);
+    expect(s.fish.length).toBe(6); // 5 in T1, plus Jerry alone in T2
     expect(s.credits).toBe(W.START_CREDITS);
     const lake = s.fish.filter((f) => W.fitsBiome(f.code, W.BIOMES[0], 0));
     expect(lake.length).toBeGreaterThanOrEqual(4);
     expect([...new Set(lake.map((f) => W.genomeOf(f.code).sex))].sort()).toEqual(['f', 'm']);
     expect(s.fish.every(W.isAdult)).toBe(true);
+  });
+
+  test('new game has a second tank holding exactly one fish named Jerry', () => {
+    const s = W.newGame(T0, 'jerry');
+    expect(s.tanks.map((t) => t.id)).toEqual(['T1', 'T2']);
+    const t2 = s.fish.filter((f) => f.tank === 'T2');
+    expect(t2.length).toBe(1);
+    expect(t2[0].name).toBe('Jerry');
+    expect(W.fishName(t2[0])).toBe('Jerry');
+    expect(s.fish.filter((f) => f.tank === 'T1').length).toBe(5);
+  });
+
+  test('tank capacity is derived from shape, and T1 alone gets annex/extend bonuses', () => {
+    const s = W.newGame(T0, 'cap');
+    expect(W.tankCapacity(s, 'T1')).toBe(10); // 1x2
+    expect(W.tankCapacity(s, 'T2')).toBe(6); // 1x1
+    s.upgrades.extendBerths += 4;
+    expect(W.tankCapacity(s, 'T1')).toBe(14);
+    expect(W.tankCapacity(s, 'T2')).toBe(6); // unaffected
+    s.upgrades.annex = true;
+    expect(W.tankCapacity(s, 'T1')).toBe(14 + 8);
+  });
+
+  test('buyTank prices by shape and packs tanks first-fit on the wall grid', () => {
+    const s = W.newGame(T0, 'buytank');
+    s.credits = 10_000;
+    const before = s.tanks.length;
+    const r = W.buyTank(s, '2x1', T0);
+    expect('tank' in r && r.tank).toBeTruthy();
+    expect(s.tanks.length).toBe(before + 1);
+    if ('tank' in r && r.tank) expect(r.tank.shape).toBe('2x1');
+    // T1 is 1x2 at (0,0) (occupies (0,0),(0,1)); T2 is 1x1 at (1,0). A 2x1 needs two free
+    // adjacent columns in one row, which isn't free at y=0, so it should land at y=1.
+    const packed = W.packTanks(s.tanks);
+    for (const t of s.tanks) {
+      const { w, h } = { '1x1': { w: 1, h: 1 }, '2x1': { w: 2, h: 1 }, '1x2': { w: 1, h: 2 }, '2x2': { w: 2, h: 2 }, '3x1': { w: 3, h: 1 } }[t.shape];
+      for (let dx = 0; dx < w; dx++) for (let dy = 0; dy < h; dy++) expect(packed.has(`${t.slot.x + dx},${t.slot.y + dy}`)).toBe(true);
+    }
+    expect(W.TANK_PRICE['1x1']).toBe(200);
+    expect(W.TANK_PRICE['2x1']).toBe(380);
+    expect(W.TANK_PRICE['1x2']).toBe(380);
+    expect(W.TANK_PRICE['2x2']).toBe(700);
+    expect(W.TANK_PRICE['3x1']).toBe(560);
+    const poor = W.newGame(T0, 'poor');
+    poor.credits = 0;
+    expect(W.buyTank(poor, '1x1', T0).error).toBeTruthy();
+  });
+
+  test('uiScale defaults to 1 on a new game', () => {
+    const s = W.newGame(T0, 'scale');
+    expect(s.settings.uiScale).toBe(1);
   });
 
   test('the first request is a tutorial a starter fish can fill', () => {
@@ -125,6 +176,27 @@ describe('regions, windows, polls', () => {
     expect(s.regions.filter((r) => r.opened).every((r) => r.opensAt <= 2)).toBe(true);
   });
 
+  test('a v3 save migrates to v4: everything lands in tank T1, and settings/upgrades fill in', () => {
+    const v3fresh = W.newGame(T0, 'v3src');
+    const v3 = { ...JSON.parse(JSON.stringify(v3fresh)), v: 3, capacity: 18, upgrades: { feeder: true, heater: false, annex: true, feederOrbit: 0 } };
+    delete (v3 as Record<string, unknown>).tanks;
+    for (const f of v3.fish) delete (f as Record<string, unknown>).tank;
+    for (const e of v3.eggs) delete (e as Record<string, unknown>).tank;
+    for (const d of v3.decor) delete (d as Record<string, unknown>).tank;
+    delete (v3 as Record<string, unknown>).settings;
+    const s = W.restore(v3, T0)!;
+    expect(s.v).toBe(W.SAVE_VERSION);
+    expect(s.tanks).toEqual([{ id: 'T1', name: 'Tank One', shape: '1x2', slot: { x: 0, y: 0 } }]);
+    expect(s.fish.every((f) => f.tank === 'T1')).toBe(true);
+    expect(s.eggs.every((e) => e.tank === 'T1')).toBe(true);
+    expect(s.decor.every((d) => d.tank === 'T1')).toBe(true);
+    expect(s.upgrades.annex).toBe(true);
+    expect(s.settings.uiScale).toBe(1);
+    // old capacity 18 = 1x2(10) + annex(8) + extendBerths(0)
+    expect(s.upgrades.extendBerths).toBe(0);
+    expect(s.capacity).toBe(18);
+  });
+
   test('a delivery inside the launch window earns +25% life', () => {
     const s = W.newGame(T0, 'win');
     const region = s.regions.find((r) => r.opened)!;
@@ -186,5 +258,33 @@ describe('regions, windows, polls', () => {
     expect(W.crateContents(s, 4).some((c) => ['rare', 'myth'].includes(W.genomeOf(c).rarity))).toBe(true);
     const ev = W.tick(s, T0 + W.ORBIT_MS + 10);
     expect(ev.some((e) => e.kind === 'restock')).toBe(true);
+  });
+});
+
+describe('PIP advice', () => {
+  test('recommends only launches the rules accept, and never Jerry', () => {
+    const s = W.newGame(T0, 'advice');
+    const cards = W.advise(s);
+    expect(cards.length).toBeGreaterThan(0);
+    for (const c of cards) {
+      if (c.kind === 'none') continue;
+      expect(c.fish.name).toBeUndefined();
+      if (c.kind === 'order') expect(W.meetsAll(c.fish.code, c.order.reqs)).toBe(true);
+      else expect(W.seedProblem(s, c.fish, c.region)).toBeNull();
+    }
+  });
+
+  test('never suggests the last adult of a sex', () => {
+    const s = W.newGame(T0, 'last');
+    const keep = s.fish.find((f) => W.isAdult(f) && !f.name)!;
+    const sex = W.genomeOf(keep.code).sex;
+    s.fish = s.fish.filter((f) => f === keep || f.name || W.genomeOf(f.code).sex !== sex);
+    expect(W.advise(s, 9).some((c) => c.kind !== 'none' && c.fish.id === keep.id)).toBe(false);
+  });
+
+  test('an empty station gets the negative card', () => {
+    const s = W.newGame(T0, 'empty');
+    s.fish = [];
+    expect(W.advise(s)).toEqual([{ kind: 'none', why: 'empty' }]);
   });
 });

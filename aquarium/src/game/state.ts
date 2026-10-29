@@ -127,18 +127,18 @@ export function newGame(now: number, seed = String(now)): State {
     upgrades: { feeder: false, heater: false, annex: false, feederOrbit: 0, extendBerths: 0 },
     fieldNotes: { species: [], bodies: [], alleles: [], regions: [], lore: [] },
     patches: [],
-    settings: { muted: false, batterySaver: false, shortPods: false, uiScale: 1 },
+    settings: { muted: false, batterySaver: false, shortPods: false, uiScale: 1, tankMenuEdge: 'right' },
   };
   state.capacity = totalCapacity(state);
   const melt = BIOMES[0];
   // Two lake fish of each sex so the first pairing is possible, plus one wildcard, all in tank 1.
   (['m', 'f', 'm', 'f'] as const).forEach((sex, i) => {
     const code = rollForBiome(melt, 0, `${seed}:start${i}`, 'adult');
-    state.fish.push(newFish(state, codeOf({ ...genomeOf(code), sex }), now, 'T1'));
+    state.fish.push(newFish(state, codeOf({ ...genomeOf(code), sex }), now, 'T1', { origin: 'starter' }));
   });
-  state.fish.push(newFish(state, rollWild(`${seed}:start-wild`, 'adult'), now, 'T1'));
+  state.fish.push(newFish(state, rollWild(`${seed}:start-wild`, 'adult'), now, 'T1', { origin: 'starter' }));
   // Tank 2 holds just Jerry: a solitary fixed-name fish who likes his own company.
-  state.fish.push(newFish(state, rollSolitary(`${seed}:jerry`), now, 'T2', { name: 'Jerry' }));
+  state.fish.push(newFish(state, rollSolitary(`${seed}:jerry`), now, 'T2', { name: 'Jerry', origin: 'starter' }));
   for (const f of state.fish) noteFish(state, f.code);
   openRegions(state, now);
   addLog(state, now, '✦', PHASES[0].story);
@@ -214,7 +214,7 @@ function migrateV3(s: Json, now: number): Json {
     eggs: (Array.isArray(s.eggs) ? s.eggs : []).map((e) => ({ ...(e as object), tank: 'T1' })),
     decor: (Array.isArray(s.decor) ? s.decor : []).map((d) => ({ ...(d as object), tank: 'T1' })),
     upgrades: { feeder: false, heater: false, feederOrbit: 0, ...oldUpgrades, annex, extendBerths },
-    settings: { muted: false, batterySaver: false, shortPods: false, uiScale: 1, ...oldSettings },
+    settings: { muted: false, batterySaver: false, shortPods: false, uiScale: 1, tankMenuEdge: 'right', ...oldSettings },
     regions: [...(Array.isArray(s.regions) ? s.regions : []), ...newRegions],
   };
   openRegions(out as unknown as State, now);

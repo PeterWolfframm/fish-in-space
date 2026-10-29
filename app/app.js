@@ -1,4 +1,4 @@
-// The pixelforge app: pick a generator, roll or edit a genome, watch it animate, breed from a
+// The fish-in-space app: pick a generator, roll or edit a genome, watch it animate, breed from a
 // gallery, export PNGs, sheets and JSON. Written once against the generator contract in
 // src/gen/registry.js, so a new generator shows up here without touching this file.
 //
@@ -42,12 +42,26 @@ const state = {
   beautify: 'off', // which model restyles rolls: off | public | personal | blend
   view: 'forge',
 };
+const FORGE_KEY = 'fish-in-space.forge';
+const migrateStorageKey = (key) => {
+  try {
+    const legacy = key.replace(/^fish-in-space\./, 'pixelforge.');
+    const v = localStorage.getItem(key) ?? localStorage.getItem(legacy);
+    if (v != null && localStorage.getItem(key) == null) {
+      localStorage.setItem(key, v);
+      localStorage.removeItem(legacy);
+    }
+    return v;
+  } catch {
+    return null;
+  }
+};
 try {
-  Object.assign(state, JSON.parse(localStorage.getItem('pixelforge.forge')) ?? {});
+  Object.assign(state, JSON.parse(migrateStorageKey(FORGE_KEY) ?? '{}'));
 } catch {}
 const savePrefs = () => {
   try {
-    localStorage.setItem('pixelforge.forge', JSON.stringify({ look: state.look, beautify: state.beautify }));
+    localStorage.setItem(FORGE_KEY, JSON.stringify({ look: state.look, beautify: state.beautify }));
   } catch {}
 };
 const VIEWS = { home: showHome, forge: null, swipe: showSwipe, tank: showTank, likes: showLikes, breed: showBreed, admin: showAdmin };
@@ -656,11 +670,11 @@ function tick(now) {
 
 // Light is Keypad's own theme. Dark overrides the same tokens. Nothing saved follows the OS,
 // which index.html also applies before first paint.
-const THEME_KEY = 'pixelforge.theme';
+const THEME_KEY = 'fish-in-space.theme';
 const themeMedia = matchMedia('(prefers-color-scheme: dark)');
 const savedTheme = () => {
   try {
-    const saved = localStorage.getItem(THEME_KEY);
+    const saved = migrateStorageKey(THEME_KEY);
     return saved === 'light' || saved === 'dark' ? saved : null;
   } catch {
     return null;

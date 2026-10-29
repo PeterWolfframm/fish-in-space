@@ -106,4 +106,4 @@ are extinct or that care is guaranteed by matching one trait.
 - A player can inspect, feed, select two fish, breed a fry, release a fish and see Karma change.
 - Refresh preserves the player-created fish and restoration progress.
 - Every control works by touch and keyboard where practical; reduced motion is respected.
-- No changes to pixelforge's generator implementation are required.
+- No changes to fish-in-space's generator implementation are required.

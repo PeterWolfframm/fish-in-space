@@ -4,7 +4,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { load, sheet, frameCanvas, type Sheet } from '../art/atlas';
 import type { Family } from '../art/bake';
-import { CharacterArt, drawPip } from '../art/characters';
+import { CharacterArt, drawPip, drawYou } from '../art/characters';
 import type { Who } from '../content/comms/types';
 
 interface Props {
@@ -48,9 +48,10 @@ export function Portrait({ who, mood = 'idle', talking = false }: { who: Who; mo
     let f = 0;
     let alive = true;
     const anim = talking ? 'talk' : mood === 'talk' ? 'idle' : mood;
-    if (who === 'pip') {
-      drawPip(c, 0, mood, 4);
-      const t = setInterval(() => drawPip(c, ++f, mood, 4), talking ? 220 : 600);
+    if (who === 'pip' || who === 'you') {
+      const draw = who === 'pip' ? drawPip : drawYou;
+      draw(c, 0, mood, 4);
+      const t = setInterval(() => draw(c, ++f, mood, 4), talking ? 220 : 600);
       return () => clearInterval(t);
     }
     let timer: ReturnType<typeof setInterval> | undefined;

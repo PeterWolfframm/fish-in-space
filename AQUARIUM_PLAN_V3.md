@@ -23,7 +23,7 @@ The current vanilla build (`aquarium/`) stays as the reference until v3 matches 
 | Save | localStorage | **IndexedDB** (idb-keyval) behind a `Backend` interface |
 | Auth and DB | none | **still none.** `LocalBackend` now; PocketBase gets plugged in later (see §11) |
 | Shop | "Vault" tab | **The Roe Counter**: a real shop with rotating stock, crates and cuttings |
-| Plants | Hand-drawn swaying lines | **pixelforge plants** (`plant3`, `waterplant2`) baked and drawn in Pixi |
+| Plants | Hand-drawn swaying lines | **fish-in-space plants** (`plant3`, `waterplant2`) baked and drawn in Pixi |
 | Planet | 96 px rotating globe | **Procgen surface** per planet, with regions you deliver to and name |
 | Story | Intro modal and log lines | **The Professor**, plus a comic comms system with a cast of callers |
 | Feel | A tank with tabs | **A station with rooms**: Hatchery, Bridge, Roe Counter, Comms, Lab |

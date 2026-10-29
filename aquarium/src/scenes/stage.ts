@@ -17,7 +17,8 @@ export interface Scene {
   update(dt: number, t: number): void;
   tap?(x: number, y: number): void;
   drag?(dx: number, dy: number, x: number, y: number): void;
-  wheel?(dy: number, x: number, y: number): void;
+  dragEnd?(): void;
+  wheel?(dx: number, dy: number, x: number, y: number): void;
   show?(): void;
   hide?(): void;
   destroy(): void;
@@ -51,6 +52,7 @@ export class Stage {
   private active: Scene | null = null;
   private activeId = '';
   private callouts: Callout[] = [];
+  private labels = new Map<string, { text: Text; seen: boolean; x: number; y: number }>();
   private time = 0;
   private slow = 0;
   private host!: HTMLElement;
@@ -163,7 +165,7 @@ export class Stage {
       if (!down.moved) {
         const p = local(e);
         this.active?.tap?.(p.x, p.y);
-      }
+      } else this.active?.dragEnd?.();
       down = null;
     };
     this.view.on('pointerup', up);
@@ -175,7 +177,7 @@ export class Stage {
         e.preventDefault();
         const r = this.app.canvas.getBoundingClientRect();
         const p = local({ global: { x: e.clientX - r.left, y: e.clientY - r.top } });
-        this.active.wheel(e.deltaY, p.x, p.y);
+        this.active.wheel(e.deltaX, e.deltaY, p.x, p.y);
       },
       { passive: false },
     );
@@ -185,12 +187,36 @@ export class Stage {
   callout(x: number, y: number, label: string, color = '#fff6c9') {
     const text = new Text({
       text: label,
-      style: { fontFamily: 'Tiny5, ui-monospace, monospace', fontSize: 12, fontWeight: '400', fill: color, stroke: { color: '#04050b', width: 3 }, align: 'center' },
+      style: { fontFamily: 'Space Grotesk, system-ui, sans-serif', fontSize: 14, fontWeight: '700', fill: color, stroke: { color: '#04050b', width: 3 }, align: 'center' },
       resolution: this.dpr,
     });
     text.anchor.set(0.5, 1);
     this.overlay.addChild(text);
     this.callouts.push({ text, x, y, life: 1.6, max: 1.6 });
+  }
+
+  /**
+   * A crisp, screen-resolution label pinned to a scene point for this frame only (call it every frame
+   * it should show). Returns its size in scene pixels so the scene can draw a plate behind it.
+   */
+  label(key: string, x: number, y: number, label: string, color = '#f4f7ff') {
+    let l = this.labels.get(key);
+    const size = Math.max(11, Math.min(18, Math.round((5.5 * this.S) / this.dpr)));
+    if (!l) {
+      const text = new Text({ text: label, style: { fontFamily: 'Space Grotesk, system-ui, sans-serif', fontSize: size, fontWeight: '700', fill: color }, resolution: this.dpr });
+      text.anchor.set(0, 0.5);
+      this.overlay.addChild(text);
+      l = { text, seen: true, x, y };
+      this.labels.set(key, l);
+    }
+    if (l.text.text !== label) l.text.text = label;
+    if (l.text.style.fill !== color) l.text.style.fill = color;
+    if (l.text.style.fontSize !== size) l.text.style.fontSize = size;
+    l.seen = true;
+    l.x = x;
+    l.y = y;
+    const k = this.dpr / this.S;
+    return { w: Math.ceil(l.text.width * k), h: Math.ceil(l.text.height * k) };
   }
 
   private frame(dt: number) {
@@ -206,6 +232,7 @@ export class Stage {
     const max = want >= 60 ? 0 : want;
     if (this.app.ticker.maxFPS !== max) this.app.ticker.maxFPS = max;
 
+    for (const l of this.labels.values()) l.seen = false;
     if (this.active) {
       this.active.update(dt, this.time);
       this.app.renderer.render({ container: this.active.root, target: this.rt, clear: true, clearColor: 0x04050b });
@@ -219,6 +246,12 @@ export class Stage {
       if (c.life <= 0) c.text.destroy();
     }
     this.callouts = this.callouts.filter((c) => c.life > 0);
+    for (const l of this.labels.values()) {
+      l.text.visible = l.seen;
+      if (!l.seen) continue;
+      const p = this.toScreen(l.x, l.y);
+      l.text.position.set(Math.round(p.x), Math.round(p.y));
+    }
   }
 
   get room() {

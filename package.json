@@ -1,7 +1,7 @@
 {
-  "name": "pixelforge",
+  "name": "fish-in-space",
   "version": "0.1.0",
-  "description": "pixel art generator. for some reason, specialised in fish!",
+  "description": "FISH IN SPACE — procedural pixel art (especially fish).",
   "type": "module",
   "private": true,
   "exports": {
@@ -30,7 +30,7 @@
     "goldens:pilot": "node scripts/make-goldens.mjs pilot",
     "goldens:v1": "node scripts/make-goldens.mjs v1",
     "goldens:v2": "node scripts/make-goldens.mjs v2",
-    "goldens:fish": "cd ../fish. && node_modules/.bin/vite-node ../pixelforge/scripts/make-goldens.mjs fish"
+    "goldens:fish": "cd ../fish. && node_modules/.bin/vite-node ../fish-in-space/scripts/make-goldens.mjs fish"
   },
   "engines": {
     "node": ">=20"
@@ -45,6 +45,7 @@
     }
   },
   "dependencies": {
+    "@eurobase/sdk": "0.12.0",
     "@keypad/ui": "link:../kahootclone/packages/keypad"
   },
   "devDependencies": {

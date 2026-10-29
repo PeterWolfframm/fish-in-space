@@ -2,13 +2,26 @@
 // fish, plants, food, bubbles, eggs and effects. The store is the source of truth: the scene reads it each frame and reports taps and bites.
 
 import { Container, Graphics, Sprite, TilingSprite } from 'pixi.js';
-import { game, selected, pairWith, placing, selectFish, biteFish, tapEgg, placeCutting, onScene, orbit, type SceneEvent } from '../../store/signals';
+import { game, selected, pairWith, placing, selectFish, biteFish, tapEgg, placeCutting, onScene, orbit, activeTank, tankPan, type SceneEvent } from '../../store/signals';
 import { sfx, unlock } from '../../audio/sfx';
 import { LEDGE_SLOTS, WATER_SLOTS } from '../../game/state';
 import { regionLive } from '../life';
 import { canvas, texOf, lcg, glowTexture, rayTexture, PATTERNS } from '../paint';
 import { stage, fx, calm, type Scene } from '../stage';
 import { layout, SAND, type HatcheryLayout } from './layout';
+
+// The tank never pans vertically: it always fits the screen top to bottom.
+const PAN_KEYS: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+  KeyA: [-1, 0], KeyD: [1, 0],
+};
+const PAN_SPEED = 220;
+
+function typingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+}
 import { LabFrame } from './labframe';
 import { SpaceView } from './spaceview';
 import { Plants } from './plants';
@@ -63,9 +76,9 @@ function causticTexture(seed: number) {
 function paintWater(L: HatcheryLayout) {
   const { x, y, w, h } = L.water;
   const { c, g } = canvas(w, h);
-  // Clear near the surface so space and the planet read through; deeper water tints and thickens.
-  const top = [70, 190, 215, 0.1];
-  const bot = [6, 42, 78, 0.66];
+  // The surface stays clear enough for the planet to read through; the depths are a tank, not open space.
+  const top = [28, 110, 150, 0.34];
+  const bot = [4, 32, 64, 0.82];
   const bands = 16;
   for (let i = 0; i < bands; i++) {
     const k = (i / (bands - 1)) ** 1.25;
@@ -119,6 +132,7 @@ function paintWater(L: HatcheryLayout) {
 
 export class HatcheryScene implements Scene {
   root = new Container();
+  private world = new Container();
   private L!: HatcheryLayout;
   private frame = new LabFrame();
   private space = new SpaceView();
@@ -143,6 +157,19 @@ export class HatcheryScene implements Scene {
   private glowTex = glowTexture(32, 5);
   private off: () => void;
   private debugTexts: string[] = [];
+  // Several tanks share the scene; one is in view. The dots switch tanks. Drag, keys and the wheel pan.
+  private tankId = activeTank.peek();
+  private size = { W: 0, H: 0 };
+  private curtain = new Graphics();
+  private swapT = 0;
+  private recenter = true;
+  private cam = { x: 0, y: 0 };
+  private camTarget = { x: 0, y: 0 };
+  private vel = { x: 0, y: 0 };
+  private dragging = false;
+  private gliding = false;
+  private held = new Set<string>();
+  private keysOn = false;
 
   constructor() {
     const ray = rayTexture(64, 8);
@@ -159,8 +186,7 @@ export class HatcheryScene implements Scene {
       return t;
     });
     this.tankGlow.blendMode = 'add';
-    this.root.addChild(
-      this.space.root,
+    this.world.addChild(
       this.night,
       this.frame.back,
       this.plants.ledge,
@@ -178,12 +204,71 @@ export class HatcheryScene implements Scene {
       this.frame.frame,
       this.plants.debug,
     );
+    // Space and the swap curtain stay locked to the viewport. The tank slides under the camera.
+    this.root.addChild(this.space.root, this.world, this.curtain);
     this.off = onScene((e) => this.onEvent(e));
     void loadPlanet(game.peek().planet).then((p) => this.space.setPlanet(p));
   }
 
+  private shape() {
+    return game.peek().tanks.find((k) => k.id === this.tankId)?.shape ?? '1x2';
+  }
+
+  /** Bring another tank into view: relayout for its shape and let the old tank's life fall away. */
+  private switchTank(id: string) {
+    this.tankId = id;
+    this.food = [];
+    this.bubbles = [];
+    this.fxs = [];
+    for (const a of [...this.actors.values()]) this.removeActor(a);
+    this.swapT = 0.35;
+    this.recenter = true;
+    if (this.size.W) this.resize(this.size.W, this.size.H);
+  }
+
+  drag(dx: number, dy: number) {
+    this.dragging = true;
+    this.gliding = false;
+    this.camTarget.x -= dx;
+    this.camTarget.y -= dy;
+    this.clampCam();
+  }
+
+  dragEnd() {
+    this.dragging = false;
+    if (calm()) {
+      this.cam.x = this.camTarget.x;
+      this.cam.y = this.camTarget.y;
+      this.vel.x = this.vel.y = 0;
+      return;
+    }
+    // Finish the eased lag, then coast.
+    this.vel.x += (this.camTarget.x - this.cam.x) * 8;
+    this.vel.y += (this.camTarget.y - this.cam.y) * 8;
+    this.limitVel();
+  }
+
+  wheel(dx: number, dy: number) {
+    this.gliding = true;
+    this.vel.x = this.vel.y = 0;
+    this.camTarget.x += dx * 0.55;
+    this.camTarget.y += dy * 0.55;
+    this.clampCam();
+  }
+
   resize(W: number, H: number) {
-    this.L = layout(W, H);
+    const prev = this.L;
+    let fracX = 0.5;
+    let fracY = 1;
+    if (prev && !this.recenter) {
+      const maxX = Math.max(1, prev.W - prev.viewW);
+      const maxY = Math.max(1, prev.H - prev.viewH);
+      fracX = this.cam.x / maxX;
+      fracY = this.cam.y / maxY;
+    }
+    this.recenter = false;
+    this.size = { W, H };
+    this.L = layout(W, H, this.shape());
     const L = this.L;
     this.water.texture?.destroy(true);
     const wtr = paintWater(L);
@@ -207,16 +292,43 @@ export class HatcheryScene implements Scene {
       a.y = Math.min(a.y, L.sandY - 6);
       a.pickTarget(L);
     }
+    const maxX = Math.max(0, L.W - L.viewW);
+    const maxY = Math.max(0, L.H - L.viewH);
+    this.cam.x = maxX * fracX;
+    this.cam.y = maxY * fracY;
+    this.camTarget.x = this.cam.x;
+    this.camTarget.y = this.cam.y;
+    this.vel.x = this.vel.y = 0;
+    this.applyCam();
   }
 
   show() {
-    this.plants.sync(game.peek().decor);
+    this.listenKeys(true);
+    if (activeTank.peek() !== this.tankId) this.switchTank(activeTank.peek());
+    this.plants.sync(this.decorHere());
+  }
+
+  hide() {
+    this.listenKeys(false);
+    this.held.clear();
+    this.dragging = false;
+  }
+
+  private decorHere() {
+    return game.peek().decor.filter((d) => d.tank === this.tankId);
+  }
+
+  private eggsHere() {
+    return game.peek().eggs.filter((g) => g.tank === this.tankId);
   }
 
   // --- input ------------------------------------------------------------------------------------
 
   tap(x: number, y: number) {
     unlock();
+    const w = this.toWorld(x, y);
+    x = w.x;
+    y = w.y;
     const L = this.L;
     const s = game.peek();
     if (placing.peek() != null) {
@@ -233,7 +345,7 @@ export class HatcheryScene implements Scene {
       if (d < bd) (bd = d), (best = a);
     }
     if (best) return selectFish(best.id);
-    const egg = s.eggs.find((g) => Math.abs(L.water.x + g.x * L.water.w - x) < 8 && y > L.sandY - 12 && y < L.sandY + 4);
+    const egg = this.eggsHere().find((g) => Math.abs(L.water.x + g.x * L.water.w - x) < 8 && y > L.sandY - 12 && y < L.sandY + 4);
     if (egg) return tapEgg(egg);
     if (x > L.water.x && x < L.water.x + L.water.w && y > L.water.y - 4 && y < L.sandY) {
       this.dropFood(x, y);
@@ -265,6 +377,7 @@ export class HatcheryScene implements Scene {
     const a = 'fishId' in e ? this.actors.get(e.fishId) : undefined;
     switch (e.kind) {
       case 'hatched': {
+        if (game.peek().fish.find((f) => f.id === e.fishId)?.tank !== this.tankId) break;
         const x = L.water.x + e.x * L.water.w;
         this.burst(x, L.sandY - 4, 'spark', 8);
         for (let i = 0; i < 6; i++) this.bubbles.push({ x: x + (Math.random() - 0.5) * 8, y: L.sandY - 2, r: Math.random() < 0.3 ? 2 : 1, ph: Math.random() * 6 });
@@ -277,7 +390,10 @@ export class HatcheryScene implements Scene {
         if (a) this.burst(a.x, a.y - 6, 'heart', 5);
         break;
       case 'say':
-        if (a) stage.callout(a.x, a.y - a.h / 2 - 4, e.text, e.color);
+        if (a) {
+          const p = this.toScreen(a.x, a.y - a.h / 2 - 4);
+          stage.callout(p.x, p.y, e.text, e.color);
+        }
         break;
       case 'sold':
         if (a) {
@@ -287,16 +403,14 @@ export class HatcheryScene implements Scene {
         break;
       case 'launch': {
         // A capsule closes around the fish, sinks through the floor hatch, and streaks out the window.
-        const sp = new Sprite();
-        if (a) {
-          sp.texture = a.sprite.texture;
-          this.removeActor(a);
-        }
-        const w = Math.max(14, (a?.w ?? 16) + 6);
-        const h = Math.max(10, (a?.h ?? 10) + 6);
-        this.podLayer.addChild(sp);
-        this.pods.push({ x: a?.x ?? L.water.x + L.water.w / 2, y: a?.y ?? L.water.y + L.water.h / 2, w, h, t: 0, sprite: sp });
         setTimeout(() => this.space.launch(), 600);
+        if (!a) break; // launched from another tank: only the trail to the planet shows
+        const sp = new Sprite(a.sprite.texture);
+        const w = Math.max(14, a.w + 6);
+        const h = Math.max(10, a.h + 6);
+        this.removeActor(a);
+        this.podLayer.addChild(sp);
+        this.pods.push({ x: a.x, y: a.y, w, h, t: 0, sprite: sp });
         break;
       }
     }
@@ -313,8 +427,11 @@ export class HatcheryScene implements Scene {
 
   private sync() {
     const s = game.peek();
+    if (activeTank.peek() !== this.tankId) this.switchTank(activeTank.peek());
     const live = new Set<string>();
+    const sel = selected.peek();
     for (const f of s.fish) {
+      if (f.tank !== this.tankId) continue;
       live.add(f.id);
       let a = this.actors.get(f.id);
       if (!a) {
@@ -327,11 +444,12 @@ export class HatcheryScene implements Scene {
         this.fishLayer.addChild(a.sprite);
         this.halos.addChild(halo);
       } else a.setFish(f, this.L);
+      a.focused = f.id === sel;
     }
     for (const a of [...this.actors.values()]) if (!live.has(a.id)) this.removeActor(a);
     // Small fish on top.
     this.fishLayer.children.sort((p, q) => q.width - p.width);
-    this.plants.sync(s.decor);
+    this.plants.sync(this.decorHere());
   }
 
   update(dt: number) {
@@ -344,6 +462,7 @@ export class HatcheryScene implements Scene {
     const o = orbit.peek();
     const nightK = 1 - o.light;
     this.sync();
+    this.stepCamera(dt);
 
     for (const a of this.actors.values()) {
       a.steer(dt, t, L, this.food, (who) => {
@@ -390,6 +509,13 @@ export class HatcheryScene implements Scene {
     this.night.clear().rect(0, 0, L.W, L.H).fill({ color: 0x010207, alpha: nightK * 0.25 });
     this.tankGlow.clear();
     if (nightK > 0.2) this.tankGlow.rect(L.water.x, L.water.y, L.water.w, L.sandY - L.water.y).fill({ color: 0x3fc6c9, alpha: (nightK - 0.2) * 0.12 });
+    // Switching tanks: the new one surfaces out of the dark.
+    this.curtain.clear();
+    if (this.swapT > 0) {
+      this.swapT -= dt;
+      const k = Math.max(0, this.swapT / 0.35);
+      this.curtain.rect(0, 0, L.viewW, L.viewH).fill({ color: 0x04050b, alpha: k * k });
+    }
     if (this.plants.showDebug) this.debugLabels();
   }
 
@@ -397,7 +523,7 @@ export class HatcheryScene implements Scene {
     const L = this.L;
     const g = this.dyn.clear();
     const now = Date.now();
-    for (const egg of game.peek().eggs) {
+    for (const egg of this.eggsHere()) {
       const x = Math.round(L.water.x + egg.x * L.water.w);
       const y = L.sandY - 2 + 3;
       const left = Math.max(0, egg.hatchAt - now);
@@ -481,10 +607,151 @@ export class HatcheryScene implements Scene {
     const key = this.plants.labels.map((l) => `${l.x},${l.y},${l.text}`).join('|');
     if (key === this.debugTexts.join('|')) return;
     this.debugTexts = [key];
-    for (const l of this.plants.labels) stage.callout(l.x, l.y, l.text, '#9be37a');
+    for (const l of this.plants.labels) {
+      const p = this.toScreen(l.x, l.y);
+      stage.callout(p.x, p.y, l.text, '#9be37a');
+    }
+  }
+
+  private listenKeys(on: boolean) {
+    if (on === this.keysOn) return;
+    this.keysOn = on;
+    const m = on ? window.addEventListener : window.removeEventListener;
+    m('keydown', this.onKeyDown);
+    m('keyup', this.onKeyUp);
+    m('blur', this.onBlur);
+  }
+
+  private onKeyDown = (e: KeyboardEvent) => {
+    if (!PAN_KEYS[e.code] || typingTarget(e.target)) return;
+    e.preventDefault();
+    this.held.add(e.code);
+  };
+
+  private onKeyUp = (e: KeyboardEvent) => {
+    this.held.delete(e.code);
+  };
+
+  private onBlur = () => this.held.clear();
+
+  private keyVec() {
+    let x = 0;
+    let y = 0;
+    for (const code of this.held) {
+      const d = PAN_KEYS[code];
+      if (d) (x += d[0]), (y += d[1]);
+    }
+    const m = Math.hypot(x, y);
+    if (m > 1) (x /= m), (y /= m);
+    return { x, y };
+  }
+
+  private camPx() {
+    return { x: Math.round(this.cam.x), y: Math.round(this.cam.y) };
+  }
+
+  /** Viewport pixel → world pixel, matching the rounded camera the tank is drawn at. */
+  private toWorld(x: number, y: number) {
+    const c = this.camPx();
+    return { x: x + c.x, y: y + c.y };
+  }
+
+  /** World pixel → viewport pixel, for callouts drawn on the screen. */
+  private toScreen(x: number, y: number) {
+    const c = this.camPx();
+    return { x: x - c.x, y: y - c.y };
+  }
+
+  private clampCam() {
+    if (!this.L) return;
+    const maxX = Math.max(0, this.L.W - this.L.viewW);
+    const maxY = Math.max(0, this.L.H - this.L.viewH);
+    this.camTarget.x = Math.max(0, Math.min(maxX, this.camTarget.x));
+    this.camTarget.y = Math.max(0, Math.min(maxY, this.camTarget.y));
+  }
+
+  private limitVel() {
+    const max = 900;
+    const sp = Math.hypot(this.vel.x, this.vel.y);
+    if (sp > max) (this.vel.x *= max / sp), (this.vel.y *= max / sp);
+  }
+
+  private applyCam() {
+    const c = this.camPx();
+    this.world.position.set(-c.x, -c.y);
+    this.publishPan();
+  }
+
+  /** Tell the HTML layer how far across the glass the camera has panned, for the pan-position dots. */
+  private publishPan() {
+    const L = this.L;
+    if (!L) return;
+    const maxX = Math.max(0, L.W - L.viewW);
+    const next = maxX > 0 ? Math.round((this.cam.x / maxX) * 100) / 100 : null;
+    if (tankPan.peek() !== next) tankPan.value = next;
+  }
+
+  /** Ease toward a dragged or wheeled target, accelerate with the keys, and coast after a flick. */
+  private stepCamera(dt: number) {
+    const L = this.L;
+    const maxX = Math.max(0, L.W - L.viewW);
+    const maxY = Math.max(0, L.H - L.viewH);
+    const snap = calm();
+    const keys = this.keyVec();
+    const keyed = keys.x !== 0 || keys.y !== 0;
+    if (this.dragging) {
+      if (snap) {
+        this.cam.x = this.camTarget.x;
+        this.cam.y = this.camTarget.y;
+        this.vel.x = this.vel.y = 0;
+      } else {
+        const k = 1 - Math.exp(-10 * dt);
+        const px = this.cam.x;
+        const py = this.cam.y;
+        this.cam.x += (this.camTarget.x - this.cam.x) * k;
+        this.cam.y += (this.camTarget.y - this.cam.y) * k;
+        if (dt > 0) (this.vel.x = (this.cam.x - px) / dt), (this.vel.y = (this.cam.y - py) / dt);
+      }
+    } else if (keyed) {
+      this.gliding = false;
+      const k = snap ? 1 : 1 - Math.exp(-8 * dt);
+      this.vel.x += (keys.x * PAN_SPEED - this.vel.x) * k;
+      this.vel.y += (keys.y * PAN_SPEED - this.vel.y) * k;
+      this.cam.x += this.vel.x * dt;
+      this.cam.y += this.vel.y * dt;
+      this.camTarget.x = this.cam.x;
+      this.camTarget.y = this.cam.y;
+    } else if (this.gliding) {
+      const k = snap ? 1 : 1 - Math.exp(-10 * dt);
+      this.cam.x += (this.camTarget.x - this.cam.x) * k;
+      this.cam.y += (this.camTarget.y - this.cam.y) * k;
+      if (Math.hypot(this.camTarget.x - this.cam.x, this.camTarget.y - this.cam.y) < 0.4) {
+        this.cam.x = this.camTarget.x;
+        this.cam.y = this.camTarget.y;
+        this.gliding = false;
+      }
+    } else if (!snap) {
+      const decay = Math.exp(-2.4 * dt);
+      this.vel.x *= decay;
+      this.vel.y *= decay;
+      if (Math.hypot(this.vel.x, this.vel.y) < 6) this.vel.x = this.vel.y = 0;
+      this.cam.x += this.vel.x * dt;
+      this.cam.y += this.vel.y * dt;
+      this.camTarget.x = this.cam.x;
+      this.camTarget.y = this.cam.y;
+    }
+    this.limitVel();
+    this.cam.x = Math.max(0, Math.min(maxX, this.cam.x));
+    this.cam.y = Math.max(0, Math.min(maxY, this.cam.y));
+    this.camTarget.x = Math.max(0, Math.min(maxX, this.camTarget.x));
+    this.camTarget.y = Math.max(0, Math.min(maxY, this.camTarget.y));
+    if ((this.cam.x <= 0 && this.vel.x < 0) || (this.cam.x >= maxX && this.vel.x > 0)) this.vel.x = 0;
+    if ((this.cam.y <= 0 && this.vel.y < 0) || (this.cam.y >= maxY && this.vel.y > 0)) this.vel.y = 0;
+    this.applyCam();
   }
 
   destroy() {
+    this.listenKeys(false);
     this.off();
     this.plants.destroy();
     for (const a of [...this.actors.values()]) this.removeActor(a);

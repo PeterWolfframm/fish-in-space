@@ -1,4 +1,4 @@
-// Every generator pixelforge knows. Each one has the same shape, so the app and the CLI are
+// Every generator fish-in-space knows. Each one has the same shape, so the app and the CLI are
 // written once against it:
 //
 //   { id, label, game, size: {w, h}, bg, traits,      traits: a kit defineTraits() system

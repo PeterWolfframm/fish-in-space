@@ -42,7 +42,7 @@ export function Hud() {
           <i style={{ width: `${Math.round(Math.min(1, k) * 100)}%` }} />
         </div>
       </div>
-      <div class="credits" aria-label={`${s.credits} Allotment`}>
+      <div class="credits numeral" aria-label={`${s.credits} Allotment`}>
         {s.credits} ◎
       </div>
       <button class="icon-btn" onClick={askProf} aria-label="Ask the Prof" title="Ask the Prof">

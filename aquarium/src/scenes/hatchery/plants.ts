@@ -6,6 +6,7 @@ import { sheet, onSheet, keyOf, retain, release, type Sheet } from '../../art/at
 import { plantSize } from '../../game/plants';
 import type { DecorSlot } from '../../game/types';
 import { slotPos, type HatcheryLayout } from './layout';
+import { keepsakeCanvas } from '../../art/keepsakes';
 
 /** Generator size class → integer display scale and max height in tank pixels. */
 export const PLANT_SCALE: Record<'waterplant2' | 'plant3', Record<string, { scale: number; maxH: number }>> = {
@@ -30,7 +31,7 @@ const ANIM = { waterplant2: 'sway', plant3: 'idle' } as const;
 
 interface PlantActor {
   slot: number;
-  family: DecorSlot['family'];
+  family: 'waterplant2' | 'plant3';
   code: string;
   size: string;
   sprite: Sprite;
@@ -51,23 +52,37 @@ export class Plants {
   ledge = new Container();
   debug = new Graphics();
   private actors = new Map<number, PlantActor>();
+  /** Keepsakes (figurine, teapot…) sitting on the sand, keyed by slot. */
+  private objects = new Map<number, { code: string; sprite: Sprite; tex: Texture }>();
   private L!: HatcheryLayout;
   private off: () => void;
   readonly showDebug = plantsDebug();
   labels: { x: number; y: number; text: string }[] = [];
 
+  // Sand plants stay inside the glass, however wide a clump grows.
+  private clips = [new Graphics(), new Graphics()];
+
   constructor() {
     this.off = onSheet(() => this.bindAll());
+    [this.back, this.front].forEach((c, i) => (c.addChild(this.clips[i]), (c.mask = this.clips[i])));
   }
 
   resize(L: HatcheryLayout) {
     this.L = L;
+    for (const m of this.clips) m.clear().rect(L.water.x, L.water.y, L.water.w, L.water.h).fill(0xffffff);
     for (const a of this.actors.values()) this.place(a);
+    for (const slot of this.objects.keys()) this.placeObject(slot);
   }
 
   sync(decor: DecorSlot[]) {
     const live = new Set<number>();
+    const objs = new Set<number>();
     for (const d of decor) {
+      if (d.family === 'object') {
+        objs.add(d.slot);
+        this.syncObject(d.slot, d.code);
+        continue;
+      }
       live.add(d.slot);
       const a = this.actors.get(d.slot);
       if (a && a.code === d.code) continue;
@@ -80,6 +95,31 @@ export class Plants {
       this.bind(fresh);
     }
     for (const [slot, a] of this.actors) if (!live.has(slot)) this.remove(a);
+    for (const [slot, o] of this.objects) if (!objs.has(slot)) (o.sprite.destroy(), o.tex.destroy(true), this.objects.delete(slot));
+  }
+
+  private syncObject(slot: number, code: string) {
+    const old = this.objects.get(slot);
+    if (old?.code === code) return;
+    if (old) (old.sprite.destroy(), old.tex.destroy(true));
+    const c = keepsakeCanvas(code);
+    if (!c) return;
+    const tex = Texture.from(c);
+    tex.source.scaleMode = 'nearest';
+    const sprite = new Sprite(tex);
+    sprite.anchor.set(0.5, 1);
+    this.objects.set(slot, { code, sprite, tex });
+    this.placeObject(slot);
+  }
+
+  private placeObject(slot: number) {
+    const o = this.objects.get(slot);
+    if (!o || !this.L) return;
+    const p = slotPos(this.L, slot);
+    // Objects lose their empty bottom row so they sit in the sand.
+    o.sprite.position.set(p.x, p.y + 1);
+    const layer = p.back ? this.back : this.front;
+    if (o.sprite.parent !== layer) layer.addChild(o.sprite);
   }
 
   private remove(a: PlantActor) {
@@ -98,7 +138,7 @@ export class Plants {
     a.ledge = p.ledge;
     const row = PLANT_SCALE[a.family][a.size] ?? { scale: 1, maxH: 48 };
     // Never taller than the space it lives in.
-    const room = p.ledge ? this.L.lidY - 3 : this.L.sandY - this.L.water.y - 6;
+    const room = this.L.sandY - this.L.water.y - 6;
     a.maxH = Math.min(row.maxH, room);
     a.sprite.scale.set(row.scale);
     a.sprite.position.set(a.x, a.y);
@@ -175,7 +215,9 @@ export class Plants {
   destroy() {
     this.off();
     for (const a of [...this.actors.values()]) this.remove(a);
+    for (const o of this.objects.values()) (o.sprite.destroy(), o.tex.destroy(true));
+    this.objects.clear();
   }
 }
 
-export const plantKey = (d: DecorSlot) => keyOf(d.family, d.code, ANIM[d.family]);
+export const plantKey = (d: DecorSlot) => (d.family === 'object' ? null : keyOf(d.family, d.code, ANIM[d.family]));

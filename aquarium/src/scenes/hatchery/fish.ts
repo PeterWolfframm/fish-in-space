@@ -34,6 +34,8 @@ export class FishActor {
   band: [number, number] = BAND.mid;
   speed = 14;
   glow = false;
+  focused = false; // picked from the roster: comes to the front of the glass to be looked at
+  focusK = 0;
   sprite = new Sprite();
   halo: Sprite;
   swim: Sheet | null = null;
@@ -101,7 +103,13 @@ export class FishActor {
     let tx = this.tx;
     let ty = this.ty;
     if (target) (tx = target.x), (ty = target.y), (speed *= 2.1);
-    else if (this.pause > 0) {
+    else if (this.focused) {
+      // Hold station mid-tank with a slow drift, so it can be looked at.
+      tx = L.water.x + L.water.w / 2 + Math.sin(time * 0.6) * L.water.w * 0.08;
+      ty = L.water.y + L.water.h * 0.45 + Math.sin(time * 0.9) * 4;
+      speed *= 1.4;
+      this.pause = 0;
+    } else if (this.pause > 0) {
       this.pause -= dt;
       this.vx *= 0.95;
       this.vy *= 0.95;
@@ -119,6 +127,8 @@ export class FishActor {
   }
 
   update(dt: number, time: number, L: HatcheryLayout, night: number, glowFx: boolean) {
+    this.focusK += ((this.focused ? 1 : 0) - this.focusK) * Math.min(1, dt * 5);
+    const sc = 1 + 0.28 * this.focusK;
     this.x = Math.max(L.water.x + 6, Math.min(L.water.x + L.water.w - 6, this.x + this.vx * dt));
     this.y = Math.max(L.water.y + 6, Math.min(L.sandY - 4, this.y + this.vy * dt));
     if (this.vx > 3) this.dir = 1;
@@ -134,14 +144,16 @@ export class FishActor {
       this.sprite.texture = s.frames[Math.floor(this.t) % s.n];
       this.sprite.visible = true;
     } else this.sprite.visible = false;
-    const x = Math.round(this.x - this.w / 2);
-    this.sprite.scale.x = this.dir;
-    this.sprite.position.set(this.dir < 0 ? x + this.w : x, Math.round(this.y - this.h / 2) + bob);
-    this.halo.visible = this.glow && glowFx && night > 0.15;
+    const x = Math.round(this.x - (this.w * sc) / 2);
+    this.sprite.scale.set(this.dir * sc, sc);
+    this.sprite.position.set(this.dir < 0 ? x + Math.round(this.w * sc) : x, Math.round(this.y - (this.h * sc) / 2) + bob);
+    const lit = this.glow && glowFx && night > 0.15;
+    this.halo.visible = lit || this.focusK > 0.05;
     if (this.halo.visible) {
       this.halo.position.set(Math.round(this.x), Math.round(this.y));
-      this.halo.width = this.halo.height = this.w * 1.6;
-      this.halo.alpha = night * (0.6 + 0.2 * Math.sin(time * 2 + this.t * 0.1));
+      this.halo.width = this.halo.height = this.w * (1.45 + this.focusK * 0.35);
+      const nightA = lit ? night * (0.6 + 0.2 * Math.sin(time * 2 + this.t * 0.1)) : 0;
+      this.halo.alpha = Math.max(nightA, this.focusK * (0.16 + 0.06 * Math.sin(time * 4)));
     }
   }
 

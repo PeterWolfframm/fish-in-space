@@ -45,7 +45,8 @@ export function tick(state: State, now: number, active = false): GameEvent[] {
   for (const egg of [...state.eggs]) {
     if (egg.hatchAt > now) continue;
     state.eggs.splice(state.eggs.indexOf(egg), 1);
-    const f = newFish(state, egg.code, now, egg.tank, { x: egg.x });
+    const origin = egg.parents ? 'bred' : (egg.kind ?? 'roe');
+    const f = newFish(state, egg.code, now, egg.tank, { x: egg.x, origin, ...(egg.parents && { parents: egg.parents }) });
     state.fish.push(f);
     state.stats.hatched++;
     events.push({ kind: 'hatched', fish: f, roe: egg.roe, egg });

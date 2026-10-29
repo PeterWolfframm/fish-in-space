@@ -8,6 +8,7 @@ import { REACTIONS, type Trigger } from '../content/comms/reactions';
 import type { CommsEntry, CommsPanel } from '../content/comms/types';
 import { sfx, unlock } from '../audio/sfx';
 import { ambientTick, startAmbient } from '../audio/ambient';
+import { reducedMotion } from '../ui/theme';
 import { LocalBackend, tallyOnce, type Backend, type Tally } from './backend';
 
 // --- state -----------------------------------------------------------------------------------------
@@ -17,11 +18,15 @@ export const game = signal<W.State>(W.newGame(Date.now(), 'boot'));
 export const now = signal(Date.now());
 export const ready = signal(false);
 
-export type Room = 'hatchery' | 'bridge' | 'interchange' | 'pip' | 'lab';
+export type Room = 'hatchery' | 'bridge' | 'interchange' | 'pip' | 'lab' | 'tinder';
 export const room = signal<Room>('hatchery');
 export const selected = signal<string | null>(null); // fish id with the dossier open
 export const pairWith = signal<string | null>(null); // first fish of a pairing in progress
 export const labPair = signal<[string | null, string | null]>([null, null]);
+/** Which of the Lab's two breeding tanks is asking for a fish (tapped in the scene or the panel). */
+export const labPick = signal<0 | 1 | null>(null);
+/** True while the blanket is over the breeding tanks. */
+export const labBusy = signal(false);
 export const seeding = signal<string | null>(null); // fish id waiting for a region pick
 export const launching = signal<{ orderId?: string; fishId: string; regionId: string; count: number } | null>(null);
 export const focusRegion = signal<string | null>(null);
@@ -31,6 +36,18 @@ export const profOpen = signal<string | null>(null); // Ask the Prof hint text
 export const tallies = signal<Record<string, Tally>>({});
 export const pollWatch = signal<string | null>(null);
 export const placing = signal<number | null>(null); // index into ownedCuttings being placed in the tank
+export const activeTank = signal<string>('T1'); // which tank the Hatchery view/actions are aimed at
+export function setTank(id: string) {
+  activeTank.value = id;
+  const s = game.peek();
+  if (s.fish.some((f) => f.tank === id && f.name === 'Jerry')) beat('jerry');
+}
+/** 0..1: how far the camera has panned across the active tank's glass, for the pan-position indicator.
+ * null when the tank is no wider than the viewport (nothing to pan). */
+export const tankPan = signal<number | null>(null);
+export const tankMenuOpen = signal(false); // the popout tank-listing menu
+/** A fresh game opens on a slow blink: you've just been woken up. */
+export const waking = signal(false);
 
 export const orbit = computed(() => W.orbitAt(game.value.orbitEpoch, now.value));
 export const busy = computed(() => Boolean(pairWith.value || launching.value || briefing.value !== null));
@@ -104,7 +121,8 @@ export function toast(text: string, kind?: Toast['kind']) {
 export type SceneEvent =
   | { kind: 'hatched'; fishId: string; x: number }
   | { kind: 'launch'; fishId: string; code: string; regionId: string }
-  | { kind: 'splash'; regionId: string; clean: boolean }
+  | { kind: 'splash'; regionId: string; clean: boolean; code: string; gag: number }
+  | { kind: 'blanket' }
   | { kind: 'sold'; fishId: string }
   | { kind: 'hearts'; fishId: string }
   | { kind: 'say'; fishId: string; text: string; color?: string }
@@ -263,6 +281,20 @@ export function breedPair(a: string, b: string) {
   tryPair(b);
 }
 
+/** Pair from the Lab: the blanket drops over both breeding tanks, wiggles, lifts, and then the rule runs. */
+export function labSpawn() {
+  const [a, b] = labPair.value;
+  if (!a || !b || labBusy.value) return;
+  const why = W.breedProblem(game.value, game.value.fish.find((f) => f.id === a), game.value.fish.find((f) => f.id === b), Date.now());
+  if (why) return toast(why, 'bad');
+  labBusy.value = true;
+  emit({ kind: 'blanket' });
+  setTimeout(() => {
+    breedPair(a, b);
+    labBusy.value = false;
+  }, reducedMotion() ? 300 : 3400);
+}
+
 export function biteFish(id: string) {
   act((s) => W.feed(s, id));
   if (!W.seen(game.value, 'ob-fed')) beat('fed');
@@ -270,7 +302,7 @@ export function biteFish(id: string) {
 
 export function feedTank() {
   unlock();
-  act((s) => W.feedAll(s, 0.35));
+  act((s) => W.feedAll(s, 0.35, activeTank.value));
   emit({ kind: 'feedAll' });
   sfx.plip();
   beat('fed');
@@ -335,7 +367,7 @@ function fire(l: NonNullable<typeof launching.value>) {
     focusRegion.value = l.regionId;
   }, game.value.settings.shortPods ? 200 : 700);
   setTimeout(() => {
-    emit({ kind: 'splash', regionId: l.regionId, clean: drop.clean });
+    emit({ kind: 'splash', regionId: l.regionId, clean: drop.clean, code, gag: game.value.stats.seeded + game.value.stats.orders });
     sfx.splash();
     launching.value = null;
     const label = W.regionLabel(drop.region);
@@ -392,7 +424,7 @@ export function goRoom(r: Room) {
 export function placeCutting(slot: number) {
   const i = placing.value;
   if (i == null) return;
-  const r = act((s) => W.plant(s, i, slot));
+  const r = act((s) => W.plant(s, i, slot, activeTank.value));
   if (W.failed(r)) {
     sfx.nope();
     return toast(r.error, 'bad');
@@ -476,7 +508,7 @@ export async function boot(b: Backend = backend) {
   if (migrated) toast('Imported your Seedfall v2 save', 'gold');
   dirty = true;
   ready.value = true;
-  if (fresh) setTimeout(() => beat('start'), 1200);
+  if (fresh) wakeUp();
   tickTimer ??= setInterval(step, 1000);
   saveTimer ??= setInterval(() => void save(), 5000);
   if (typeof document !== 'undefined') {
@@ -495,5 +527,12 @@ export async function resetGame() {
   commsQueue.value = [];
   dirty = true;
   await save();
-  setTimeout(() => beat('start'), 600);
+  activeTank.value = 'T1';
+  wakeUp();
+}
+
+function wakeUp() {
+  waking.value = true;
+  setTimeout(() => (waking.value = false), 3200);
+  setTimeout(() => (beat('start'), beat('tanks')), 2400);
 }

@@ -31,12 +31,27 @@ export const CHAPTERS: Chapter[] = [
 ];
 
 /** Onboarding beats: each plays once, when its trigger fires. */
-export type BeatTrigger = 'start' | 'tapped' | 'hungry' | 'fed' | 'paired' | 'hatched' | 'order' | 'window' | 'landed' | 'shop' | 'phase-end-0' | 'named-first';
+export type BeatTrigger = 'start' | 'tanks' | 'jerry' | 'tapped' | 'hungry' | 'fed' | 'paired' | 'hatched' | 'order' | 'window' | 'landed' | 'shop' | 'phase-end-0' | 'named-first';
 
 export const BEATS: Record<BeatTrigger, CommsEntry> = {
   start: { id: 'ob-start', tags: ['onboard'], panels: [
-    { who: 'prof', mood: 'grin', text: 'Morning, Ichthyologist! Welcome to the Minnow. I’m Wren Halloway. Everybody says Prof.' },
-    { who: 'prof', mood: 'talk', text: 'Below us is Mirelle. It was ice until last week. We’re going to fill it with fish. Tap a fish to say hello.' },
+    { who: 'prof', mood: 'grin', text: 'Hey. Good morning. Good MORNING. Up you get, you’ve got fish to get back to.' },
+    { who: 'you', mood: 'blink', text: '…Fish?', side: 'right' },
+    { who: 'prof', mood: 'talk', text: 'Yes! Fish! Today is another day of filling a brand-new planet with life. That one, right behind the glass. Mirelle.' },
+    { who: 'you', mood: 'alarm', text: 'Wait. Where am I? What year is it?', side: 'right' },
+    { who: 'prof', mood: 'calm', text: 'Orbit 41 of the Colony Accord. Tuesday-ish, hull time.' },
+    { who: 'you', mood: 'talk', text: 'I’m from 2022, I don’t—', side: 'right' },
+    { who: 'prof', mood: 'talk', text: 'Love that for you, tell me over lunch. Mirelle won’t seed itself. And if you’ve forgotten how all this works, I’ll walk you through it. I’m Wren. Everybody says Prof.' },
+  ] },
+  tanks: { id: 'ob-tanks', tags: ['onboard'], panels: [
+    { who: 'prof', mood: 'talk', text: 'Right. You’ve got two tanks. This one’s the main group. Swipe up on the glass to see the other.' },
+    { who: 'pip', mood: 'calm', text: 'Swipe, scroll, or tap the markers on the right. PIP recommends: all three, for thoroughness.', side: 'right' },
+  ] },
+  jerry: { id: 'ob-jerry', tags: ['onboard'], panels: [
+    { who: 'prof', mood: 'grin', text: 'And this is Jerry.' },
+    { who: 'you', mood: 'talk', text: 'What’s wrong with Jerry?', side: 'right' },
+    { who: 'prof', mood: 'calm', text: 'Nothing’s wrong with Jerry! He just likes being alone. He needs his me-fish time.' },
+    { who: 'prof', mood: 'talk', text: 'Also the water in the big tank’s too warm for him. Swipe back down and tap a fish to say hello.' },
   ] },
   tapped: { id: 'ob-tapped', tags: ['onboard'], panels: [
     { who: 'pip', mood: 'calm', text: 'Fish selected. The dossier shows its water, diet and genes. PIP recommends: reading it.' },

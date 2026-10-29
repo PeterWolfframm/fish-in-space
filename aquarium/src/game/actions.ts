@@ -8,7 +8,7 @@ import { priceOf } from './market';
 import { orbitAt, inWindow } from './orbit';
 import { localTally, winner } from './polls';
 import { regionById, regionLabel } from './requests';
-import { addLog, hasRoom, isAdult, openRegions } from './state';
+import { addLog, fishName, hasRoom, isAdult, openRegions } from './state';
 import type { Egg, Fish, GameEvent, Order, Region, State } from './types';
 
 export type Result<T> = ({ error?: undefined } & T) | { error: string };
@@ -43,7 +43,8 @@ export function breed(state: State, aId: string, bId: string, now: number): Resu
   const { child, events } = fish.breedDetailed(genomeOf(a.code), genomeOf(b.code), `${state.seed}:brood${state.nextId}`);
   const code = codeOf({ ...child, stage: 'fry' });
   const r = rng(`${state.seed}:egg${state.nextId}`);
-  const egg: Egg = { id: `e${state.nextId++}`, code, tank: a.tank, hatchAt: now + EGG_HATCH, x: 0.15 + r() * 0.7, laid: now };
+  const egg: Egg = { id: `e${state.nextId++}`, code, tank: a.tank, hatchAt: now + EGG_HATCH, x: 0.15 + r() * 0.7, laid: now,
+    parents: [a, b].map((p) => ({ id: p.id, code: p.code, name: fishName(p) })) };
   state.eggs.push(egg);
   a.spawnReadyAt = b.spawnReadyAt = now + SPAWN_COOLDOWN;
   state.stats.bred++;

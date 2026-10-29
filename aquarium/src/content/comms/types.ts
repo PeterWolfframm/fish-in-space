@@ -1,6 +1,6 @@
 // Plain-data comms entries. Easy to write, easy to translate.
 
-export type Who = 'prof' | 'pip' | 'teo' | 'dot' | 'cook' | 'sel';
+export type Who = 'prof' | 'pip' | 'teo' | 'dot' | 'cook' | 'sel' | 'you';
 
 export interface CommsPanel {
   who: Who;
@@ -32,4 +32,5 @@ export const CAST: Record<Who, { name: string; color: string; seed: string }> = 
   dot: { name: 'DOT', color: '#ff7aa8', seed: 'dot-okafor' },
   cook: { name: 'COOK', color: '#f6d365', seed: 'cook-ahiga' },
   sel: { name: 'SEL', color: '#b9a5ff', seed: 'archivist-sel' },
+  you: { name: 'YOU', color: '#c9d4e8', seed: 'you' }, // the player: a pale silhouette, drawn by hand
 };

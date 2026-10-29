@@ -1,23 +1,33 @@
-// The Lab: pick two adults and see the four allele combinations their eggs can carry, then the Field
-// Notes of everything seen so far.
+// The Lab: two breeding tanks (pick a parent for each, here or by tapping the tank in the scene), the
+// Punnett square for the pair, the blanket, and the Heritage view of every fish's family and genes.
+// (Field Notes moved to PIP's archive.)
 
 import { Fragment } from 'preact';
-import { game, labPair, startPair, goRoom } from '../../store/signals';
+import { useState } from 'preact/hooks';
+import { game, now, labPair, labPick, labBusy, labSpawn } from '../../store/signals';
 import * as W from '../../game';
-import { SpriteArt } from '../Art';
+import { FishTile, Heading } from '../kit';
+import { alleleColor, labelOf, shows } from '../genes';
+import { Heritage } from '../heritage';
 
-const CHOICES = W.fish.traits.fieldById('geneA').choices as { id: string; label: string }[];
-const labelOf = (a: string) => CHOICES.find((c) => c.id === a)?.label.replace(/\s*\(.*\)/, '') ?? a;
-const modeOf = (a: string) => /\((\w+)\)/.exec(CHOICES.find((c) => c.id === a)?.label ?? '')?.[1] ?? 'wild';
+/** The colour of a Punnett cell: what the egg would show, or slate for wild type. */
+function cellStyle(x: string, y: string) {
+  const s = shows(x, y);
+  if (!s.length) return { '--c1': alleleColor('wild'), '--c2': alleleColor('wild') };
+  return { '--c1': alleleColor(s[0]), '--c2': alleleColor(s[1] ?? s[0]) };
+}
+const showsLabel = (x: string, y: string) => shows(x, y).map(labelOf).join(' + ') || 'Wild type';
 
-/** What a pair of alleles shows: recessives need both copies; dominant and codominant need one. */
-function shows(x: string, y: string): string {
-  const out = new Set<string>();
-  for (const a of [x, y]) {
-    if (a === 'wild') continue;
-    if (modeOf(a) === 'recessive' ? x === y : true) out.add(labelOf(a));
-  }
-  return out.size ? [...out].join(' + ') : 'wild type';
+function Slot({ side, fish }: { side: 0 | 1; fish?: W.Fish }) {
+  const pick = labPick.value;
+  const open = () => (labPick.value = pick === side ? null : side);
+  if (fish) return <FishTile fish={fish} size="lg" selected={pick === side} onClick={open} badge={`Tank ${side + 1} · tap to swap`} />;
+  return (
+    <button type="button" class={`lab-slot ${pick === side ? 'on' : ''}`} aria-pressed={pick === side} onClick={open}>
+      <span class="plus">+</span>
+      <span>Choose parent {side + 1}</span>
+    </button>
+  );
 }
 
 function Picker({ side }: { side: 0 | 1 }) {
@@ -25,114 +35,133 @@ function Picker({ side }: { side: 0 | 1 }) {
   const pair = labPair.value;
   const other = pair[1 - side] ? s.fish.find((f) => f.id === pair[1 - side]) : undefined;
   const otherSex = other ? W.genomeOf(other.code).sex : null;
-  const adults = s.fish.filter((f) => W.isAdult(f) && (!otherSex || W.genomeOf(f.code).sex !== otherSex));
+  const adults = s.fish.filter((f) => W.isAdult(f) && f.id !== other?.id && (!otherSex || W.genomeOf(f.code).sex !== otherSex) && (!other || f.tank === other.tank));
   const set = (id: string | null) => {
     const p: [string | null, string | null] = [...pair];
     p[side] = id;
     labPair.value = p;
+    labPick.value = !p[0] ? 0 : !p[1] ? 1 : null;
   };
   return (
-    <label class="stack" style={{ gap: '4px', flex: 1 }}>
-      <span class="note">Parent {side + 1}</span>
-      <select value={pair[side] ?? ''} onChange={(e) => set(e.currentTarget.value || null)}>
-        <option value="">— pick an adult —</option>
-        {adults.map((f) => (
-          <option key={f.id} value={f.id}>
-            {W.genomeOf(f.code).sex === 'f' ? '♀' : '♂'} {W.nameOf(f.code)}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div class="card stack lab-picker">
+      <Heading
+        title={`Who goes in tank ${side + 1}?`}
+        emoji="🐟🫧🔍"
+        action={
+          <button class="btn ghost small" onClick={() => (labPick.value = null)}>
+            Done
+          </button>
+        }
+      />
+      {other && <p class="note">Showing adults of the opposite sex that share {W.fishName(other)}’s tank.</p>}
+      {adults.length ? (
+        <div class="pick-grid">
+          {adults.map((f) => (
+            <FishTile key={f.id} fish={f} size="md" selected={pair[side] === f.id} onClick={() => set(f.id)} />
+          ))}
+        </div>
+      ) : (
+        <p class="empty">No adult fits here yet. Fry grow up in a few minutes.</p>
+      )}
+      {pair[side] && (
+        <button class="btn ghost small" onClick={() => set(null)}>
+          Empty tank {side + 1}
+        </button>
+      )}
+    </div>
   );
 }
 
-export function LabPanel() {
+function Breeding() {
   const s = game.value;
+  const t = now.value;
   const [a, b] = labPair.value;
+  const pick = labPick.value;
   const fa = a ? s.fish.find((f) => f.id === a) : undefined;
   const fb = b ? s.fish.find((f) => f.id === b) : undefined;
   const A = fa ? W.allelesOf(fa.code) : null;
   const B = fb ? W.allelesOf(fb.code) : null;
-  const notes = s.fieldNotes;
+  const why = fa && fb ? W.breedProblem(s, fa, fb, t) : null;
+  // Odds: the four cells folded into what the eggs would look like.
+  const odds = new Map<string, number>();
+  if (A && B) for (const x of A) for (const y of B) odds.set(showsLabel(x, y), (odds.get(showsLabel(x, y)) ?? 0) + 25);
   return (
     <div class="stack">
-      <div class="section-title">
-        <h3>Punnett square</h3>
-        <span class="note">each egg gets one allele from each parent</span>
+      <Heading title="Breeding tanks" emoji="💞🐟🫧" note="tap a tank to choose" />
+      <div class="lab-pair">
+        <Slot side={0} fish={fa} />
+        <span class="lab-heart" aria-hidden="true">
+          ♡
+        </span>
+        <Slot side={1} fish={fb} />
       </div>
-      <div class="row">
-        <Picker side={0} />
-        <Picker side={1} />
-      </div>
-      {A && B ? (
+      {pick !== null && <Picker side={pick} />}
+
+      {A && B && fa && fb ? (
         <>
+          <Heading title="Punnett square" emoji="🧬🔬💞" note="one allele from each parent" />
           <div class="punnett" role="table" aria-label="Possible allele pairs">
-            <div class="h" />
+            <div class="corner" />
             {B.map((y, j) => (
-              <div key={j} class="h">
+              <div key={j} class="h" role="columnheader">
+                <i style={{ background: alleleColor(y) }} />
                 {labelOf(y)}
               </div>
             ))}
             {A.map((x, i) => (
               <Fragment key={i}>
-                <div class="h">
+                <div class="h" role="rowheader">
+                  <i style={{ background: alleleColor(x) }} />
                   {labelOf(x)}
                 </div>
                 {B.map((y, j) => (
-                  <div key={`${i}${j}`}>
-                    {shows(x, y)}
-                    <br />
-                    <span class="note">25%</span>
+                  <div key={`${i}${j}`} class="cell" role="cell" style={cellStyle(x, y)}>
+                    <span>{showsLabel(x, y)}</span>
+                    <b class="numeral">25%</b>
                   </div>
                 ))}
               </Fragment>
             ))}
           </div>
-          <div class="row">
-            <SpriteArt family="fish3" code={fa!.code} anim="swim" class="mini" />
-            <span>♡</span>
-            <SpriteArt family="fish3" code={fb!.code} anim="swim" class="mini" />
-            <button
-              class="btn signal small"
-              onClick={() => {
-                goRoom('hatchery');
-                startPair(fa!.id);
-              }}
-            >
-              Pair them in the tank
-            </button>
+          <div class="odds">
+            {[...odds.entries()]
+              .sort((x, y) => y[1] - x[1])
+              .map(([label, pct]) => (
+                <div key={label} class="odds-row">
+                  <span>{label}</span>
+                  <span class="odds-bar">
+                    <i style={{ width: `${pct}%` }} />
+                  </span>
+                  <b class="numeral">{pct}%</b>
+                </div>
+              ))}
           </div>
+          <button class="btn signal lab-go" disabled={Boolean(why) || labBusy.value} onClick={labSpawn}>
+            {labBusy.value ? 'Shh… blanket’s down' : '♡ Pair them'}
+          </button>
+          {why && <p class="note warn">{why}</p>}
+          {!why && <p class="note">The eggs are laid in their tank in the Hatchery.</p>}
         </>
       ) : (
-        <p class="empty">Pick two adults of opposite sex to see what their eggs can carry.</p>
+        <p class="empty">Put an adult in each tank to see what their eggs can carry.</p>
       )}
+    </div>
+  );
+}
 
-      <div class="section-title">
-        <h3>Field Notes</h3>
-        <span class="note">
-          {notes.species.length} species · {notes.alleles.length}/{W.ALLELES.length} alleles · {notes.regions.length} named
-        </span>
+export function LabPanel() {
+  const [tab, setTab] = useState<'breed' | 'heritage'>('breed');
+  return (
+    <div class="stack">
+      <div class="tabs-big" role="tablist">
+        <button role="tab" aria-selected={tab === 'breed'} onClick={() => setTab('breed')}>
+          💞 Breeding
+        </button>
+        <button role="tab" aria-selected={tab === 'heritage'} onClick={() => setTab('heritage')}>
+          🌳 Heritage
+        </button>
       </div>
-      <h4 class="note">Alleles</h4>
-      <div class="notes-grid">
-        {W.ALLELES.map((al) => (
-          <span key={al} class={`chip ${notes.alleles.includes(al) ? 'r-rare' : ''}`}>
-            {notes.alleles.includes(al) ? labelOf(al) : '???'}
-          </span>
-        ))}
-      </div>
-      <h4 class="note">Species</h4>
-      <div class="notes-grid">
-        {notes.species.length ? notes.species.map((n) => <span key={n} class="chip">{n}</span>) : <span class="note">None yet.</span>}
-      </div>
-      <h4 class="note">Bodies</h4>
-      <div class="notes-grid">
-        {notes.bodies.map((n) => (
-          <span key={n} class="chip">
-            {n}
-          </span>
-        ))}
-      </div>
+      {tab === 'breed' ? <Breeding /> : <Heritage />}
     </div>
   );
 }

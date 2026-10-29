@@ -35,7 +35,7 @@ export const FISH_SEEDS = Array.from({ length: 80 }, (_, i) => `fish-${i}`);
 
 // ---------- v1 freeze ----------
 //
-// The pixelforge-native v1 generators (tank plants, garden plants) have no game to be held to, so
+// The fish-in-space-native v1 generators (tank plants, garden plants) have no game to be held to, so
 // they are held to themselves: fingerprints rendered once from the v1 code before v2 existed.
 // `npm run goldens:v1` writes test/fixtures/{waterplant,plant}.json; test/v1-frozen.test.mjs
 // compares. A diff there means a v1 algorithm changed — which it must not.

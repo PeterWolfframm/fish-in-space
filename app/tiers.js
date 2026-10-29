@@ -1,7 +1,8 @@
 // Local ranking of catches. Approved swipes land in the bucket until dragged onto a row.
 // A baby kept from the matchmaker is `local` and is not a server like.
 
-const KEY = 'pixelforge.tiers';
+const KEY = 'fish-in-space.tiers';
+const LEGACY_KEY = 'pixelforge.tiers';
 export const RANKS = ['S', 'A', 'B', 'C', 'D', 'pool'];
 
 const listeners = new Set();
@@ -15,7 +16,15 @@ function empty() {
 
 function load() {
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY));
+    let raw = localStorage.getItem(KEY);
+    if (raw == null) {
+      raw = localStorage.getItem(LEGACY_KEY);
+      if (raw != null) {
+        localStorage.setItem(KEY, raw);
+        localStorage.removeItem(LEGACY_KEY);
+      }
+    }
+    const saved = raw ? JSON.parse(raw) : null;
     const next = empty();
     if (!saved) return next;
     for (const rank of RANKS) {

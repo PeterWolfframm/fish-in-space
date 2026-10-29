@@ -1,4 +1,4 @@
-# SECOND TIDE (working title): design and build brief for an aquarium game on pixelforge
+# SECOND TIDE (working title): design and build brief for an aquarium game on fish-in-space
 
 > **Who this is for:** a coding LLM that will build this game from scratch. You have not seen the
 > two existing repos. Everything you need about them is in here, with file paths so you can check.
@@ -10,22 +10,22 @@
 
 **Why this exists.** The owner had an aquarium app called *myaquarium*: repo `~/Code/fish.`,
 remote `github.com/PeterWolfframm/myaquarium`, React + TypeScript + PixiJS + Supabase. All the
-pixel art has since moved into **pixelforge** (`~/Code/pixelforge`), a procedural pixel-art
+pixel art has since moved into **fish-in-space** (`~/Code/fish-in-space`), a procedural pixel-art
 generator. It draws fish (fish3: 32 bodies plus hybrids, six size classes, a modelled swim,
 Mendelian genes, names, lore, and an ecology derived from the body), tank plants (waterplant2)
 and garden plants (plant3). myaquarium's own simulation is thin: random wandering plus a
 size-scale tween. The decision is to stop developing myaquarium and build a new, much deeper game
-that uses pixelforge for every sprite.
+that uses fish-in-space for every sprite.
 
 **Goal.** First reach feature parity with myaquarium, then go well beyond it. The result should be
 a living aquarium sim with real fish behaviour, water chemistry, breeding, a post-apocalyptic
 story, and online trading, a shared world and competitions.
 
 **Ground rules for the implementer**
-1. **Never edit pixelforge from the game.** It is a library that other things depend on. Its v1
+1. **Never edit fish-in-space from the game.** It is a library that other things depend on. Its v1
    generators are frozen, with pixel-for-pixel tests. If the game needs a new animation (for
-   example `flare`, `jump`, `sleep` or `dead`), write it down as a separate pixelforge task. The
-   repo has an `/add-animation` skill for that. Do not patch pixelforge inline.
+   example `flare`, `jump`, `sleep` or `dead`), write it down as a separate fish-in-space task. The
+   repo has an `/add-animation` skill for that. Do not patch fish-in-space inline.
 2. **Keep every milestone playable** (section 12). Never leave a milestone with a blank screen
    or a half-wired system.
 3. **The sim is pure and deterministic:** no DOM, no `Math.random`, no `Date.now()` inside it.
@@ -33,7 +33,7 @@ story, and online trading, a shared world and competitions.
 4. **The code is the fish.** A fish's genome code (e.g. `f3.…`) is its heritable identity.
    Everything else about a fish (age, hunger, wounds, position) is *state*, stored next to the
    code and never folded into it.
-5. **Text written in the game's voice** follows `pixelforge/docs/lore-writing-guide.md`:
+5. **Text written in the game's voice** follows `fish-in-space/docs/lore-writing-guide.md`:
    grimdark-archive gravity applied to small fish, never winking, no borrowed IP.
 6. If a decision in this brief turns out to be wrong once you are in the code, stop and say so.
    Don't silently work around it.
@@ -42,12 +42,12 @@ story, and online trading, a shared world and competitions.
 
 ## 1. What exists today
 
-### 1.1 pixelforge: the art and genetics engine (`~/Code/pixelforge`)
+### 1.1 fish-in-space: the art and genetics engine (`~/Code/fish-in-space`)
 
 Plain ES modules, no build step, no DOM in `src/` (except `src/pixel/blit.js`). Read `README.md`.
 
 ```js
-import { GENERATORS, generator, fromCode, sizeOf } from 'pixelforge/registry'; // src/gen/registry.js
+import { GENERATORS, generator, fromCode, sizeOf } from 'fish-in-space/registry'; // src/gen/registry.js
 const fish3 = generator('fish3');
 ```
 
@@ -88,7 +88,7 @@ Other generators for the tank: `waterplant2` (anims `sway`, `gust`; four size cl
 plants, and `plant3` (16 species; `idle`, `wind`, `gust`, `rustle`, `bloom`, `glow`, `grow`,
 `seasons`) for shore and terrarium plants.
 
-pixelforge also runs **PocketBase** (`pb_migrations/`, `scripts/run-app.mjs`), a Node trainer
+fish-in-space also runs **PocketBase** (`pb_migrations/`, `scripts/run-app.mjs`), a Node trainer
 service (`server/trainer.mjs`) and a Fly.io deploy (`fly.toml`). Reuse those patterns. It has
 **pixelgen** (`src/pixelgen/`), a small net trained on swipes that scores how good a sprite
 looks. It can act as an aesthetic judge (section 9.4).
@@ -100,7 +100,7 @@ These ideas are good. Carry them forward:
 | Idea | Where | Why it matters |
 |---|---|---|
 | **The code is the identity.** Only genome codes are stored, never a second copy of the fish. | `src/fish/keep.ts` | No drift between "the fish" and "its picture". Trading, saving and sharing are just strings. |
-| **The renderer is pure; a separate adapter makes textures** | `src/fish/draw.ts` → `src/fish/texture.ts` | The same pixels feed the tank, the gallery and PNG export. pixelforge now plays `draw.ts`'s role. |
+| **The renderer is pure; a separate adapter makes textures** | `src/fish/draw.ts` → `src/fish/texture.ts` | The same pixels feed the tank, the gallery and PNG export. fish-in-space now plays `draw.ts`'s role. |
 | **Offline-first boot**: the tank fills with fish synchronously, before any network reply | `EntityManager.spawnSchool` (comment explains why) | The old app used to sit blank waiting on a database. Never again. |
 | **Interaction is a pure state machine**, testable without Pixi | `src/fish/tankInteraction.ts` (`afterTap`, `offspringCode`) | Tap a fish to inspect it. "Breed" then waits for a second fish, and stray taps don't cancel. Keep this exact UX. |
 | **Photo → fish**: Claude reads a photo and fills in the *genome*. It doesn't pixelate the photo. The schema is built from the trait fields, and `normalize` repairs impossible fish. | `src/fish/vision.ts`, `src/lab/PhotoToFish.tsx` | A great hook. Port it to fish3 fields. |
@@ -118,7 +118,7 @@ These ideas are good. Carry them forward:
   failed, the fish stayed frozen forever.
 - Manager sprawl: 10 or more coordinators and managers for one scene, a "universal game state"
   table, a performance-instrumentation estate, a mockup UI.
-- Growth as a smooth sprite **scale** (0.5→1.0). Scaling blurs pixel art. Use pixelforge's
+- Growth as a smooth sprite **scale** (0.5→1.0). Scaling blurs pixel art. Use fish-in-space's
   `stage` field and size classes instead.
 - An invisible 30-day lifespan that nothing in the UI shows.
 
@@ -126,28 +126,28 @@ These ideas are good. Carry them forward:
 
 ## 2. Target architecture and tech stack
 
-**Repo:** a new sibling repo, e.g. `~/Code/secondtide`, set up as a pnpm workspace. pixelforge is
-linked as `"pixelforge": "link:../pixelforge"`, the same way it already links `@keypad/ui`.
+**Repo:** a new sibling repo, e.g. `~/Code/secondtide`, set up as a pnpm workspace. fish-in-space is
+linked as `"fish-in-space": "link:../fish-in-space"`, the same way it already links `@keypad/ui`.
 
 ```
 secondtide/
   packages/
     sim/        pure TS: world model, needs, behaviour, steering, water, life cycle. No DOM, no Pixi.
     shared/     types, zod schemas, constants, ecology→number tables, deterministic RNG
-    content/    story scripts, world map data, quests, codex glue (reads pixelforge lore)
+    content/    story scripts, world map data, quests, codex glue (reads fish-in-space lore)
   apps/
     web/        Vite + React 19 + Zustand + PixiJS v8 + pixi-viewport + @keypad/ui
-    warden/     Node service: authoritative actions, wild-world ticks, competitions (pattern: pixelforge server/trainer.mjs)
+    warden/     Node service: authoritative actions, wild-world ticks, competitions (pattern: fish-in-space server/trainer.mjs)
   pb_migrations/   PocketBase schema
 ```
 
-- **TypeScript strict**, Vitest, ESLint, Playwright for smoke and screenshots. pixelforge is plain
-  JS, so write a small `pixelforge.d.ts` covering just the surface you use.
+- **TypeScript strict**, Vitest, ESLint, Playwright for smoke and screenshots. fish-in-space is plain
+  JS, so write a small `fish-in-space.d.ts` covering just the surface you use.
 - **Threads:** the UI runs on the main thread. The **sim runs in a Web Worker** and posts snapshots
   (positions, headings, anim ids and frames as transferable `Float32Array`/`Uint16Array`). A
   **sprite worker** calls `generator.frame()` and turns indexed frames into RGBA `ImageBitmap`s
   (OffscreenCanvas). The main thread only draws and handles input.
-- **Backend:** PocketBase, as in pixelforge, deployed as its own Fly app. The `warden` Node
+- **Backend:** PocketBase, as in fish-in-space, deployed as its own Fly app. The `warden` Node
   service talks to PocketBase as superuser and imports `packages/sim`, so the server runs the same
   rules as the client.
 
@@ -180,7 +180,7 @@ secondtide/
   show a "While you were away" journal. Deaths while away are rare by design: the macro sim gives
   a grace buffer so a weekend away doesn't wipe the tank.
 - **RNG:** one seeded PRNG stream per tank (mulberry32/sfc32, in `shared/`). Fork child streams per
-  fish by hashing `tankSeed + fishId`. pixelforge's own seeds are strings; pass `${tankId}:${clutchNo}`
+  fish by hashing `tankSeed + fishId`. fish-in-space's own seeds are strings; pass `${tankId}:${clutchNo}`
   style strings to `breedDetailed`.
 - **Spatial index:** a uniform grid hash with cell = 32 world px, for neighbour queries.
 
@@ -189,7 +189,7 @@ secondtide/
 ## 3. Data model (sim, `packages/shared`)
 
 ```ts
-type Code = string;                       // pixelforge genome code, e.g. "f3.…"
+type Code = string;                       // fish-in-space genome code, e.g. "f3.…"
 interface Specimen {                      // a real fish (server record once online)
   id: string; code: Code; ownerId: string;
   bornAt: SimTime; parents?: [string, string]; clutchId?: string;
@@ -268,7 +268,7 @@ inertia so fish don't twitch between activities. The highest score wins.
 | `flee` | threat proximity × (1−boldness) | flee + seek cover; startle spreads to neighbours | sprint |
 | `hide` | stress × cover available | arrive at cave/plant, hold | idle |
 | `guard` | territorial × intruder in territory | chase the intruder to the edge, return home | sprint / turn |
-| `display` | territorial × same-sex rival nearby | face the rival and hold (later: a `flare` anim from pixelforge) | idle |
+| `display` | territorial × same-sex rival nearby | face the rival and hold (later: a `flare` anim from fish-in-space) | idle |
 | `court` / `spawn` / `tend` | breed × mate present / eggs present | follow mate, circle, lay; pair-guard and fan eggs | swim / idle |
 | `rest` / `sleep` | energy × circadian off-hours | settle at the level band floor or in cover, speed ≈ 0 | idle (slowed fps) |
 | `beg` | hunger × keeper present × learned feedSpot | go to the feed spot near the surface | swim |
@@ -413,10 +413,10 @@ drowned city, a trench nobody ordered. All of it is clean, mineral-perfect and *
 lifeless**.
 
 You wake in an **Ark**: a sealed research vault run by **the Archive** (the same institution that
-writes the fish codex in pixelforge's lore guide). You are its last **Keeper-Biologist**. The
+writes the fish codex in fish-in-space's lore guide). You are its last **Keeper-Biologist**. The
 Archive's gene vault survived, mostly. Its records are damaged, low-resolution, simple.
 **Diegetic hook:** the old v1 fish codes (`f…`) are those damaged pre-collapse samples. When you
-open one in the game it is upgraded to a full v3 fish (pixelforge does this through `fromCode`),
+open one in the game it is upgraded to a full v3 fish (fish-in-space does this through `fromCode`),
 so "restoring the vault" means literally growing simple old fish into rich new ones.
 
 Your mandate: **re-seed every body of water on the planet** with fish that can survive there and
@@ -464,7 +464,7 @@ gap between the gravity and the guppies. No gore, no real-world religions or pol
 
 ### 7.6 Progression and economy (single player)
 - **Research points** come from the **codex**: the first time you see each ecology key, trait key,
-  hybrid, morph, sport, signature or relic unlocks its entry (text from pixelforge `lore`). The
+  hybrid, morph, sport, signature or relic unlocks its entry (text from fish-in-space `lore`). The
   codex *is* the collection book.
 - **Supplies** (food, salts, equipment) come from restoration milestones and, online, from the
   market.
@@ -480,7 +480,7 @@ gap between the gravity and the guppies. No gore, no real-world religions or pol
   `breedDetailed` N=200 times with throwaway seeds and shows outcome odds (albino 25%, hybrid
   chance, sterility). That's the planning tool for serious breeders.
 - **Sandbox tank** (= the old Lab): free roll, edit and breed, like myaquarium's `/lab` and
-  pixelforge's Forge. Sandbox fish are tagged `provenance: 'sandbox'` and can never be traded,
+  fish-in-space's Forge. Sandbox fish are tagged `provenance: 'sandbox'` and can never be traded,
   released or entered in competitions.
 - **Photo → fish** (port `fish./src/fish/vision.ts` to fish3 fields): in the Sandbox it's
   unlimited with the player's own API key (kept in localStorage, as now). In story mode it's a
@@ -545,7 +545,7 @@ The multiplayer layer is framed as the radio network between surviving Arks.
 ### 9.4 Competitions
 | Format | How it's judged | Why it's fun |
 |---|---|---|
-| **Shows** (weekly themes: "Best galaxy-morph disc", "Ugliest beloved blobfish") | pairwise swipe voting by players (Elo/TrueSkill). Votes weighted 1/√(votes cast), like pixelforge's trainer. pixelgen public model score as a tiebreaker only. | Uses pixelforge's swipe infrastructure. Beauty breeding becomes a meta. |
+| **Shows** (weekly themes: "Best galaxy-morph disc", "Ugliest beloved blobfish") | pairwise swipe voting by players (Elo/TrueSkill). Votes weighted 1/√(votes cast), like fish-in-space's trainer. pixelgen public model score as a tiebreaker only. | Uses fish-in-space's swipe infrastructure. Beauty breeding becomes a meta. |
 | **Breeding bounties** ("register a verified-born albino koi-line fish with purity ≥ 5 and stripe pattern") | first N verified births that match the spec; constraints checked by the warden on the genome | Pure genetics puzzles; the cross predictor gets used heavily |
 | **Current trials** (sprint, endurance-in-torrent, gauntlet past a predator) | deterministic, closed-form course sim on the warden from EcoProfile speeds plus a seed; replay shown in the client | Turns gait, tail and size into competitive stats |
 | **Restoration league** (season, ~6 weeks) | Choirs (factions) compete on restoration % contributed in assigned water bodies, weighted by fit and diversity | Big cooperative-competitive goal; the story advances each season |
@@ -555,7 +555,7 @@ Deliberately out of scope: fish fighting arenas (real-world cruelty overtones). 
 behaviour stays inside the sim.
 
 ### 9.5 PocketBase collections (first cut)
-`users` (built-in; guest → account like pixelforge) · `arks` (profile, faction, scrip) ·
+`users` (built-in; guest → account like fish-in-space) · `arks` (profile, faction, scrip) ·
 `specimens` (code, owner, parents, provenance, state, bornAt) · `tanks` (owner, kind, snapshot
 JSON, simTime, public) · `clutches` · `waters` (world regions, restoration, macro populations) ·
 `releases` · `surveys` · `listings` · `trades` · `studs` · `bottles` · `competitions` ·
@@ -585,7 +585,7 @@ owner reads and writes their own tanks. Specimen ownership changes **only** thro
 | myaquarium feature | In Second Tide |
 |---|---|
 | Pixi tank with zoom/pan viewport | ✅ keep (integer zoom) |
-| Fish generated from genomes, swimming | ✅ fish3 via pixelforge |
+| Fish generated from genomes, swimming | ✅ fish3 via fish-in-space |
 | School spawned at boot, offline | ✅ keep (vault starter school) |
 | Kept fish list (codes) synced across devices | → `specimens` in PocketBase, local-first |
 | Click to inspect, click-to-breed flow | ✅ keep the state machine; richer dossier |
@@ -597,7 +597,7 @@ owner reads and writes their own tanks. Specimen ownership changes **only** thro
 | Entity labels, view distances, grid toggles | → debug overlay |
 | Moods (speed multipliers) | → Ambient mode + time scale |
 | Draggable persisted panels | ✅ lightweight |
-| Guest → account auth, account overview | ✅ PocketBase, same as pixelforge |
+| Guest → account auth, account overview | ✅ PocketBase, same as fish-in-space |
 | Offline indicator + sync queue | ✅ keep |
 | Growth (scale tween) and 30-day lifespan | → replaced by stages, visible ageing |
 | Calm/active swim-rest rhythm | → replaced by needs + utility AI |
@@ -606,7 +606,7 @@ owner reads and writes their own tanks. Specimen ownership changes **only** thro
 ---
 
 ## 12. Milestones (each ends playable and tested)
-- **M0 Skeleton:** workspace, pixelforge link, the `.d.ts`, sprite worker + cache, one Pixi tank
+- **M0 Skeleton:** workspace, fish-in-space link, the `.d.ts`, sprite worker + cache, one Pixi tank
   with viewport, 30 fish3 swimming with the plain wander rule. Debug overlay stub.
 - **M1 Parity:** everything in section 11, with local persistence first, then PocketBase.
 - **M2 Living tank:** EcoProfile, needs, utility AI, steering, schooling, levels, day/night,
@@ -621,7 +621,7 @@ owner reads and writes their own tanks. Specimen ownership changes **only** thro
 - **M7 Online II:** shared waters, wild macro sim, wild breeding, surveys, collective goals, Acts II–III.
 - **M8 Competitions:** shows (swipe voting), bounties, trials, factions, seasons, Acts IV–V.
 - **M9 Shore and terrarium:** a paludarium tank kind on the same engine with a land half
-  (plant3 plants, `wind`/`seasons` anims; land creatures later, as a new pixelforge kind).
+  (plant3 plants, `wind`/`seasons` anims; land creatures later, as a new fish-in-space kind).
 - **M10 Polish:** audio (bubbles, filter hum, Archive voice blips), mobile touch, accessibility,
   performance pass.
 

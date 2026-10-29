@@ -15,6 +15,15 @@ export interface Tank {
   slot: { x: number; y: number }; // top-left cell on the wall grid
 }
 
+/** A parent as it was at spawning, so the family tree survives the parent being sold or seeded. */
+export interface Parent {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export type Origin = 'bred' | 'roe' | 'heritage' | 'crate' | 'starter';
+
 export interface Fish {
   id: string;
   code: string;
@@ -25,6 +34,8 @@ export interface Fish {
   born: number;
   x?: number; // where it hatched, 0..1 across the tank
   name?: string; // a fixed-name override (e.g. Jerry); fishName() reads this first
+  parents?: Parent[]; // hatchery-bred fish only
+  origin?: Origin;
 }
 
 export interface Egg {
@@ -36,6 +47,7 @@ export interface Egg {
   x: number;
   roe?: boolean;
   kind?: 'roe' | 'heritage' | 'crate';
+  parents?: Parent[];
 }
 
 export type Req =
@@ -124,6 +136,7 @@ export interface Settings {
   batterySaver: boolean;
   shortPods: boolean;
   uiScale: 1 | 1.15 | 1.3 | 1.5;
+  tankMenuEdge: 'left' | 'right' | 'top' | 'bottom';
 }
 
 export interface Upgrades {

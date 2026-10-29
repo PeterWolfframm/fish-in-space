@@ -140,16 +140,16 @@ export class SpaceView {
   }
 
   resize(L: HatcheryLayout) {
-    const sized = this.L && this.L.W === L.W && this.L.H === L.H && this.L.planet.r === L.planet.r;
+    const sized = this.L && this.L.viewW === L.viewW && this.L.viewH === L.viewH && this.L.planet.r === L.planet.r;
     this.L = L;
     if (!sized) {
       this.deep.texture?.destroy(true);
-      this.deep.texture = texOf(paintDeep(L.W, L.H));
+      this.deep.texture = texOf(paintDeep(L.viewW, L.viewH));
     }
-    for (const s of this.stars) (s.width = L.W), (s.height = L.H);
+    for (const s of this.stars) (s.width = L.viewW), (s.height = L.viewH);
     const { cx, cy, r } = L.planet;
-    this.glare.position.set(Math.round(L.W * 0.12), Math.round(L.H * 0.1));
-    this.glare.width = this.glare.height = Math.round(Math.max(L.W, L.H) * 0.7);
+    this.glare.position.set(Math.round(L.viewW * 0.12), Math.round(L.viewH * 0.1));
+    this.glare.width = this.glare.height = Math.round(Math.max(L.viewW, L.viewH) * 0.7);
     // The atmosphere: thin bright limb, then a soft falloff in hard steps.
     this.halo.clear();
     for (let i = 5; i >= 1; i--) this.halo.circle(cx, cy, r + i * 2).fill({ color: 0x5fb8ff, alpha: 0.05 });
@@ -169,7 +169,7 @@ export class SpaceView {
     const L = this.L;
     if (!L) return;
     const { cx, cy, r } = L.planet;
-    this.trails.push({ t: 0, x0: L.tank.x + L.tank.w / 2, y0: L.plinthY - 4, x1: cx + (Math.random() - 0.5) * r * 0.9, y1: cy - r * (0.35 + Math.random() * 0.35) });
+    this.trails.push({ t: 0, x0: L.viewW / 2, y0: L.viewH - 8, x1: cx + (Math.random() - 0.5) * r * 0.9, y1: cy - r * (0.35 + Math.random() * 0.35) });
   }
 
   update(dt: number, t: number, o: { f: number; light: number }, life: number[], open: number[], calm: boolean) {
@@ -211,13 +211,13 @@ export class SpaceView {
       if (s.next > 0) return;
       s.t = 0;
       s.dir = Math.random() < 0.5 ? 1 : -1;
-      s.y = Math.round(L.H * (0.08 + Math.random() * 0.3));
+      s.y = Math.round(L.viewH * (0.08 + Math.random() * 0.3));
       s.speed = 7 + Math.random() * 6;
     }
     s.t += dt;
-    const x = Math.round(s.dir > 0 ? -8 + s.t * s.speed : L.W + 8 - s.t * s.speed);
+    const x = Math.round(s.dir > 0 ? -8 + s.t * s.speed : L.viewW + 8 - s.t * s.speed);
     const y = s.y + Math.round(s.t * 0.6);
-    if (x < -10 || x > L.W + 10) {
+    if (x < -10 || x > L.viewW + 10) {
       s.t = -1;
       s.next = 45 + Math.random() * 60;
       return;

@@ -272,6 +272,24 @@
   .z-\[100\] {
     z-index: 100;
   }
+  .container {
+    width: 100%;
+    @media (width >= 40rem) {
+      max-width: 40rem;
+    }
+    @media (width >= 48rem) {
+      max-width: 48rem;
+    }
+    @media (width >= 64rem) {
+      max-width: 64rem;
+    }
+    @media (width >= 80rem) {
+      max-width: 80rem;
+    }
+    @media (width >= 96rem) {
+      max-width: 96rem;
+    }
+  }
   .mt-1 {
     margin-top: var(--spacing);
   }
@@ -800,6 +818,9 @@
   .text-fg {
     color: var(--text-primary);
   }
+  .text-link {
+    color: var(--text-link);
+  }
   .text-muted {
     color: var(--text-muted);
   }
@@ -1246,9 +1267,9 @@ a:hover {
 canvas {
   image-rendering: pixelated;
 }
-h1, h2 {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
+h1, h2, h3, .pool-title, .profile-name, .baby-name, .fish-name, .card-title b, .sim-name {
+  font-family: var(--font-display);
+  font-weight: 700;
   color: var(--ink);
   letter-spacing: 0;
 }
@@ -1262,6 +1283,9 @@ h2 {
   margin: 0;
   font-size: 28px;
   line-height: 1.1;
+}
+h3 {
+  margin: 0;
 }
 .top {
   position: sticky;
@@ -1487,9 +1511,7 @@ input[type="checkbox"] {
   height: 16px;
 }
 .btn {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
-  font-size: 22px;
+  font: 700 18px / 1.2 var(--font-body);
   padding: 16px 32px;
   border-radius: 999px;
   border: 3px solid var(--line);
@@ -1849,9 +1871,7 @@ body:not(.member) .tabs {
   background: var(--card);
 }
 .seg button, .filter-chips button {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 500;
-  font-size: 18px;
+  font: 600 16px / 1 var(--font-body);
   padding: 8px 16px;
   border: 0;
   border-radius: 999px;
@@ -2037,7 +2057,8 @@ body:not(.member) .tabs {
   font: var(--font-body-sm);
 }
 .card-title b {
-  font: 600 28px / 1.05 var(--font-display);
+  font-size: 28px;
+  line-height: 1.05;
 }
 .card-title span {
   color: var(--text-muted);
@@ -2090,7 +2111,7 @@ body:not(.member) .tabs {
   border: 5px solid currentColor;
   border-radius: 12px;
   background: rgb(255 255 255 / 0.88);
-  font: 700 30px / 1.15 'Pixelify Sans', monospace;
+  font: 700 22px / 1.15 var(--font-body);
   pointer-events: none;
 }
 .stamp.like {
@@ -2228,9 +2249,7 @@ body:not(.member) .tabs {
   border-radius: 999px;
   background: var(--line);
   color: var(--bg);
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 500;
-  font-size: 17px;
+  font: 600 15px / 1.2 var(--font-body);
   white-space: nowrap;
   transition: opacity var(--duration-base) var(--ease-standard), translate var(--duration-base) var(--ease-out-back);
   pointer-events: none;
@@ -2705,7 +2724,8 @@ body:not(.member) .tabs {
   color: var(--sig-gold);
 }
 .fish-name {
-  font: 600 var(--text-md) / var(--leading-snug) var(--font-display);
+  font-size: var(--text-md);
+  line-height: var(--leading-snug);
 }
 .fish-genes {
   font: 500 var(--text-2xs) / 1.4 var(--font-mono);
@@ -2758,9 +2778,7 @@ body:not(.member) .tabs {
   margin: 0;
   padding: 24px;
   text-align: center;
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
-  font-size: 20px;
+  font: 600 18px / 1.3 var(--font-body);
   color: #3B2A3A;
 }
 .home-col, .breed-col {
@@ -2851,8 +2869,6 @@ body:not(.member) .tabs {
   text-align: center;
 }
 .tier-badge b {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
   font-size: 32px;
   line-height: 1;
 }
@@ -2885,8 +2901,6 @@ body:not(.member) .tabs {
   border-style: dashed;
 }
 .pool-title {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
   font-size: 20px;
 }
 .tile, .single, .breed-slot {
@@ -2947,14 +2961,10 @@ body:not(.member) .tabs {
   width: 100%;
 }
 .sim-name {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
   font-size: 19px;
 }
 .sim-tag {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
-  font-size: 12px;
+  font: 700 12px / 1 var(--font-body);
   padding: 2px 10px;
   border-radius: 999px;
   background: var(--yellow);
@@ -2972,9 +2982,7 @@ body:not(.member) .tabs {
   margin: 0;
 }
 .kicker {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
-  font-size: 17px;
+  font: 700 16px / 1.2 var(--font-body);
   color: var(--link);
 }
 .breed-slots {
@@ -2990,9 +2998,7 @@ body:not(.member) .tabs {
   padding: 0;
   cursor: pointer;
   color: #26506E;
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
-  font-size: 15px;
+  font: 600 15px / 1.2 var(--font-body);
 }
 .breed-slot.baby {
   outline: 3px solid var(--pink);
@@ -3000,9 +3006,7 @@ body:not(.member) .tabs {
   background: #B7E0F5;
 }
 .breed-op {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
-  font-size: 30px;
+  font: 700 24px / 1 var(--font-body);
   text-align: center;
 }
 .breed-go.ready {
@@ -3015,8 +3019,6 @@ body:not(.member) .tabs {
   box-shadow: 0 4px 0 var(--line);
 }
 .baby-name {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
   font-size: 28px;
   line-height: 1.1;
 }
@@ -3067,8 +3069,6 @@ body:not(.member) .tabs {
   gap: 12px;
 }
 .profile-name {
-  font-family: 'Pixelify Sans', monospace;
-  font-weight: 600;
   font-size: 28px;
   line-height: 1.05;
 }

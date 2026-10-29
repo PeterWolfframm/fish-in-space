@@ -3,7 +3,7 @@ import preact from '@preact/preset-vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'node:url';
 
-const forge = fileURLToPath(new URL('../src', import.meta.url));
+const forge = fileURLToPath(new URL('./forge', import.meta.url));
 
 export default defineConfig({
   base: './',
@@ -27,6 +27,5 @@ export default defineConfig({
     }),
   ],
   worker: { format: 'es' },
-  server: { fs: { allow: ['..'] } },
   build: { target: 'es2022', chunkSizeWarningLimit: 1200 },
 });

@@ -163,13 +163,19 @@ export interface DecorItem {
   cost: number;
 }
 
-/** Fixed little objects for the shelf: a cosmonaut figurine, a samovar, a pennant, a crystal. */
+/** Fixed little objects for the shelf: an explorer figurine, the galley's teapot, a mission pennant, a crystal. */
 export const SHELF_DECOR: DecorItem[] = [
-  { code: 'astronaut', name: 'Cosmonaut figurine', cost: 90 },
-  { code: 'teapot', name: 'Tiny samovar', cost: 60 },
-  { code: 'pennant', name: 'Red pennant', cost: 40 },
+  { code: 'astronaut', name: 'Explorer figurine', cost: 90 },
+  { code: 'teapot', name: 'Galley teapot', cost: 60 },
+  { code: 'pennant', name: 'Mission pennant', cost: 40 },
   { code: 'crystal', name: 'Mineral crystal', cost: 70 },
 ];
+
+/** Display name for anything in ownedCuttings/decor: a plant's generated name, or a shelf item's fixed one. */
+export function itemName(c: { family: PlantFamily | 'object'; code: string }): string {
+  if (c.family === 'object') return SHELF_DECOR.find((d) => d.code === c.code)?.name ?? c.code;
+  return plantName(c.family, c.code);
+}
 
 export function buyDecor(state: State, code: string): Result<{ item: DecorItem }> {
   const item = SHELF_DECOR.find((d) => d.code === code);

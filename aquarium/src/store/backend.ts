@@ -5,6 +5,10 @@ import { get, set } from 'idb-keyval';
 import { simTally } from '../game/polls';
 import { headlines, type Headline } from '../game/market';
 import type { State } from '../game/types';
+import { isMember, pb, user } from './auth';
+import type PocketBase from '../../vendor/pocketbase.es.mjs';
+
+export const SAVE_SCHEMA = 3;
 
 export type Tally = Record<string, number>;
 
@@ -113,6 +117,88 @@ export class LocalBackend implements Backend {
     vote: (id: string, nameId: string, weight: number) => this.sim.vote(id, nameId, weight),
   };
   market = { headlines: async (now: number) => headlines(now) };
+}
+
+function mergeByProgress(local: State | null, cloud: State | null): State | null {
+  if (!local) return cloud;
+  if (!cloud) return local;
+  return local.lastTick >= cloud.lastTick ? local : cloud;
+}
+
+/** Local polls + IndexedDB; cloud save when signed in. */
+export class PocketBaseBackend implements Backend {
+  private local = new LocalBackend();
+  private recordId: string | null = null;
+
+  constructor(private client: PocketBase = pb) {}
+
+  private uid() {
+    const u = user();
+    if (!u?.id) throw new Error('not signed in');
+    return u.id;
+  }
+
+  save = {
+    load: async () => {
+      const localRaw = (await this.local.save.load()) as State | null;
+      if (!isMember()) return localRaw;
+      try {
+        const uid = this.uid();
+        const { items } = await this.client.collection('seedfall_saves').getList(1, 1, {
+          filter: this.client.filter('user = {:id}', { id: uid }),
+        });
+        const rec = items[0];
+        this.recordId = rec?.id ?? null;
+        const cloud = (rec?.state as State | undefined) ?? null;
+        const pick = mergeByProgress(localRaw, cloud);
+        if (pick && pick !== localRaw) await this.local.save.store(pick);
+        return pick;
+      } catch {
+        return localRaw;
+      }
+    },
+    store: async (s: State) => {
+      await this.local.save.store(s);
+      if (!isMember()) return;
+      try {
+        const uid = this.uid();
+        const body = { user: uid, state: s, schemaVersion: SAVE_SCHEMA };
+        if (this.recordId) await this.client.collection('seedfall_saves').update(this.recordId, body);
+        else {
+          const rec = await this.client.collection('seedfall_saves').create(body);
+          this.recordId = rec.id;
+        }
+      } catch {
+        /* offline or rules — local copy remains */
+      }
+    },
+    legacy: () => this.local.save.legacy?.() ?? null,
+    clear: async () => {
+      await this.local.save.clear?.();
+      if (isMember() && this.recordId) {
+        try {
+          await this.client.collection('seedfall_saves').delete(this.recordId);
+        } catch {
+          /* ignore */
+        }
+      }
+      this.recordId = null;
+    },
+  };
+
+  polls = this.local.polls;
+  market = this.local.market;
+}
+
+/** Pick backend for boot: cloud-capable when signed in. */
+export function bootBackend(): Backend {
+  return isMember() ? new PocketBaseBackend() : new LocalBackend();
+}
+
+/** After sign-in, merge cloud/local and attach cloud saves. */
+export async function attachCloudBackend(): Promise<Backend> {
+  const b = new PocketBaseBackend();
+  return b;
 }
 
 /** An in-memory backend for tests: same interface, no IndexedDB. */
