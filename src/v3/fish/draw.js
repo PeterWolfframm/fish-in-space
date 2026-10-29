@@ -109,12 +109,12 @@ export function drawFish3(genome, pose, look) {
 /**
  * Paint a fish with any list of parts (fish3's own, or a superset). `prepare(ctx)` runs before the
  * parts (to retint the palette); `finish(grid, ctx)` runs after the turn squash and before the
- * outlines, and may return a replacement grid (to flip a dead fish).
+ * outlines, and may return a replacement grid (to flip a dead fish). `ext` goes to phenotype.
  */
-export function paintFish(genome, pose, look, parts, { prepare, finish } = {}) {
-  const ph = phenotype(genome, pose.stage ?? -1);
+export function paintFish(genome, pose, look, parts, { prepare, finish, ext } = {}) {
+  const ph = phenotype(genome, pose.stage ?? -1, ext);
   const set = ph.set;
-  const sc = scratchOf(phenotype(genome, 3), ph);
+  const sc = scratchOf(phenotype(genome, 3, ext), ph);
   const g = new Grid(sc.w, sc.h);
   const K = columns(ph, pose, sc.origin, look ?? set.swim ?? 'raised');
   const ctx = makeCtx(g, ph, K, pose);

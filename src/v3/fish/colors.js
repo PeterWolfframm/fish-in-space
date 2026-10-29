@@ -15,8 +15,8 @@ const saturate = (hex, k) => mix(grey(hex), hex, k);
 /** Every colour the drawing needs, after the morph has had its say. */
 export function paletteOf(set, ph) {
   const of = (list, id) => (list.find((c) => c.id === id) ?? list[0]).hex;
-  let skin = of(BODY_COLORS, set.skin);
-  let mark = of(MARK_COLORS, set.markColor);
+  let skin = ph.ext?.skin ?? of(BODY_COLORS, set.skin);
+  let mark = ph.ext?.mark ?? of(MARK_COLORS, set.markColor);
   let eye = of(EYE_COLORS, set.eyeColor);
   let eye2 = set.eyeColor2 && set.eyeColor2 !== 'same' ? of(EYE_COLORS, set.eyeColor2) : eye;
   let patternFade = 0;

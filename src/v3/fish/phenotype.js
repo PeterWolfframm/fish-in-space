@@ -52,23 +52,27 @@ const cache = new Map();
 /**
  * Everything the painter needs that does not move. `stageOverride` (0..3) lets the grow anim
  * show other life stages of the same fish.
+ *
+ * `ext` lets a later generator (fish4) draw a body fish3 does not have: `{ key, body, arch,
+ * skin, mark, … }`, where `key` names it in the cache, `arch` replaces the archetype and `skin` /
+ * `mark` the base swatches (the morphs still apply). Without `ext` nothing changes.
  */
-export function phenotype(genome, stageOverride = -1) {
+export function phenotype(genome, stageOverride = -1, ext) {
   const set = fish3Traits.normalize(genome);
   const code = fish3Traits.encode(set);
-  const key = `${code}|${stageOverride}`;
+  const key = ext ? `${code}|${stageOverride}|${ext.key}` : `${code}|${stageOverride}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const ph = build(set, stageOverride);
+  const ph = build(set, stageOverride, ext);
   if (cache.size > 400) cache.clear();
   cache.set(key, ph);
   return ph;
 }
 
-function build(set, stageOverride) {
+function build(set, stageOverride, ext) {
   const jkey = jitterKey(set);
   const { r, range } = roller(jkey, 4100);
-  const arch = archetypeOf(set.body, set.hybrid);
+  const arch = ext?.arch ?? archetypeOf(set.body, set.hybrid);
   const gen = genetics(set);
   const stage = stageOverride >= 0 ? STAGES[Math.min(3, stageOverride)] : set.stage ?? 'adult';
 
@@ -145,7 +149,8 @@ function build(set, stageOverride) {
     set,
     seed: jkey,
     arch,
-    body: set.hybrid && set.hybrid !== 'none' ? set.hybrid : set.body,
+    body: ext?.body ?? (set.hybrid && set.hybrid !== 'none' ? set.hybrid : set.body),
+    ext: ext ?? null,
     gait,
     jaw,
     anal,

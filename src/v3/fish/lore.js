@@ -28,7 +28,7 @@ const textOf = (l) => (typeof l === 'string' ? l : l.text);
 /** Every token a line may use, resolved for this fish. */
 function tokensOf(ph, eco, names) {
   const label = (f, v) => T.fieldById(f).choices.find((c) => c.id === v)?.label ?? '';
-  const body = ph.body !== ph.set.body ? label('hybrid', ph.body) : label('body', ph.set.body);
+  const body = ph.ext?.label ?? (ph.body !== ph.set.body ? label('hybrid', ph.body) : label('body', ph.set.body));
   const w = (k) => WORDS[k][eco[k].value] ?? eco[k].value;
   return {
     name: names.common,
@@ -37,7 +37,7 @@ function tokensOf(ph, eco, names) {
     genus: names.binomial.split(' ')[0],
     body: body.toLowerCase(),
     Body: body,
-    colour: label('skin', ph.set.skin).toLowerCase(),
+    colour: (ph.ext?.skinLabel ?? label('skin', ph.set.skin)).toLowerCase(),
     signature: ph.signature !== 'none' ? label('signature', ph.signature).toLowerCase() : '',
     relic: ph.relic !== 'none' ? label('relic', ph.relic).toLowerCase() : '',
     diet: w('diet'),
@@ -76,12 +76,12 @@ const FALLBACK = {
   legend: (t) => [t.relic && `Relic: ${t.relic}.`, t.signature && `Signature: ${t.signature}.`].filter(Boolean).join(' '),
 };
 
-/** The fish's catalogue entry. */
-export function loreOf(genome) {
-  const ph = phenotype(genome);
+/** The fish's catalogue entry. `ext`: a body from a later generator (see phenotype). */
+export function loreOf(genome, ext) {
+  const ph = phenotype(genome, -1, ext);
   const tier = ph.set.rarity;
-  const eco = ecologyOf(genome);
-  const names = namesOf(genome);
+  const eco = ecologyOf(genome, ext);
+  const names = namesOf(genome, ext);
   const t = tokensOf(ph, eco, names);
   const { pick, chance } = roller(ph.seed, 9400);
 
@@ -131,8 +131,8 @@ export function loreOf(genome) {
 }
 
 /** The entry as plain text, one line per beat. */
-export function loreText(genome) {
-  const l = loreOf(genome);
+export function loreText(genome, ext) {
+  const l = loreOf(genome, ext);
   return [
     l.designation,
     l.quote && `“${l.quote.text}”${l.quote.by ? ` — ${l.quote.by}` : ''}`,
