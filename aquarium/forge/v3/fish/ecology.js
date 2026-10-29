@@ -26,16 +26,20 @@ function why(field, value) {
 
 /** The body's baseline: its own entry, else a hybrid's first parent's, else torpedo's. */
 export function habitatOf(ph) {
-  return HABITAT[ph.body] ?? HABITAT[HYBRIDS[ph.body]?.a] ?? HABITAT[ph.set.body] ?? HABITAT.torpedo;
+  return ph.ext?.habitat ?? HABITAT[ph.body] ?? HABITAT[HYBRIDS[ph.body]?.a] ?? HABITAT[ph.set.body] ?? HABITAT.torpedo;
 }
 
-/** Everything a keeper would want to know, each fact with the traits behind it. */
-export function ecologyOf(genome) {
-  const ph = phenotype(genome);
+/**
+ * Everything a keeper would want to know, each fact with the traits behind it. `ext`: a body
+ * from a later generator (see phenotype), with its own `habitat` and `label`.
+ */
+export function ecologyOf(genome, ext) {
+  const ph = phenotype(genome, -1, ext);
   const set = ph.set;
   const base = habitatOf(ph);
   const bodyWhy = why('body', set.body);
-  if (ph.body !== set.body) Object.assign(bodyWhy, { value: ph.body, label: `hybrid: ${ph.body}` });
+  if (ext?.body) Object.assign(bodyWhy, { value: ext.body, label: `body: ${String(ext.label ?? ext.body).toLowerCase()}` });
+  else if (ph.body !== set.body) Object.assign(bodyWhy, { value: ph.body, label: `hybrid: ${ph.body}` });
   const fact = (value, because) => ({ value, because: because.length ? because : [bodyWhy] });
 
   // --- diet: the jaw decides, then a lure or barbels, then the body ---------------------------

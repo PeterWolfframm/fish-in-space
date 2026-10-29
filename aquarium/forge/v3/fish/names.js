@@ -61,13 +61,13 @@ export function shownColour(ph) {
   return best ?? BODY_COLORS[0];
 }
 
-/** Every name the fish goes by. */
-export function namesOf(genome) {
-  const ph = phenotype(genome);
+/** Every name the fish goes by. `ext`: a body from a later generator, with its own `taxon`. */
+export function namesOf(genome, ext) {
+  const ph = phenotype(genome, -1, ext);
   const set = ph.set;
   const { pick } = roller(ph.seed, 8800);
   const keys = salienceOf(ph);
-  const taxon = taxonOf(ph.body);
+  const taxon = ph.ext?.taxon ?? taxonOf(ph.body);
   const noun = pick(taxon.nouns, 1);
 
   // Lead word: the most striking trait that has a modifier.
@@ -80,7 +80,8 @@ export function namesOf(genome) {
   let part;
   if (partKey && family(partKey) === 'pattern') part = PATTERN_PARTS[partKey.split('.')[1]];
   else part = pick(PARTS[partKey ? family(partKey) : 'default'], 3);
-  const compound = `${shownColour(ph).label}-${part}`;
+  const colour = ph.ext?.skinLabel && ph.morph === 'wild' ? ph.ext.skinLabel : shownColour(ph).label;
+  const compound = `${colour}-${part}`;
 
   const common = [modifier, compound, noun].filter(Boolean).join(' ');
 

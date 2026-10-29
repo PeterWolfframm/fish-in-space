@@ -8,20 +8,21 @@ import { phenotype } from '../../v3/fish/phenotype.js';
 import { namesOf } from '../../v3/fish/names.js';
 import { TAXA } from '../../v3/fish/names-data.js';
 import { ORDERS, FAMILIES, FAMILY_OF, VARIETY_OF_MORPH } from './taxonomy-data.js';
+import { BODY_RECORDS } from './bodies/index.js';
 
 export { ORDERS, FAMILIES, FAMILY_OF };
 
 /** A body's family id: its own, else a hybrid's first parent's, else torpedo's. */
-export const familyOf = (body) => FAMILY_OF[body] ?? FAMILY_OF[HYBRIDS[body]?.a] ?? 'Cursoridae';
+export const familyOf = (body) => FAMILY_OF[body] ?? BODY_RECORDS[body]?.family ?? FAMILY_OF[HYBRIDS[body]?.a] ?? 'Cursoridae';
 
-/** The tree for a fish3-shaped set (fish4 callers pass toFish3(set)). */
-export function taxonomyOf(f3) {
-  const ph = phenotype(f3);
+/** The tree for a fish3-shaped set (fish4 callers pass toFish3(set) and extOf(set)). */
+export function taxonomyOf(f3, ext) {
+  const ph = phenotype(f3, -1, ext);
   const hybrid = HYBRIDS[ph.body];
   const familyId = familyOf(ph.body);
   const family = FAMILIES[familyId];
-  const genus = (TAXA[ph.body] ?? TAXA[hybrid?.a] ?? TAXA.torpedo).genus;
-  const species = namesOf(f3).binomial.split(' ').slice(1).join(' ');
+  const genus = (ext?.taxon ?? TAXA[ph.body] ?? TAXA[hybrid?.a] ?? TAXA.torpedo).genus;
+  const species = namesOf(f3, ext).binomial.split(' ').slice(1).join(' ');
   const purity = Number(String(f3.purity ?? 'p0').slice(1)) || 0;
   const variety = VARIETY_OF_MORPH[ph.morph] ?? (purity >= 3 ? `line ${Number(String(f3.lineA).slice(1))}` : null);
   const shownGenus = hybrid ? `× ${genus}` : genus;

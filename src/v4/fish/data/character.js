@@ -120,12 +120,23 @@ export const QUIRKS = [
 
 /** What it likes and dislikes, by fact or stat. Each `{ when, likes?, dislikes?, fears? }`. */
 export const LEANINGS = [
-  { when: { fact: 'diet', is: 'piscivore' }, likes: ['live food'], dislikes: ['flakes'] },
-  { when: { fact: 'diet', is: 'herbivore' }, likes: ['algae wafers', 'soft plants'] },
-  { when: { fact: 'diet', is: 'omnivore' }, likes: ['a bit of everything'] },
-  { when: { fact: 'diet', in: ['carnivore', 'durophage'] }, likes: ['frozen shrimp'] },
-  { when: { fact: 'diet', is: 'planktivore' }, likes: ['fine powdered food'] },
-  { when: { fact: 'diet', is: 'detritivore' }, likes: ['whatever sank last night'] },
+  // Foods: water fish eat aquarium food; terrain fish eat what their world grows.
+  ...[
+    [{ fact: 'diet', is: 'piscivore' }, { likes: ['live food'], dislikes: ['flakes'] }],
+    [{ fact: 'diet', is: 'herbivore' }, { likes: ['algae wafers', 'soft plants'] }],
+    [{ fact: 'diet', is: 'omnivore' }, { likes: ['a bit of everything'] }],
+    [{ fact: 'diet', in: ['carnivore', 'durophage'] }, { likes: ['frozen shrimp'] }],
+    [{ fact: 'diet', is: 'planktivore' }, { likes: ['fine powdered food'] }],
+    [{ fact: 'diet', is: 'detritivore' }, { likes: ['whatever sank last night'] }],
+  ].map(([diet, l]) => ({ when: { all: [diet, { fact: 'terrain', in: ['water', 'aether'] }] }, ...l })),
+  ...[
+    ['lava', ['fresh mineral crust'], ['ember shrimp']],
+    ['sand', ['lichen crumbs'], ['dune beetles']],
+    ['nuclear', ['isotope algae'], ['glow-shrimp']],
+  ].flatMap(([terrain, grazes, hunts]) => [
+    { when: { all: [{ fact: 'terrain', is: terrain }, { fact: 'diet', in: ['herbivore', 'planktivore', 'detritivore', 'omnivore'] }] }, likes: grazes },
+    { when: { all: [{ fact: 'terrain', is: terrain }, { fact: 'diet', in: ['piscivore', 'carnivore', 'durophage', 'omnivore'] }] }, likes: hunts },
+  ]),
   { when: { stat: 'circadian', gte: 0.65 }, likes: ['dim light'], dislikes: ['bright lamps'] },
   { when: { stat: 'circadian', lte: 0.3 }, likes: ['bright mornings'] },
   { when: { stat: 'schooling', gte: 0.6 }, likes: ['a big shoal'], fears: ['being alone'] },
@@ -136,9 +147,9 @@ export const LEANINGS = [
   { when: { fact: 'current', is: 'still' }, dislikes: ['strong currents'] },
   { when: { fact: 'niche', is: 'percher' }, likes: ['flat rocks to sit on'] },
   { when: { fact: 'niche', is: 'ambush' }, likes: ['caves and overhangs'] },
-  { when: { fact: 'niche', is: 'sifter' }, likes: ['a soft sandy bed'] },
+  { when: { all: [{ fact: 'niche', is: 'sifter' }, { fact: 'terrain', in: ['water', 'nuclear'] }] }, likes: ['a soft sandy bed'] },
   { when: { fact: 'niche', is: 'drifter' }, likes: ['open water'] },
-  { when: { fact: 'niche', is: 'grazer' }, likes: ['rocks with a good film of algae'] },
+  { when: { all: [{ fact: 'niche', is: 'grazer' }, { fact: 'terrain', is: 'water' }] }, likes: ['rocks with a good film of algae'] },
   { when: { stat: 'aggression', gte: 0.65 }, dislikes: ['long-finned tankmates'] },
   { when: { stat: 'predatoryDrive', gte: 0.6 }, likes: ['the chase'] },
   { when: { size: '<=small' }, fears: ['big mouths'] },

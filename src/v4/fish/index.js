@@ -39,9 +39,11 @@ import { textOf, textFor, POOLS as TEXT_POOLS } from './text.js';
 import { batch as batchOf, LEVEL_OF_DIET } from './batch.js';
 import { LINKS, KITS, linkMuls } from './links.js';
 import { CONSTRAINTS, violations } from './guard.js';
+import { PARAM_SCHEMA, PARAM_GROUPS, validateParams, setParam, schemaFor } from './schema.js';
 
 export { characterOf, compatibility, blurbOf, textOf, textFor, TEXT_POOLS };
 export { LEVEL_OF_DIET, LINKS, KITS, linkMuls, CONSTRAINTS, violations };
+export { PARAM_SCHEMA, PARAM_GROUPS, validateParams, setParam, schemaFor };
 export { rarityOf, tierOf, RARITY_COLORS, reproduction, canBreed, breed4, breedClutch, breedProblem, mythicChance, valueOf, eggCost };
 export { weightOf, ecology4Of, careLine, extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
 export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
@@ -247,6 +249,9 @@ export default {
   options: Object.values(PRESETS).filter((p) => p.id !== DEFAULT_PRESET).map((p) => ({ id: p.id, label: p.label })),
   fromSeed,
   batch,
+  /** Fields that pin where a seed's fish comes from (fromSeed's third argument), not its look. */
+  placeFields: ['terrain', 'region', 'niche', 'clade'],
+  params: { presets: PRESETS, schema: PARAM_SCHEMA, groups: PARAM_GROUPS, validate: validateParams, set: setParam, resolve: resolveParams, hash: paramsHash },
   fromCode: decodeAny,
   normalize: T.normalize,
   name: (genome) => namesOf4(T.normalize(genome)).full,

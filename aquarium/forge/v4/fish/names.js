@@ -5,6 +5,7 @@
 import { hash01 } from '../../pixel/rng.js';
 import { namesOf as namesOf3 } from '../../v3/fish/names.js';
 import { toFish3, jitterKey } from './genome.js';
+import { extOf } from './bodies/index.js';
 import { FEATURES } from './features/registry.js';
 import { specificity, test } from './rules.js';
 import { taxonomyOf } from './taxonomy.js';
@@ -12,7 +13,8 @@ import DEFAULT_FLAVOUR from './data/flavour.js';
 
 /** Every name for a fish4 set; `look` (from stats.js lookFor) answers flavour conditions. */
 export function namesOf4(set, { look, humour = 0.5, flavour } = {}) {
-  const base = namesOf3(toFish3(set));
+  const ext = extOf(set);
+  const base = namesOf3(toFish3(set), ext);
   let { common, binomial } = base;
   const keys = [...base.keys];
   for (const f of FEATURES) {
@@ -27,7 +29,7 @@ export function namesOf4(set, { look, humour = 0.5, flavour } = {}) {
     const ks = f.influences?.keys ?? {};
     keys.unshift(...(ks[value] ?? []), ...(ks['*'] ?? []));
   }
-  const tax = taxonomyOf(toFish3(set));
+  const tax = taxonomyOf(toFish3(set), ext);
   const species = binomial.split(' ').slice(1).join(' ');
   const shownBinomial = tax.hybrid ? `× ${binomial}` : binomial;
   const nickname = look ? nicknameOf(set, look, humour, flavour) : null;

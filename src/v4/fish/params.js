@@ -40,6 +40,16 @@ export const BASE_PARAMS = {
   palette: { strength: 1 },
   /** Mutation pressure (ecotype): exponent on each region's pressure, and the base sport chance. */
   mutation: { strength: 1, sport: 0.03 },
+  /**
+   * Trait linkage (ecotype, data/links.js): `strength` raises every link's × to a power (0 = off),
+   * `off` skips link ids. `kitChance`: in breeding, the chance each kit (weapons, fins, face) comes
+   * whole from one parent.
+   */
+  links: { strength: 1, off: [], kitChance: 0.5 },
+  /** The aesthetic guard (ecotype, data/constraints.js): `enabled`, and guard ids to skip. */
+  guard: { enabled: true, off: [] },
+  /** Balanced batches (batch.js): trophic shares [base, middle, top], diversity 0..1, largest school. */
+  batch: { pyramid: [0.6, 0.3, 0.1], diversity: 0.6, maxSchool: 6 },
   /** Rarity roll odds per tier (relative). Mythic is mainly bred: see `mythic`. */
   rarity: { common: 70, uncommon: 22, rare: 7, epic: 0, legendary: 0, myth: 1 },
   /** Rarity score (rarity.js): points per source and the tier thresholds over them. */

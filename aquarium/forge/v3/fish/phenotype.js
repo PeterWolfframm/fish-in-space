@@ -52,23 +52,27 @@ const cache = new Map();
 /**
  * Everything the painter needs that does not move. `stageOverride` (0..3) lets the grow anim
  * show other life stages of the same fish.
+ *
+ * `ext` lets a later generator (fish4) draw a body fish3 does not have: `{ key, body, arch,
+ * skin, mark, … }`, where `key` names it in the cache, `arch` replaces the archetype and `skin` /
+ * `mark` the base swatches (the morphs still apply). Without `ext` nothing changes.
  */
-export function phenotype(genome, stageOverride = -1) {
+export function phenotype(genome, stageOverride = -1, ext) {
   const set = fish3Traits.normalize(genome);
   const code = fish3Traits.encode(set);
-  const key = `${code}|${stageOverride}`;
+  const key = ext ? `${code}|${stageOverride}|${ext.key}` : `${code}|${stageOverride}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const ph = build(set, stageOverride);
+  const ph = build(set, stageOverride, ext);
   if (cache.size > 400) cache.clear();
   cache.set(key, ph);
   return ph;
 }
 
-function build(set, stageOverride) {
+function build(set, stageOverride, ext) {
   const jkey = jitterKey(set);
   const { r, range } = roller(jkey, 4100);
-  const arch = archetypeOf(set.body, set.hybrid);
+  const arch = ext?.arch ?? archetypeOf(set.body, set.hybrid);
   const gen = genetics(set);
   const stage = stageOverride >= 0 ? STAGES[Math.min(3, stageOverride)] : set.stage ?? 'adult';
 
@@ -135,7 +139,8 @@ function build(set, stageOverride) {
   const beakH = jaw === 'bill' ? 0.9 : jaw === 'tube' ? 0.8 : 1.4;
 
   const eyeT = Math.min(0.95, 0.82 + 0.015 * stepOf(set.eyePos) + (r(130) - 0.5) * wob * 0.15 + (stage === 'fry' ? 0.02 : 0));
-  const eyeUp = 0.55 + 0.06 * stepOf(set.eyePos);
+  // `arch.eyeUp` (fish4 bodies only) raises the eye: a sand fish keeps it on top of its head.
+  const eyeUp = (arch.eyeUp ?? 0.55) + 0.06 * stepOf(set.eyePos);
 
   // Eye stamp: grows with the fish, one step per eye trait, fry get big eyes.
   const eyeBias = { small: -1, normal: 0, big: 1 }[set.eye ?? 'normal'] + (stage === 'fry' ? 1 : 0) + (stage === 'juvenile' ? 0.5 : 0);
@@ -145,7 +150,8 @@ function build(set, stageOverride) {
     set,
     seed: jkey,
     arch,
-    body: set.hybrid && set.hybrid !== 'none' ? set.hybrid : set.body,
+    body: ext?.body ?? (set.hybrid && set.hybrid !== 'none' ? set.hybrid : set.body),
+    ext: ext ?? null,
     gait,
     jaw,
     anal,

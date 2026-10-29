@@ -3,13 +3,14 @@
 // (stats.js), a shallow taxonomy, continuous rarity in six tiers, reproduction and value genes,
 // feature modules (the space helmet), expressions (happy, tired, dead) and generation params.
 //
-// Reads f4., f3. and v1 fish codes. Under the `classic` params a seed rolls fish3's fish.
+// Reads f4., f3. and v1 fish codes. Under the default `ecotype` params a seed picks a place and a
+// species first (ecotype.js); under `classic` it rolls fish3's fish.
 
 import { roller } from '../../pixel/rng.js';
 import { fish3Traits } from '../../v3/fish/genome.js';
 import { BODIES } from '../../v3/fish/bodies.js';
 import { CLASS_LEN, describeGenes } from '../../v3/fish/phenotype.js';
-import { ecologyOf } from '../../v3/fish/ecology.js';
+import { ecology4Of, careLine } from './ecology4.js';
 import { loreOf } from '../../v3/fish/lore.js';
 import { keyed } from '../../v3/fish/keys.js';
 import { ANIMS as ANIMS3 } from '../../v3/fish/index.js';
@@ -18,7 +19,7 @@ import { anim, poseAt } from '../../v2/anim/rig.js';
 import { roundUp, crop } from '../../v2/kit/sizes.js';
 import { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, FISH3_IDS, V4_IDS, FEATURE_IDS } from './genome.js';
 import { latentLoci, lociOf, LOCI } from './loci.js';
-import { resolveParams, PRESETS, chromaOf, spreadBell, paramsHash } from './params.js';
+import { resolveParams, PRESETS, DEFAULT_PRESET, paramsHash, weightOf } from './params.js';
 import { drawFish4, finishFrame, EXPRESSIONS } from './frame.js';
 import { expression, wiggle, droop, floatDead } from './motions.js';
 import { FEATURES } from './features/registry.js';
@@ -26,35 +27,38 @@ import { TIERS, TIER_LABELS } from './rules.js';
 import { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES } from './stats.js';
 import { taxonomyOf, ORDERS, FAMILIES } from './taxonomy.js';
 import { namesOf4 } from './names.js';
+import { extOf, bodyOf, BODY_RECORDS, NEW_FORMS } from './bodies/index.js';
+import { ecotypeFromSeed, placeOf, protoOf, speciesKey } from './ecotype.js';
+import { TERRAINS, REGIONS, NICHES } from './data/terrains.js';
+import { rarityOf, tierOf, RARITY_COLORS } from './rarity.js';
+import { reproduction, canBreed } from './reproduction.js';
+import { breed as breed4, breedClutch, breedProblem, mythicChance } from './breeding.js';
+import { valueOf, eggCost } from './economy.js';
+import { characterOf, compatibility, blurbOf } from './character.js';
+import { textOf, textFor, POOLS as TEXT_POOLS } from './text.js';
+import { batch as batchOf, LEVEL_OF_DIET } from './batch.js';
+import { LINKS, KITS, linkMuls } from './links.js';
+import { CONSTRAINTS, violations } from './guard.js';
+import { PARAM_SCHEMA, PARAM_GROUPS, validateParams, setParam, schemaFor } from './schema.js';
 
+export { characterOf, compatibility, blurbOf, textOf, textFor, TEXT_POOLS };
+export { LEVEL_OF_DIET, LINKS, KITS, linkMuls, CONSTRAINTS, violations };
+export { PARAM_SCHEMA, PARAM_GROUPS, validateParams, setParam, schemaFor };
+export { rarityOf, tierOf, RARITY_COLORS, reproduction, canBreed, breed4, breedClutch, breedProblem, mythicChance, valueOf, eggCost };
+export { weightOf, ecology4Of, careLine, extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
 export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
 export { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, lociOf, LOCI, PRESETS, resolveParams, paramsHash, FEATURES, EXPRESSIONS, TIERS, TIER_LABELS, FISH3_IDS, V4_IDS, FEATURE_IDS };
 
 const T = fish4Traits;
-const COLOUR_FIELDS = new Set(['skin', 'markColor']);
-
-/** A field's weight for choice `ci` under params `P`, given what has been rolled so far. */
-export function weightOf(f, ci, P, set = {}) {
-  const c = f.choices[ci];
-  let w;
-  if (f.id === 'rarity') w = P.rarity?.[c.id] ?? 0;
-  else if (f.id === 'chroma') w = P.color?.chroma?.[ci] ?? (ci === 0 ? 1 : 0);
-  else if (f.feature) w = f.weightsFor(set, P.features?.[f.id] ?? 1)[ci];
-  else if (f.locus) w = spreadBell(f.weights, P.loci?.spread ?? 1)[ci];
-  else if (f.choices[0].id === 'n3' && f.weights) w = spreadBell(f.weights, P.spread ?? 1)[ci];
-  else w = f.weights?.[ci] ?? 1;
-  if (COLOUR_FIELDS.has(f.id) && P.color?.vivid && c.hex) w *= Math.exp(P.color.vivid * 10 * (chromaOf(c.hex) - 0.12));
-  const mul = P.weights?.[f.id]?.[c.id];
-  return mul == null ? w : w * mul;
-}
-
 /**
- * A fresh fish. Every field rolls on its own salt (fish3's for fish3's fields), only the odds
+ * A fresh fish. Under `ecotype` params (the default) a seed picks a place and a species first:
+ * see ecotype.js; `place` can pin `{ terrain, region, niche, clade }`. Under `classic`, every field rolls on its own salt (fish3's for fish3's fields), only the odds
  * change with params; bodies then lean toward their own looks, as in fish3. Loci are rolled from
  * the finished look, so a fish rolled here and the same fish imported from fish3 share its genes.
  */
-export function fromSeed(seed, params) {
+export function fromSeed(seed, params, place) {
   const P = resolveParams(paramsFromOpts(params));
+  if (P.algo === 'ecotype') return ecotypeFromSeed(seed, P, weightOf, place);
   const { weighted } = roller(seed, 0);
   const out = {};
   for (const f of T.fields) {
@@ -72,6 +76,16 @@ export function fromSeed(seed, params) {
   set = T.normalize(set);
   Object.assign(set, latentLoci(jitterKey(set), (f, ci) => weightOf(f, ci, P)));
   return T.normalize(set);
+}
+
+/**
+ * A balanced batch of `n` fish from one terrain (shop stock, a wild catch): a trophic pyramid,
+ * several species, schooling species in groups. `pin` takes `{ terrain, region }`. Always rolls
+ * the ecotype way, whatever `params.algo` says: a batch is made of species.
+ */
+export function batch(seed, n, params, pin) {
+  const P = resolveParams(paramsFromOpts(params));
+  return batchOf(seed, n, P, weightOf, pin);
 }
 
 /** The forge app passes its option checkboxes; the studio passes params outright. */
@@ -103,7 +117,7 @@ export const poseOf = (set, a, i) => {
 
 // Fields that never reach the paint (breeding bookkeeping, hidden genes, colour passes after the
 // crop): the window cache ignores them.
-const NOT_GEOMETRY = ['chaos', 'generation', 'lineA', 'lineB', 'purity', 'chroma', ...LOCI.flatMap((l) => [`${l.id}A`, `${l.id}B`])];
+const NOT_GEOMETRY = ['terrain', 'region', 'niche', 'clade', 'chaos', 'generation', 'lineA', 'lineB', 'purity', 'chroma', ...LOCI.flatMap((l) => [`${l.id}A`, `${l.id}B`])];
 const windowKey = (set, opts) => {
   const plain = { ...set };
   for (const id of NOT_GEOMETRY) plain[id] = T.fieldById(id).default ?? T.fieldById(id).choices[0].id;
@@ -174,6 +188,7 @@ export function frame(genome, animId, i = 0, opts) {
 }
 
 const f3 = (genome) => toFish3(T.normalize(genome));
+const ext = (genome) => extOf(T.normalize(genome));
 
 /** Options for the text side: params (or a preset id) plus optional studio rules / flavour. */
 const textOpts = (opts) => {
@@ -188,13 +203,30 @@ export function names(genome, opts) {
   return namesOf4(set, { look: statsOf(set, o).look, humour: o.humour, flavour: o.flavour });
 }
 
-/** Everything about a fish as plain JSON: stats, names, taxonomy, ecology, the summary line. */
+/** Everything about a fish as plain JSON: stats, names, taxonomy, ecology, character, text, rarity, value. */
 export function profile(genome, opts) {
   const set = T.normalize(genome);
   const o = textOpts(opts);
   const stats = statsOf(set, o);
   const n = namesOf4(set, { look: stats.look, humour: o.humour, flavour: o.flavour });
-  return { code: T.encode(set), names: n, taxonomy: n.taxonomy, stats, rulesFired: stats.rulesFired, summary: summaryOf(stats), loci: lociOf(set), ecology: ecologyOf(toFish3(set)) };
+  const rarity = rarityOf(set);
+  const character = characterOf(set, { ...o, stats, params: paramsFromOpts(opts) });
+  return {
+    code: T.encode(set),
+    names: n,
+    taxonomy: n.taxonomy,
+    stats,
+    rulesFired: stats.rulesFired,
+    summary: summaryOf(stats),
+    blurb: blurbOf(set, { character }),
+    loci: lociOf(set),
+    ecology: ecology4Of(set),
+    character,
+    text: textOf(set, { character }),
+    rarity,
+    reproduction: reproduction(set, undefined, stats),
+    value: valueOf(set, { stats, rarity }),
+  };
 }
 
 export default {
@@ -214,21 +246,40 @@ export default {
   anchor: 'center',
   bg: '#1e3c5a',
   traits: T,
-  options: Object.values(PRESETS).filter((p) => p.id !== 'classic').map((p) => ({ id: p.id, label: p.label })),
+  options: Object.values(PRESETS).filter((p) => p.id !== DEFAULT_PRESET).map((p) => ({ id: p.id, label: p.label })),
   fromSeed,
+  batch,
+  /** Fields that pin where a seed's fish comes from (fromSeed's third argument), not its look. */
+  placeFields: ['terrain', 'region', 'niche', 'clade'],
+  params: { presets: PRESETS, schema: PARAM_SCHEMA, groups: PARAM_GROUPS, validate: validateParams, set: setParam, resolve: resolveParams, hash: paramsHash },
   fromCode: decodeAny,
   normalize: T.normalize,
   name: (genome) => namesOf4(T.normalize(genome)).full,
   describe: (genome) => describeGenes(f3(genome)),
   names,
-  ecology: (genome) => ecologyOf(f3(genome)),
-  lore: (genome) => loreOf(f3(genome)),
+  ecology: (genome) => ecology4Of(T.normalize(genome)),
+  lore: (genome) => loreOf(f3(genome), ext(genome)),
   loci: (genome) => lociOf(T.normalize(genome)),
   stats: (genome, opts) => statsOf(T.normalize(genome), textOpts(opts)),
   behaviour: (genome, opts) => behaviourProfile(T.normalize(genome), textOpts(opts)),
   taxonomy: (genome) => namesOf4(T.normalize(genome)).taxonomy,
   summary: (genome, opts) => summaryOf(statsOf(T.normalize(genome), textOpts(opts))),
   profile,
+  /** 0..1 like fish3's hook (the score over the Mythic threshold); rarityOf has the breakdown. */
+  rarity: (genome) => Math.min(1, rarityOf(T.normalize(genome)).points / resolveParams().rarityPoints.thresholds.myth),
+  rarityOf: (genome, params) => rarityOf(T.normalize(genome), params),
+  reproduction: (genome, params) => reproduction(T.normalize(genome), params),
+  canBreed: (genome, broodsUsed, params) => canBreed(T.normalize(genome), broodsUsed, params),
+  /** The plain hook: the child, or null when the pair cannot breed (two terrains). */
+  breed: (a, b, seed, params) => breed4(a, b, seed, params).child,
+  breedDetailed: (a, b, seed, params) => breed4(a, b, seed, params),
+  breedClutch,
+  breedProblem,
+  value: (genome, opts) => valueOf(T.normalize(genome), opts),
+  character: (genome, opts) => characterOf(T.normalize(genome), { ...textOpts(opts), params: paramsFromOpts(opts) }),
+  compatibility: (a, b, opts) => compatibility(T.normalize(a), T.normalize(b), textOpts(opts)),
+  blurb: (genome, opts) => blurbOf(T.normalize(genome), { ...textOpts(opts), params: paramsFromOpts(opts) }),
+  text: (genome, opts) => textOf(T.normalize(genome), { ...textOpts(opts), params: paramsFromOpts(opts) }),
   fpsOf,
   anims: ANIMS,
   frame,

@@ -25,6 +25,17 @@
 //              read from PocketBase (PB_URL, superuser as for the trainer), or `file` with --model
 //   --model    a model JSON file (a stored model record, or a Net's toJSON) for --beautify
 //
+//   fish4 only (params steer the procedural roll; see docs/fish4-params.md):
+//   --params   a preset id (ecotype, classic, frontier, water, vivid, wild, curated, seedfall) or a
+//              params JSON file; checked against PARAM_SCHEMA before anything rolls
+//   --param    set one param, path=value (repeatable), e.g. --param clusters.cohesion=0.5,
+//              --param links.strength=0 (the value is read as JSON, else as text)
+//   --set      terrain=, region=, niche= and clade= pin where the fish come from (a lava fish is
+//              rolled as one, not relabelled); every other field is forced onto the look as usual
+//   --batch    roll a balanced batch of --count fish instead (one terrain, a trophic pyramid,
+//              species in schools), as a shop or a wild catch would
+//   --dossier  write dossiers.md: names, character, care, story and text for every fish
+//
 // Writes PNGs and manifest.json (seed → code → files) into --out.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -39,12 +50,13 @@ import { loadModel } from '../src/pixelgen/model.js';
 import { Net } from '../src/pixelgen/net.js';
 
 function parse(argv) {
-  const args = { _: [], code: [], set: [] };
+  const args = { _: [], code: [], set: [], param: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith('--')) args._.push(a);
-    else if (['sheet', 'contact', 'bg', 'avatar', 'help'].includes(a.slice(2))) args[a.slice(2)] = true;
+    else if (['sheet', 'contact', 'bg', 'avatar', 'help', 'batch', 'dossier'].includes(a.slice(2))) args[a.slice(2)] = true;
     else if (a === '--code') args.code.push(argv[++i]);
+    else if (a === '--param') args.param.push(argv[++i]);
     else if (a === '--set') args.set.push(argv[++i]);
     else args[a.slice(2)] = argv[++i];
   }
@@ -59,7 +71,7 @@ if (!kind || args.help || kind === 'list') {
     const sizes = g.sizes ? g.sizes.map((s) => `${s.id} ${s.w}×${s.h}`).join(', ') : `${g.size.w}×${g.size.h}`;
     console.log(`  ${g.id.padEnd(14)} v${g.version ?? 1}  ${g.label} (${g.game})\n${' '.repeat(20)}sizes: ${sizes}\n${' '.repeat(20)}anims: ${g.anims.map((a) => `${a.id}×${a.frames}`).join(' ')}`);
   }
-  console.log('\nusage: node cli/forge.mjs <kind> [--count n] [--seed s] [--code c] [--anim id] [--size class|all] [--scale k] [--sheet|--contact] [--bg] [--out dir]\n                           [--look lit|comic|clean] [--beautify public|personal:<id>|blend:<id>|file] [--model file.json]');
+  console.log('\nusage: node cli/forge.mjs <kind> [--count n] [--seed s] [--code c] [--anim id] [--size class|all] [--scale k] [--sheet|--contact] [--bg] [--out dir]\n                           [--look lit|comic|clean] [--beautify public|personal:<id>|blend:<id>|file] [--model file.json]\n                           fish4: [--params preset|file.json] [--param path=value] [--set terrain=lava] [--batch] [--dossier]');
   process.exit(kind ? 0 : 2);
 }
 const gen = generator(kind);
@@ -86,6 +98,8 @@ if (args.look && (!LOOKS.includes(args.look) || !hasStyle(gen))) {
   process.exit(2);
 }
 const fixed = args.look ? { look: args.look } : {};
+// Place fields (fish4: terrain, region, niche, clade) pin where a fish comes from instead.
+const pin = {};
 for (const kv of args.set) {
   const [field, value] = kv.split('=');
   const f = gen.traits.fieldById?.(field);
@@ -93,7 +107,55 @@ for (const kv of args.set) {
     console.error(f ? `${field} is one of: ${f.choices.map((c) => c.id).join(' ')}` : `${kind} has no field "${field}"`);
     process.exit(2);
   }
-  fixed[field] = value;
+  if (gen.placeFields?.includes(field)) pin[field] = value;
+  else fixed[field] = value;
+}
+
+// --params / --param: fish4's generation params, checked before anything rolls.
+let params = null;
+if (args.params || args.param.length) {
+  if (!gen.params) {
+    console.error(`${kind} takes no params; try fish4`);
+    process.exit(2);
+  }
+  const spec = args.params ?? null;
+  if (spec && (spec.endsWith('.json') || !gen.params.presets[spec])) {
+    try {
+      params = JSON.parse(readFileSync(spec, 'utf8'));
+    } catch (e) {
+      console.error(gen.params.presets[spec] ? e.message : `--params is a preset (${Object.keys(gen.params.presets).join(', ')}) or a JSON file: ${e.message}`);
+      process.exit(2);
+    }
+  } else params = spec;
+  for (const kv of args.param) {
+    const at = kv.indexOf('=');
+    if (at < 1) {
+      console.error(`--param is path=value, got "${kv}"`);
+      process.exit(2);
+    }
+    const raw = kv.slice(at + 1);
+    let value;
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      value = raw;
+    }
+    params = gen.params.set(typeof params === 'string' ? { base: params } : params ?? {}, kv.slice(0, at), value);
+  }
+  const check = gen.params.validate(params);
+  for (const w of check.warnings) console.warn(`params: ${w.path}: ${w.message}`);
+  if (!check.ok) {
+    for (const e of check.errors) console.error(`params: ${e.path || '(params)'}: ${e.message}`);
+    process.exit(2);
+  }
+}
+if (Object.keys(pin).length && !gen.batch) {
+  console.error(`${kind} has no places to pin`);
+  process.exit(2);
+}
+if (args.batch && !gen.batch) {
+  console.error(`${kind} has no batches; try fish4`);
+  process.exit(2);
 }
 
 // --beautify: the model to render for, from a file or PocketBase.
@@ -146,12 +208,18 @@ if (args.code.length) {
     }
     entries.push({ seed: null, genome });
   }
+} else if (args.batch) {
+  const seed = args.seed ?? 'forge';
+  const b = gen.batch(seed, Math.max(1, Number(args.count ?? 24)), params, pin);
+  console.log(`batch: ${b.place.terrain} (${b.place.regions.join(', ')}), pyramid ${b.pyramid.join('/')}, ${b.species} species`);
+  b.fish.forEach((f, i) => entries.push({ seed: `${seed}-${i}`, genome: f.set, species: f.species, school: f.school }));
 } else {
   const count = Math.max(1, Number(args.count ?? 1));
   const seed = args.seed ?? 'forge';
+  const opts = params != null ? { params } : { avatar: args.avatar ?? null };
   for (let i = 0; i < count; i++) {
     const s = count === 1 ? seed : `${seed}-${i}`;
-    const roll = (x) => gen.fromSeed(x, { avatar: args.avatar ?? null });
+    const roll = (x) => gen.fromSeed(x, opts, Object.keys(pin).length ? pin : undefined);
     entries.push({ seed: s, genome: model ? pickGood(gen, model, s, { roll }) : roll(s) });
   }
 }
@@ -182,7 +250,8 @@ for (const e of entries) {
 }
 
 const frames = (genome) => Array.from({ length: anim.frames }, (_, i) => gen.frame(genome, anim.id, i));
-const manifest = { kind, version: gen.version ?? 1, anim: anim.id, frames: anim.frames, fps: anim.fps, size: gen.size, scale, items: [] };
+const manifest = { kind, version: gen.version ?? 1, anim: anim.id, frames: anim.frames, fps: anim.fps, size: gen.size, scale, ...(gen.params ? { params: params ?? 'default', paramsHash: gen.params.hash(params) } : {}), items: [] };
+const extra = (e) => ({ ...(e.species ? { species: e.species, school: e.school } : {}), ...(gen.blurb ? { blurb: gen.blurb(e.genome, params != null ? { params } : undefined) } : {}) });
 const safe = (s) => String(s).replace(/[^a-z0-9._-]+/gi, '_');
 
 if (args.contact) {
@@ -191,7 +260,7 @@ if (args.contact) {
   const sheet = toSheet(all, { columns: anim.frames });
   const file = `${kind}-${anim.id}-contact.png`;
   writeFileSync(join(out, file), imagePNG(sheet, scale, bg ?? gen.bg));
-  for (const [row, e] of entries.entries()) manifest.items.push({ seed: e.seed, code: gen.traits.encode(e.genome), ...(gen.name ? { name: gen.name(e.genome) } : {}), size: sizeOf(gen, e.genome), row, ...(e.beauty != null ? { beauty: e.beauty } : {}) });
+  for (const [row, e] of entries.entries()) manifest.items.push({ seed: e.seed, code: gen.traits.encode(e.genome), ...(gen.name ? { name: gen.name(e.genome) } : {}), size: sizeOf(gen, e.genome), row, ...extra(e), ...(e.beauty != null ? { beauty: e.beauty } : {}) });
   manifest.contact = file;
 } else {
   for (const e of entries) {
@@ -210,8 +279,38 @@ if (args.contact) {
         files.push(file);
       });
     }
-    manifest.items.push({ seed: e.seed, code, ...(gen.name ? { name: gen.name(e.genome) } : {}), size: sizeOf(gen, e.genome), files, ...(e.beauty != null ? { beauty: e.beauty } : {}) });
+    manifest.items.push({ seed: e.seed, code, ...(gen.name ? { name: gen.name(e.genome) } : {}), size: sizeOf(gen, e.genome), files, ...extra(e), ...(e.beauty != null ? { beauty: e.beauty } : {}) });
   }
+}
+
+// --dossier: everything readable off each genome, as Markdown.
+if (args.dossier && gen.character) {
+  const o = params != null ? { params } : undefined;
+  const md = entries.map((e) => {
+    const c = gen.character(e.genome, o);
+    const t = gen.text(e.genome, o);
+    const s = c.story;
+    return [
+      `## ${c.names.full}`,
+      `*${s.species}* · “${c.names.nickname}” · \`${gen.traits.encode(e.genome)}\``,
+      '',
+      `> ${t.tagline.text}`,
+      '',
+      `- **Where:** ${s.terrain.label} · ${s.region.label} · ${s.niche.label} (${s.niche.note}) · ${s.body}, clade ${s.clade}`,
+      `- **Character:** ${c.archetype.label}: ${c.archetype.line}. ${c.traits.map((x) => x.word).join(', ')}.`,
+      `- **Quirks:** ${c.quirks.map((q) => q.text).join('; ')}`,
+      `- **Likes:** ${c.likes.join(', ')} · **dislikes:** ${c.dislikes.join(', ') || '—'} · **fears:** ${c.fears.join(', ') || '—'}`,
+      `- **Social:** ${c.social.label}, ${c.social.temperament}, schools of ${c.social.schoolSize}, keeps to the ${c.social.zone}`,
+      `- **Care:** ${c.care.medium} at ${Math.round(c.care.tempC)} °C, ${c.care.litres} L for ${c.care.group}, ${c.care.diet}, ${c.care.feeding}${c.care.radiation ? `, ${c.care.radiation.note} (radiance ${c.care.radiation.level})` : ''}`,
+      `- **Life:** ${s.lifespan}, matures ${s.maturation}, ${s.broods}`,
+      `- **Value:** ${c.value.label} (${c.value.points} points), ${c.value.credits} credits`,
+      `- **Codex:** ${t.codex.text} · **Origin:** ${t.origin.text}`,
+      `- **Keeper:** ${t.care.text} ${t.quote.text}`,
+      '',
+    ].join('\n');
+  });
+  writeFileSync(join(out, 'dossiers.md'), `# ${kind} dossiers\n\n${md.join('\n')}`);
+  manifest.dossiers = 'dossiers.md';
 }
 
 writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

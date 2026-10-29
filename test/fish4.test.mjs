@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generator, fromCode } from '../src/gen/registry.js';
-import gen4, { batch, violations, linkMuls, CONSTRAINTS, KITS, breed4, textFor, fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, STATS_VERSION, profile, ecology4Of, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
+import gen4, { validateParams, setParam, PARAM_SCHEMA, batch, violations, linkMuls, CONSTRAINTS, KITS, breed4, textFor, fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, STATS_VERSION, profile, ecology4Of, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
 import { namesOf } from '../src/v3/fish/names.js';
 import { fish3Traits as T3 } from '../src/v3/fish/genome.js';
 import { FEATURES } from '../src/v4/fish/features/registry.js';
@@ -529,4 +529,22 @@ test('batch: one terrain, a trophic pyramid, several species, schools of one spe
     assert.ok([...schools.values()].some((fs) => fs.length >= 3), 'a shoal');
     for (const f of b.fish) assert.equal(speciesKey(f.set), f.species);
   }
+});
+
+test('params schema: every preset validates, every knob is described, typos and bad values are caught', () => {
+  for (const [id, p] of Object.entries(PRESETS)) {
+    const r = validateParams(p);
+    assert.ok(r.ok, `${id}: ${JSON.stringify(r.errors)}`);
+    assert.deepEqual(r.warnings.filter((w) => !/reserved/.test(w.message)), [], id);
+  }
+  for (const s of PARAM_SCHEMA) assert.ok(s.path && s.type && s.label && s.group, s.path);
+  const bad = validateParams({ clusters: { cohesion: 2 }, terrains: { mud: 1 }, weights: { tail: { wings: 2 } }, links: { off: ['nope'] } });
+  assert.deepEqual(bad.errors.map((e) => e.path).sort(), ['clusters.cohesion', 'links.off', 'terrains.mud', 'weights.tail.wings']);
+  assert.deepEqual(validateParams({ cohesion: 1 }).warnings.map((w) => w.path), ['cohesion']);
+  assert.ok(!validateParams({ base: 'water', terrains: { water: 0 } }).ok, 'no terrain left');
+  assert.ok(!validateParams('nope').ok);
+  // A set param steers the roll: no links, no link ids fired.
+  const P = setParam({ base: 'ecotype' }, 'links.strength', 0);
+  assert.equal(P.links.strength, 0);
+  assert.notDeepEqual(fromSeed('steer-1', P), fromSeed('steer-1'));
 });
