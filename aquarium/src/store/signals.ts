@@ -505,7 +505,7 @@ export async function boot(b: Backend = backend) {
   const ev = act((d) => W.tick(d, t));
   const hatched = ev.filter((e) => e.kind === 'hatched').length;
   if (!fresh && away > 60_000) toast(`Welcome back. ${hatched ? `${hatched} egg${hatched > 1 ? 's' : ''} hatched while you were away.` : 'The tank kept itself ticking.'}`);
-  if (migrated) toast('Imported your Seedfall v2 save', 'gold');
+  if (migrated) toast('Imported your FISH IN SPACE! v2 save', 'gold');
   dirty = true;
   ready.value = true;
   if (fresh) wakeUp();

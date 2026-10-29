@@ -1,4 +1,4 @@
-// Seedfall's rules: the planet, its phases and biomes, seeding requests, the exchange, the vault,
+// FISH IN SPACE! rules: the planet, its phases and biomes, seeding requests, the exchange, the vault,
 // breeding, growth and the save. Pure: no DOM, no clock of its own (every call takes `now`), so it
 // runs the same in the browser, in a worker and under `node --test`.
 

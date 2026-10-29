@@ -1,4 +1,4 @@
-// Seedfall v3 rules: ported from the v2 suite, plus regions, windows, polls and the shop.
+// FISH IN SPACE! v3 rules: ported from the v2 suite, plus regions, windows, polls and the shop.
 import { describe, expect, test } from 'vitest';
 import * as W from '../src/game';
 

@@ -1,4 +1,4 @@
-# SEEDFALL v3: cozy space work
+# FISH IN SPACE! v3: cozy space work
 
 > *"Every sea starts as somebody's shift."*
 > — sign above the hatch on Orbital Hatchery *Minnow*
@@ -391,7 +391,7 @@ aquarium/
   - `patches`
   - `settings`
 - Rules stay **pure functions of `(state, now, seed)`**. The signals store is the only place that mutates. Each action calls a rule, gets `{ state, events }`, commits, and dispatches events to scenes (pod launch, hatch pop), comms (reactions) and audio.
-- **Save:** versioned, with a `migrate(v1 → v3)` that imports a current Seedfall localStorage save if one is found. Fish, credits and Bloom carry over, and each v2 biome becomes its first region.
+- **Save:** versioned, with a `migrate(v1 → v3)` that imports a current FISH IN SPACE! localStorage save if one is found. Fish, credits and Bloom carry over, and each v2 biome becomes its first region.
 
 ---
 

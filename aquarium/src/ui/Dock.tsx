@@ -13,7 +13,7 @@ export function Dock() {
   const orders = game.value.orders.length;
   return (
     <nav class="dock" aria-label="Station rooms">
-      <div class="brand">SEEDFALL</div>
+      <div class="brand">FISH IN SPACE!</div>
       {ROOMS.map((r) => {
         const badge = r.id === 'pip' ? commsUnread.value : r.id === 'bridge' ? orders : 0;
         return (

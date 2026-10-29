@@ -1,4 +1,4 @@
-# SEEDFALL — breed the fish a new world needs
+# FISH IN SPACE! — breed the fish a new world needs
 
 > Plan v2. Supersedes `AQUARIUM_PLAN.md` ("The Living Archive"), which stays in the repo for
 > reference. The first playable build lives in `/aquarium/`.
@@ -23,7 +23,7 @@ The tone is cosy sci-fi: cute pixel fish, a chirpy survey drone, gentle timers, 
 
 | Thing | Name | Notes |
 | --- | --- | --- |
-| Game | **Seedfall** | The programme that "drops life like seeds". |
+| Game | **FISH IN SPACE!** | The programme that "drops life like seeds". |
 | Player | Hatchery Ichthyologist | Unnamed "you"; the drone calls you "Doc". |
 | Station | Orbital Hatchery *Minnow* | A small ring station; the tank is its heart. |
 | Companion | **PIP** (Planetary Integration Probe) | Survey drone. Writes the log, reports planet shifts, a bit too excited about mud. |

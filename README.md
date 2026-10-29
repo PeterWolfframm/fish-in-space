@@ -74,7 +74,7 @@ node cli/forge.mjs plant2 --size giant --anim wind --sheet
 npm test
 ```
 
-The Seedfall aquarium game runs on its own Vite server:
+The FISH IN SPACE! aquarium game runs on its own Vite server:
 
 ```sh
 cd aquarium
@@ -185,7 +185,7 @@ Change `primary_region` in `fly.toml` before the first deploy if Frankfurt is th
 
 - Landing page: `https://fish-in-space.fly.dev/`
 - Fish in Space: `https://fish-in-space.fly.dev/app/#forge`
-- Seedfall aquarium: `https://fish-in-space.fly.dev/aquarium/`
+- FISH IN SPACE! aquarium: `https://fish-in-space.fly.dev/aquarium/`
 - PocketBase dashboard: `https://fish-in-space.fly.dev/_/` (the superuser from the secrets above)
 - A member, so they can swipe: `fly ssh console -C "node /app/scripts/pixelgen-user.mjs you@example.com 'a long password' Ada"`
 - Admin, for someone who already has an account: `fly ssh console -C "node /app/scripts/pixelgen-admin.mjs you@example.com"`, then reload

@@ -15,8 +15,8 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Seedfall',
-        short_name: 'Seedfall',
+        name: 'FISH IN SPACE!',
+        short_name: 'FISH IN SPACE!',
         description: 'Breed pixel fish in an orbital hatchery and seed the oceans of a newly terraformed planet.',
         theme_color: '#04050b',
         background_color: '#04050b',

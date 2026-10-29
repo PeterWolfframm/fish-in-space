@@ -89,5 +89,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const port = Number(process.argv[2]) || Number(process.env.PORT) || Number(process.env.APP_PORT) || 8017;
   const host = process.env.HOST || '127.0.0.1';
   await serve(port, host);
-  console.log(`Seedfall → http://${host}:${port}/`);
+  console.log(`FISH IN SPACE! → http://${host}:${port}/`);
 }

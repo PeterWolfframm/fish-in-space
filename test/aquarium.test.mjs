@@ -1,4 +1,4 @@
-// Seedfall (aquarium/) world rules: requests are always fillable, matching, pricing, the save.
+// FISH IN SPACE! (aquarium/) world rules: requests are always fillable, matching, pricing, the save.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as W from '../aquarium/_v2/js/world.js';

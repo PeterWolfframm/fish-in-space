@@ -1,4 +1,4 @@
-// Seedfall: the page. Owns the state, the clock and the panels; the world module owns the rules and
+// FISH IN SPACE!: the page. Owns the state, the clock and the panels; the world module owns the rules and
 // the tank draws what the state says.
 
 import fish from '../../../src/v3/fish/index.js';
