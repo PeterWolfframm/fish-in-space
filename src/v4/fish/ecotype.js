@@ -19,6 +19,8 @@ import { oklab } from '../../v3/fish/colors.js';
 import { BODIES } from '../../v3/fish/bodies.js';
 import { fish4Traits, jitterKey, IDENTITY_IDS } from './genome.js';
 import { latentLoci } from './loci.js';
+import { applyLinks } from './links.js';
+import { guard } from './guard.js';
 import { TERRAINS, TERRAIN_IDS, NICHES, REGIONS, regionsOf } from './data/terrains.js';
 import { BODY_RECORDS, bodyFields } from './bodies/index.js';
 import { PIGMENTS } from './data/pigments.js';
@@ -112,6 +114,25 @@ function weightsFor(f, ctx, set) {
 }
 
 const pick = (weighted, f, w, salt) => weighted(f.choices.map((c, ci) => [c.id, w[ci]]), salt);
+
+const FIELD = new Map(T.fields.map((f) => [f.id, f]));
+
+/**
+ * Links, then the guard, over one roll. Links re-roll at `salt + 7` with their × folded in; the
+ * guard re-rolls without the offending value at `salt + 101·k`. `base` is the field's own salt.
+ */
+function linkAndGuard(out, ctx, weighted, base, keep) {
+  const linked = applyLinks(out, ctx.P, (fid, mul, salt) => {
+    const f = FIELD.get(fid);
+    const w = weightsFor(f, ctx, out).map((x, ci) => x * (mul[f.choices[ci].id] ?? 1));
+    return w.some((x) => x > 0) ? pick(weighted, f, w, base(f) + salt) : out[fid];
+  }, keep).set;
+  return guard(linked, ctx.P, (fid, exclude, salt) => {
+    const f = FIELD.get(fid);
+    const w = weightsFor(f, ctx, linked).map((x, ci) => (exclude.includes(f.choices[ci].id) ? 0 : x));
+    return w.some((x) => x > 0) ? pick(weighted, f, w, base(f) + salt) : linked[fid];
+  }).set;
+}
 
 const labCache = new Map();
 const lab = (hex) => {
@@ -222,7 +243,7 @@ export function protoOf(place, P, weightOf) {
       if (chance(P.bodyPrefer ?? 0.6, 3300 + i)) out[f] = v;
     });
   }
-  const proto = { set: T.normalize(out), ctx };
+  const proto = { set: T.normalize(linkAndGuard(out, ctx, weighted, (f) => f.salt, new Set(PLACED))), ctx };
   if (byParams.size > 2000) byParams.clear();
   byParams.set(key, proto);
   return proto;
@@ -253,16 +274,14 @@ export function ecotypeFromSeed(seed, P, weightOf, place) {
 
   // fish4-native fish draw with scaled detail.
   const out = { ...where, detail: 'v4' };
+  const kept = new Set(PLACED);
   for (const f of T.fields) {
     if (f.locus || PLACED.has(f.id)) continue;
     const g = groupOf(f);
     const pv = proto.set[f.id];
-    if (g === 'fixed') {
+    if (g === 'fixed' || (g !== 'free' && r(f.salt) < cohesion * (stick[g] ?? 0.6))) {
       out[f.id] = pv;
-      continue;
-    }
-    if (g !== 'free' && r(f.salt) < cohesion * (stick[g] ?? 0.6)) {
-      out[f.id] = pv;
+      kept.add(f.id);
       continue;
     }
     const w = weightsFor(f, ctx, out);
@@ -278,7 +297,8 @@ export function ecotypeFromSeed(seed, P, weightOf, place) {
     out[field] = weighted(Object.entries(sports[field]), 9003);
   }
 
-  let set = T.normalize(out);
+  // Links over what this fish rolled itself (its species was linked already), then the guard.
+  let set = T.normalize(linkAndGuard(out, ctx, weighted, (f) => f.salt + 17, kept));
   Object.assign(set, latentLoci(jitterKey(set), lociWeights(where.niche, P, weightOf)));
   set = T.normalize(set);
   return set;

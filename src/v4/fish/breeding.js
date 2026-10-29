@@ -16,6 +16,7 @@
 // Deterministic: the same parents and seed always hatch the same eggs.
 
 import { roller } from '../../pixel/rng.js';
+import { inheritKits } from './links.js';
 import { breedDetailed } from '../../v3/fish/breeding.js';
 import { fish4Traits, toFish3, FISH3_IDS, FEATURE_IDS } from './genome.js';
 import { LOCI, alleleIds, ALLELE_STEPS, lociOf } from './loci.js';
@@ -105,6 +106,10 @@ function hatch(A, B, seed, P, chanceOfMyth) {
     child[`${l.id}A`] = fromA;
     child[`${l.id}B`] = fromB;
   });
+
+  // --- linkage kits: a weapon kit, a fin kit, a face, each whole from one parent ---------------------
+  const kits = inheritKits(child, A, B, P, chance);
+  if (kits.length) events.push({ kind: 'kits', text: `inherited whole: ${kits.join(', ')}`, quiet: true });
 
   // --- identity: a kit from one parent ----------------------------------------------------------------
   const kit = chance(0.5, 100) ? A : B;

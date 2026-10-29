@@ -36,8 +36,12 @@ import { breed as breed4, breedClutch, breedProblem, mythicChance } from './bree
 import { valueOf, eggCost } from './economy.js';
 import { characterOf, compatibility, blurbOf } from './character.js';
 import { textOf, textFor, POOLS as TEXT_POOLS } from './text.js';
+import { batch as batchOf, LEVEL_OF_DIET } from './batch.js';
+import { LINKS, KITS, linkMuls } from './links.js';
+import { CONSTRAINTS, violations } from './guard.js';
 
 export { characterOf, compatibility, blurbOf, textOf, textFor, TEXT_POOLS };
+export { LEVEL_OF_DIET, LINKS, KITS, linkMuls, CONSTRAINTS, violations };
 export { rarityOf, tierOf, RARITY_COLORS, reproduction, canBreed, breed4, breedClutch, breedProblem, mythicChance, valueOf, eggCost };
 export { weightOf, ecology4Of, careLine, extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
 export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
@@ -70,6 +74,16 @@ export function fromSeed(seed, params, place) {
   set = T.normalize(set);
   Object.assign(set, latentLoci(jitterKey(set), (f, ci) => weightOf(f, ci, P)));
   return T.normalize(set);
+}
+
+/**
+ * A balanced batch of `n` fish from one terrain (shop stock, a wild catch): a trophic pyramid,
+ * several species, schooling species in groups. `pin` takes `{ terrain, region }`. Always rolls
+ * the ecotype way, whatever `params.algo` says: a batch is made of species.
+ */
+export function batch(seed, n, params, pin) {
+  const P = resolveParams(paramsFromOpts(params));
+  return batchOf(seed, n, P, weightOf, pin);
 }
 
 /** The forge app passes its option checkboxes; the studio passes params outright. */
@@ -232,6 +246,7 @@ export default {
   traits: T,
   options: Object.values(PRESETS).filter((p) => p.id !== DEFAULT_PRESET).map((p) => ({ id: p.id, label: p.label })),
   fromSeed,
+  batch,
   fromCode: decodeAny,
   normalize: T.normalize,
   name: (genome) => namesOf4(T.normalize(genome)).full,

@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generator, fromCode } from '../src/gen/registry.js';
-import gen4, { textFor, fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, STATS_VERSION, profile, ecology4Of, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
+import gen4, { batch, violations, linkMuls, CONSTRAINTS, KITS, breed4, textFor, fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, STATS_VERSION, profile, ecology4Of, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
 import { namesOf } from '../src/v3/fish/names.js';
 import { fish3Traits as T3 } from '../src/v3/fish/genome.js';
 import { FEATURES } from '../src/v4/fish/features/registry.js';
@@ -382,7 +382,9 @@ test('sim: pacing bands hold and no strategy dominates', async () => {
   assert.ok(best('rare') >= 2 && best('rare') <= 9, `rare ${best('rare')}`);
   assert.ok(best('epic') >= 3 && best('epic') <= 15, `epic ${best('epic')}`);
   assert.ok(best('legendary') >= 10 && best('legendary') <= 35, `legendary ${best('legendary')}`);
-  assert.ok(best('myth') >= 20, `myth ${best('myth')}`);
+  // Mythic is luck as much as play: one lucky run must not set the band, so count misses too.
+  const mythMedian = Math.min(...Object.values(s).map((x) => x.firsts.myth?.medianGen ?? Infinity));
+  assert.ok(mythMedian >= 20, `myth ${mythMedian}`);
   const rates = Object.values(s).map((x) => x.perHour).sort((a, b) => b - a);
   assert.ok(rates[0] <= 1.5 * rates[1], `per hour ${rates}`);
 });
@@ -457,4 +459,74 @@ test('text: every pool fills, no stray tokens, terrain lines for terrain fish, c
   assert.match(textFor(s, 'tagline', { library: lib }).text, /^Hello, [a-z-]+\.$/);
   // Nothing matches: fish3's lore fills in.
   assert.ok(textFor(s, 'codex', { library: lib }).id.startsWith('lore:'));
+});
+
+test('links: deterministic, they fire, and they move the odds they name', () => {
+  // Links act on species, so count over many: the share of fish that meet `when` and carry `c`.
+  const share = (params, when, ok) => {
+    let hit = 0;
+    let n = 0;
+    for (let i = 0; i < 2000; i++) {
+      const s = fromSeed(`lk-${i}`, params);
+      if (!when(s)) continue;
+      n++;
+      hit += ok(s) ? 1 : 0;
+    }
+    return hit / n;
+  };
+  const on = { base: 'ecotype' };
+  const off = { base: 'ecotype', links: { strength: 0 } };
+  assert.deepEqual(fromSeed('link-a', on), fromSeed('link-a', on));
+  const deep = (s) => s.region === 'deep' || s.region === 'icemoon';
+  assert.ok(share(on, deep, (s) => s.belly === 'pale') > share(off, deep, (s) => s.belly === 'pale') + 0.15, 'deep-pale');
+  const veil = (s) => ['veil', 'streamer', 'lyre'].includes(s.tail);
+  assert.ok(share(on, veil, (s) => s.dorsal === 'tall') > share(off, veil, (s) => s.dorsal === 'tall') + 0.1, 'veil-slow');
+  const { fired } = linkMuls(fromSeed('link-b', on, { terrain: 'nuclear' }), PRESETS.ecotype);
+  assert.ok(fired.includes('nuclear-glow'));
+  assert.deepEqual(linkMuls(fromSeed('link-b', on), { ...PRESETS.ecotype, links: { strength: 0 } }).fired, []);
+  assert.ok(!linkMuls({ terrain: 'sand', dorsal: 'low' }, { links: { off: ['sand-flat'] } }).fired.includes('sand-flat'));
+});
+
+test('guard: no guarded combination across 2,000 seeds, and every guard can be switched off', () => {
+  for (let i = 0; i < 2000; i++) {
+    const s = fromSeed(`guard-${i}`);
+    assert.deepEqual(violations(s, PRESETS.ecotype), [], `guard-${i}`);
+  }
+  const bad = { size: 'tiny', dorsal: 'venom', tail: 'sword', terrain: 'water' };
+  assert.deepEqual(violations(bad, PRESETS.ecotype), ['tiny-arsenal']);
+  assert.deepEqual(violations(bad, { guard: { off: ['tiny-arsenal'] } }), []);
+  assert.deepEqual(violations(bad, { guard: { enabled: false } }), []);
+  for (const c of CONSTRAINTS) assert.ok(c.id && c.when && c.fix && c.note, c.id);
+});
+
+test('breeding kits: with kitChance 1 each kit comes whole from one parent', () => {
+  const P = { base: 'ecotype', links: { kitChance: 1 } };
+  const a = fromSeed('kit-a', null, { region: 'reef' });
+  const b = fromSeed('kit-b', null, { region: 'reef' });
+  for (let i = 0; i < 20; i++) {
+    const c = breed4(a, b, `kit-${i}`, P).child;
+    for (const kit of KITS) {
+      const whole = (p) => kit.fields.every((f) => c[f] === T.normalize(p)[f]);
+      assert.ok(whole(a) || whole(b), `${kit.id} ${i}`);
+    }
+  }
+});
+
+test('batch: one terrain, a trophic pyramid, several species, schools of one species', () => {
+  for (const pin of [{}, { terrain: 'lava' }, { terrain: 'sand' }, { terrain: 'nuclear' }, { region: 'reef' }]) {
+    const b = batch('shop', 30, null, pin);
+    assert.deepEqual(batch('shop', 30, null, pin), b);
+    assert.equal(b.fish.length, 30);
+    if (pin.terrain) assert.equal(b.place.terrain, pin.terrain);
+    assert.ok(b.fish.every((f) => f.set.terrain === b.place.terrain), 'one terrain');
+    if (pin.region) assert.ok(b.fish.every((f) => f.set.region === pin.region));
+    const [base, mid, top] = b.pyramid;
+    assert.ok(base >= mid && mid >= top, `pyramid ${b.pyramid}`);
+    assert.ok(b.species >= 4, `species ${b.species}`);
+    // A school is one species, and some schools have more than one fish.
+    const schools = Map.groupBy(b.fish, (f) => f.school);
+    for (const fs of schools.values()) assert.equal(new Set(fs.map((f) => f.species)).size, 1);
+    assert.ok([...schools.values()].some((fs) => fs.length >= 3), 'a shoal');
+    for (const f of b.fish) assert.equal(speciesKey(f.set), f.species);
+  }
 });

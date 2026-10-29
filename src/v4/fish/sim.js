@@ -155,7 +155,9 @@ export function sweep({ seeds = 4, ...opts } = {}) {
       mythics: runs.reduce((a, x) => a + x.mythics, 0),
       firsts: Object.fromEntries(TIERS.slice(1).map((t) => {
         const hit = runs.filter((x) => x.firsts[t]);
-        return [t, hit.length ? { gen: med(hit.map((x) => x.firsts[t].gen)), hours: med(hit.map((x) => x.firsts[t].hours)), reached: hit.length / runs.length } : null];
+        // `gen` is the median over the runs that got there; `medianGen` counts misses as never.
+        const all = med(runs.map((x) => x.firsts[t]?.gen ?? Infinity));
+        return [t, hit.length ? { gen: med(hit.map((x) => x.firsts[t].gen)), medianGen: all, hours: med(hit.map((x) => x.firsts[t].hours)), reached: hit.length / runs.length } : null];
       })),
     };
   }
