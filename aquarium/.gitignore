@@ -3,3 +3,4 @@ dist/
 .pocketbase/
 test-results/
 playwright-report/
+undefined/
