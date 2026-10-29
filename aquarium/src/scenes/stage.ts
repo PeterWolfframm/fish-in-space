@@ -65,7 +65,7 @@ export class Stage {
       resolution: this.dpr,
       autoDensity: true,
       antialias: false,
-      background: 0x0b0e1f,
+      background: 0x04050b,
       preference: 'webgl',
       powerPreference: 'low-power',
     });
@@ -185,7 +185,7 @@ export class Stage {
   callout(x: number, y: number, label: string, color = '#fff6c9') {
     const text = new Text({
       text: label,
-      style: { fontFamily: 'Pixelify Sans, ui-monospace, monospace', fontSize: 13, fontWeight: '600', fill: color, stroke: { color: '#0b0e1f', width: 3 }, align: 'center' },
+      style: { fontFamily: 'Tiny5, ui-monospace, monospace', fontSize: 12, fontWeight: '400', fill: color, stroke: { color: '#04050b', width: 3 }, align: 'center' },
       resolution: this.dpr,
     });
     text.anchor.set(0.5, 1);
@@ -208,7 +208,7 @@ export class Stage {
 
     if (this.active) {
       this.active.update(dt, this.time);
-      this.app.renderer.render({ container: this.active.root, target: this.rt, clear: true, clearColor: 0x0b0e1f });
+      this.app.renderer.render({ container: this.active.root, target: this.rt, clear: true, clearColor: 0x04050b });
     }
     for (const c of this.callouts) {
       c.life -= dt;

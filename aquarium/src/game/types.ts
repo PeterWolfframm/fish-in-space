@@ -2,22 +2,35 @@
 
 export type Salinity = 'fresh' | 'brackish' | 'marine' | 'any';
 export type Temp = 'cold' | 'temperate' | 'tropical';
-export type BiomeId = 'melt' | 'river' | 'delta' | 'reef' | 'trench';
+export type BiomeId = 'melt' | 'river' | 'delta' | 'reef' | 'trench' | 'sea';
 export type Stage = 'fry' | 'juvenile' | 'adult' | 'elder';
+
+/** A wall-grid footprint, in units, for the tank it describes. */
+export type TankShape = '1x1' | '2x1' | '1x2' | '2x2' | '3x1';
+
+export interface Tank {
+  id: string;
+  name: string;
+  shape: TankShape;
+  slot: { x: number; y: number }; // top-left cell on the wall grid
+}
 
 export interface Fish {
   id: string;
   code: string;
+  tank: string; // Tank.id this fish lives in
   growth: number; // seconds of growth so far
   hunger: number; // 0 fed .. 1 starving
   spawnReadyAt: number;
   born: number;
   x?: number; // where it hatched, 0..1 across the tank
+  name?: string; // a fixed-name override (e.g. Jerry); fishName() reads this first
 }
 
 export interface Egg {
   id: string;
   code: string;
+  tank: string; // Tank.id this egg is laid in
   hatchAt: number;
   laid: number;
   x: number;
@@ -101,7 +114,8 @@ export interface ShopState {
 
 export interface DecorSlot {
   slot: number;
-  family: 'waterplant2' | 'plant3';
+  tank: string; // Tank.id this decor sits in
+  family: 'waterplant2' | 'plant3' | 'object'; // 'object' is shelf-only (figurines etc), not a plant generator
   code: string;
 }
 
@@ -109,6 +123,7 @@ export interface Settings {
   muted: boolean;
   batterySaver: boolean;
   shortPods: boolean;
+  uiScale: 1 | 1.15 | 1.3 | 1.5;
 }
 
 export interface Upgrades {
@@ -116,6 +131,7 @@ export interface Upgrades {
   heater: boolean;
   annex: boolean;
   feederOrbit: number;
+  extendBerths: number; // total berths bought from repeated 'extend' upgrades, all on tank 1
 }
 
 export interface FieldNotes {
@@ -135,7 +151,8 @@ export interface State {
   phase: number;
   bloom: number;
   biomeBloom: Record<string, number>;
-  capacity: number;
+  capacity: number; // total berths across every tank; derived, kept in sync by state/shop rules
+  tanks: Tank[];
   fish: Fish[];
   eggs: Egg[];
   orders: Order[];
@@ -150,7 +167,7 @@ export interface State {
   comms: { log: CommsLogEntry[]; recent: Record<string, number>; lastCaller: string | null; nextAmbientAt: number; lastAmbientId: string | null };
   shop: ShopState;
   decor: DecorSlot[];
-  ownedCuttings: { family: 'waterplant2' | 'plant3'; code: string }[];
+  ownedCuttings: { family: 'waterplant2' | 'plant3' | 'object'; code: string }[];
   upgrades: Upgrades;
   fieldNotes: FieldNotes;
   patches: string[];

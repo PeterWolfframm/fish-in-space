@@ -1,4 +1,4 @@
-// The Roe Counter: Sel behind a frosted cryo counter, drawers of roe glowing blue, cuttings hanging
+// The Interchange: Sel behind a frosted cryo counter, drawers of roe glowing blue, cuttings hanging
 // from a rail. The panel below does the buying; tapping a drawer here scrolls to it.
 
 import { Container, Graphics, Sprite } from 'pixi.js';
@@ -8,7 +8,7 @@ import { calm, fx, type Scene } from '../stage';
 import { Backdrop, Figure, hullWall } from '../room';
 import { glowTexture } from '../paint';
 
-export class CounterScene implements Scene {
+export class InterchangeScene implements Scene {
   root = new Container();
   private back = new Backdrop();
   private sel = new Figure('sel');

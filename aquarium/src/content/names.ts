@@ -42,6 +42,12 @@ const G: Record<BiomeId, Grammar> = {
     words: ['Long Hush', 'Lamp', 'Slow Dark', 'Underhum', 'Kindly Deep', 'Lantern'],
     forms: [(r) => r, (r) => `${r} Deep`, (_, w) => `The ${w}`, (r) => `${r} Rift`, (r) => `${r} Hollow`],
   },
+  sea: {
+    starts: ['Fathom', 'Far', 'Wide', 'Drift', 'Grey', 'Still', 'Long', 'Open', 'Swell', 'Pel'],
+    ends: ['mere', 'wake', 'span', 'reach', 'tide', 'rove', 'gale', 'swell', 'ora'],
+    words: ['Horizon', 'Current', 'Swell', 'Expanse', 'Drift', 'Fathom'],
+    forms: [(r) => r, (r) => `${r} Reach`, (_, w) => `The ${w}`, (r) => `${r} Swell`, (r) => `${r} Expanse`],
+  },
 };
 
 /** One candidate name. Roots fuse a start and an end, so "Coral" + "une" is "Coralune". */

@@ -48,6 +48,8 @@ export const BIOMES: Biome[] = [
     conds: [{ from: 3, salinity: 'marine', temp: 'tropical' }] },
   { id: 'trench', name: 'Lanternfall Trench', kind: 'Deep', icon: '✦', color: '#8b7cf0', opens: 4, blurb: 'A cold, deep scar lit by glowing minerals.',
     conds: [{ from: 4, salinity: 'marine', temp: 'cold', depth: ['twilight', 'abyss'] }] },
+  { id: 'sea', name: 'Open Sea', kind: 'Sea', icon: '≈', color: '#3f7fd1', opens: 1, blurb: 'Mild, open water past the coast, marine but not yet warm.',
+    conds: [{ from: 1, salinity: 'marine', temp: 'temperate' }] },
 ];
 
 export const biomeById = (id: string): Biome | undefined => BIOMES.find((b) => b.id === id);

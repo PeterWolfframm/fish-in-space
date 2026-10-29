@@ -12,7 +12,7 @@ test('boots and visits every room', async ({ page }) => {
   // A blank or solid canvas compresses to a tiny PNG; the tank with fish and plants does not.
   const png = await page.locator('.scene canvas').screenshot();
   expect(png.byteLength).toBeGreaterThan(20_000);
-  for (const name of ['Bridge', 'Roe Counter', 'Comms', 'Lab', 'Hatchery']) {
+  for (const name of ['Bridge', 'Interchange', 'PIP', 'Lab', 'Hatchery']) {
     await page.locator('.dock button', { hasText: name }).click();
     await page.waitForTimeout(400);
   }

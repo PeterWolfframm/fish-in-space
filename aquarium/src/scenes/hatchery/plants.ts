@@ -98,7 +98,7 @@ export class Plants {
     a.ledge = p.ledge;
     const row = PLANT_SCALE[a.family][a.size] ?? { scale: 1, maxH: 48 };
     // Never taller than the space it lives in.
-    const room = p.ledge ? this.L.wallH - 4 : this.L.sandY - this.L.water.y - 6;
+    const room = p.ledge ? this.L.lidY - 3 : this.L.sandY - this.L.water.y - 6;
     a.maxH = Math.min(row.maxH, room);
     a.sprite.scale.set(row.scale);
     a.sprite.position.set(a.x, a.y);

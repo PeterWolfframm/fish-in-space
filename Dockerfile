@@ -1,6 +1,11 @@
-# Fly Machine image. No npm install: the app is plain ES modules, and app/built.css is already built.
-# PocketBase is the linux/amd64 binary Fly machines run, even if the builder is arm.
+# Build the aquarium for the static server's /aquarium/ route.
+FROM node:22-bookworm-slim AS aquarium-build
 
+WORKDIR /app
+COPY . .
+RUN cd aquarium && npm ci && npm run build
+
+# PocketBase is the linux/amd64 binary Fly machines run, even if the builder is arm.
 FROM node:22-bookworm-slim
 
 RUN apt-get update \
@@ -9,6 +14,7 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY . .
+COPY --from=aquarium-build /app/aquarium/dist ./aquarium/dist
 RUN PB_OS=linux PB_ARCH=amd64 node scripts/get-pocketbase.mjs
 
 ENV NODE_ENV=production \

@@ -51,6 +51,7 @@ const BIOME_WATER: Record<BiomeId, [number, number, number]> = {
   delta: [92, 160, 150],
   reef: [63, 198, 201],
   trench: [28, 52, 120],
+  sea: [63, 127, 209],
 };
 const LOCKED: [number, number, number] = [70, 86, 104];
 const GREEN: [number, number, number] = [110, 190, 92];
@@ -93,6 +94,25 @@ export function paint(map: PlanetMap, prep: PaintPrep, life: ArrayLike<number>, 
       continue;
     }
     if (c === OCEAN) {
+      // Open Sea regions are plain ocean cells too; they green up with life like any other water
+      // region. Ocean cells that belong to a reef, trench or delta region instead keep the plain
+      // deep-ocean look below (that region's own cells already carry its colour).
+      const seaBiome = r >= 0 ? map.regions[r]?.biome : undefined;
+      if (seaBiome === 'sea') {
+        const base = open[r] ? BIOME_WATER.sea : LOCKED;
+        const d = Math.min(1, (Math.max(0, map.sea - h) / map.sea) * 1.2);
+        tmp[0] = base[0] + (16 - base[0]) * d;
+        tmp[1] = base[1] + (34 - base[1]) * d;
+        tmp[2] = base[2] + (78 - base[2]) * d;
+        const l = life[r] / 100;
+        mix(tmp, [130, 220, 120], l * 0.35, out, o);
+        if (r === highlight) {
+          out[o] = Math.min(255, out[o] + 50);
+          out[o + 1] = Math.min(255, out[o + 1] + 40);
+          out[o + 2] = Math.min(255, out[o + 2] + 20);
+        }
+        continue;
+      }
       const d = Math.max(0, map.sea - h) / map.sea;
       mix([46, 92, 140], [16, 34, 78], Math.min(1, d * 1.6), out, o);
       if (polar > 0.9) mix([46, 92, 140], [200, 220, 235], 0.75, out, o);

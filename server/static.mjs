@@ -55,11 +55,14 @@ export function serve(port = Number(process.env.PORT) || Number(process.env.APP_
       proxyToPocketBase(req, res);
       return;
     }
-    if (url.pathname === '/') {
-      res.writeHead(302, { location: '/app/' }).end();
+    if (url.pathname === '/aquarium') {
+      res.writeHead(301, { location: '/aquarium/' }).end();
       return;
     }
-    let path = normalize(join(ROOT, decodeURIComponent(url.pathname)));
+    const aquariumRoot = join(ROOT, 'aquarium', 'dist');
+    const path = url.pathname.startsWith('/aquarium/')
+      ? normalize(join(aquariumRoot, decodeURIComponent(url.pathname.slice('/aquarium/'.length))))
+      : normalize(join(ROOT, url.pathname === '/' ? 'pixelgenerator.space/index.html' : decodeURIComponent(url.pathname)));
     if (!path.startsWith(ROOT) || /\/\.(pocketbase|git)(\/|$)/.test(path)) {
       res.writeHead(403).end();
       return;

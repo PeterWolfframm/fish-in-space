@@ -1,5 +1,5 @@
-// The hatchery scene: cabin, porthole, and the tank with its fish, plants, food, bubbles, eggs and
-// effects. The store is the source of truth: the scene reads it each frame and reports taps and bites.
+// The hatchery scene: space and the planet behind the glass, the lab hardware, and the tank with its
+// fish, plants, food, bubbles, eggs and effects. The store is the source of truth: the scene reads it each frame and reports taps and bites.
 
 import { Container, Graphics, Sprite, TilingSprite } from 'pixi.js';
 import { game, selected, pairWith, placing, selectFish, biteFish, tapEgg, placeCutting, onScene, orbit, type SceneEvent } from '../../store/signals';
@@ -9,8 +9,8 @@ import { regionLive } from '../life';
 import { canvas, texOf, lcg, glowTexture, rayTexture, PATTERNS } from '../paint';
 import { stage, fx, calm, type Scene } from '../stage';
 import { layout, SAND, type HatcheryLayout } from './layout';
-import { Cabin } from './cabin';
-import { Porthole } from './porthole';
+import { LabFrame } from './labframe';
+import { SpaceView } from './spaceview';
 import { Plants } from './plants';
 import { FishActor, type Food } from './fish';
 import { loadPlanet } from '../../planet/load';
@@ -63,13 +63,16 @@ function causticTexture(seed: number) {
 function paintWater(L: HatcheryLayout) {
   const { x, y, w, h } = L.water;
   const { c, g } = canvas(w, h);
-  const top = [150, 228, 236];
-  const bot = [34, 92, 140];
-  const bands = 14;
+  // Clear near the surface so space and the planet read through; deeper water tints and thickens.
+  const top = [70, 190, 215, 0.1];
+  const bot = [6, 42, 78, 0.66];
+  const bands = 16;
   for (let i = 0; i < bands; i++) {
-    const k = i / (bands - 1);
-    g.fillStyle = `rgb(${top.map((v, j) => Math.round(v + (bot[j] - v) * k))})`;
-    g.fillRect(0, Math.floor((i * h) / bands), w, Math.ceil(h / bands) + 1);
+    const k = (i / (bands - 1)) ** 1.25;
+    const [r, gg, b, a] = top.map((v, j) => v + (bot[j] - v) * k);
+    g.fillStyle = `rgba(${Math.round(r)},${Math.round(gg)},${Math.round(b)},${a.toFixed(3)})`;
+    const y0 = Math.floor((i * h) / bands);
+    g.fillRect(0, y0, w, Math.floor(((i + 1) * h) / bands) - y0);
   }
   const sandY = L.sandY - y;
   const rock = (rx: number, rw: number, rh: number, col: string) => {
@@ -80,17 +83,17 @@ function paintWater(L: HatcheryLayout) {
       g.fillRect(Math.round(rx) + i, sandY - hh + 2, 1, hh);
     }
   };
-  rock(w * 0.05, 70, 26, 'rgba(30,70,110,0.45)');
-  rock(w * 0.55, 90, 34, 'rgba(30,70,110,0.45)');
-  rock(w * 0.3, 50, 16, 'rgba(40,90,120,0.55)');
-  rock(w * 0.78, 40, 20, 'rgba(40,90,120,0.55)');
-  g.fillStyle = '#f0d49a';
+  rock(w * 0.05, 70, 26, 'rgba(10,34,58,0.7)');
+  rock(w * 0.55, 90, 34, 'rgba(10,34,58,0.7)');
+  rock(w * 0.3, 50, 16, 'rgba(18,52,76,0.8)');
+  rock(w * 0.78, 40, 20, 'rgba(18,52,76,0.8)');
+  g.fillStyle = '#cdbd97';
   g.fillRect(0, sandY, w, SAND);
-  g.fillStyle = '#fbe6b8';
+  g.fillStyle = '#e6dbbd';
   g.fillRect(0, sandY, w, 1);
   const r = lcg(7);
   for (let i = 0; i < w * 1.4; i++) {
-    g.fillStyle = r() < 0.5 ? '#ddb979' : '#f8dfab';
+    g.fillStyle = r() < 0.5 ? '#b2a27e' : '#ddd0ae';
     g.fillRect(Math.floor(r() * w), sandY + 1 + Math.floor(r() * (SAND - 1)), 1, 1);
   }
   for (let i = 0; i < w / 30; i++) {
@@ -106,7 +109,7 @@ function paintWater(L: HatcheryLayout) {
   g.fillRect(w - 24, sandY - 2, 7, 1);
   // A gentle vignette, in bands.
   for (let i = 0; i < 4; i++) {
-    g.fillStyle = `rgba(11,14,31,${0.06})`;
+    g.fillStyle = 'rgba(3,6,14,0.08)';
     g.fillRect(0, 0, 3 + i * 3, h);
     g.fillRect(w - 3 - i * 3, 0, 3 + i * 3, h);
   }
@@ -117,8 +120,8 @@ function paintWater(L: HatcheryLayout) {
 export class HatcheryScene implements Scene {
   root = new Container();
   private L!: HatcheryLayout;
-  private cabin = new Cabin();
-  private porthole = new Porthole();
+  private frame = new LabFrame();
+  private space = new SpaceView();
   private plants = new Plants();
   private water = new Sprite();
   private rays: Sprite[] = [];
@@ -146,19 +149,20 @@ export class HatcheryScene implements Scene {
     for (let i = 0; i < 4; i++) {
       const s = new Sprite(ray);
       s.blendMode = 'add';
-      s.tint = 0xfff1c9;
+      s.tint = 0xd8f6ff;
       this.rays.push(s);
     }
     this.caustics = [causticTexture(5), causticTexture(9)].map((texture) => {
       const t = new TilingSprite({ texture, width: 10, height: 10 });
       t.blendMode = 'add';
-      t.alpha = 0.07;
+      t.alpha = 0.035;
       return t;
     });
     this.tankGlow.blendMode = 'add';
     this.root.addChild(
-      this.porthole.root,
-      this.cabin.back,
+      this.space.root,
+      this.night,
+      this.frame.back,
       this.plants.ledge,
       this.water,
       ...this.rays,
@@ -171,12 +175,11 @@ export class HatcheryScene implements Scene {
       this.plants.front,
       this.top,
       this.tankGlow,
-      this.cabin.frame,
-      this.night,
+      this.frame.frame,
       this.plants.debug,
     );
     this.off = onScene((e) => this.onEvent(e));
-    void loadPlanet(game.peek().planet).then((p) => this.porthole.setPlanet(p));
+    void loadPlanet(game.peek().planet).then((p) => this.space.setPlanet(p));
   }
 
   resize(W: number, H: number) {
@@ -186,8 +189,8 @@ export class HatcheryScene implements Scene {
     const wtr = paintWater(L);
     this.water.texture = wtr.tex;
     this.water.position.set(wtr.x, wtr.y);
-    this.cabin.resize(L, game.peek().story.chapter);
-    this.porthole.resize(L);
+    this.frame.resize(L);
+    this.space.resize(L);
     this.plants.resize(L);
     for (const c of this.caustics) {
       c.position.set(L.water.x, L.water.y);
@@ -293,7 +296,7 @@ export class HatcheryScene implements Scene {
         const h = Math.max(10, (a?.h ?? 10) + 6);
         this.podLayer.addChild(sp);
         this.pods.push({ x: a?.x ?? L.water.x + L.water.w / 2, y: a?.y ?? L.water.y + L.water.h / 2, w, h, t: 0, sprite: sp });
-        setTimeout(() => this.porthole.launch(), 350);
+        setTimeout(() => this.space.launch(), 600);
         break;
       }
     }
@@ -329,7 +332,6 @@ export class HatcheryScene implements Scene {
     // Small fish on top.
     this.fishLayer.children.sort((p, q) => q.width - p.width);
     this.plants.sync(s.decor);
-    this.cabin.setChapter(s.story.chapter);
   }
 
   update(dt: number) {
@@ -378,14 +380,14 @@ export class HatcheryScene implements Scene {
       c.visible = effects;
       if (!quiet) (c.tilePosition.x = (i ? -1 : 1) * t * 2.5), (c.tilePosition.y = t * (i ? 1.5 : 2));
     });
-    this.cabin.update(t, nightK, quiet);
-    this.porthole.update(dt, t, o, regionLive(game.peek()).life, regionLive(game.peek()).open, quiet);
+    this.frame.update(t, nightK, quiet);
+    this.space.update(dt, t, o, regionLive(game.peek()).life, regionLive(game.peek()).open, quiet);
     this.plants.update(dt, quiet);
 
     this.drawDynamic(t);
     this.drawTop(t, effects);
-    // Night: the cabin dims to blue, the tank glows.
-    this.night.clear().rect(0, 0, L.W, L.H).fill({ color: 0x0b0e1f, alpha: nightK * 0.3 });
+    // Night side: the view outside darkens a touch more, the tank glows.
+    this.night.clear().rect(0, 0, L.W, L.H).fill({ color: 0x010207, alpha: nightK * 0.25 });
     this.tankGlow.clear();
     if (nightK > 0.2) this.tankGlow.rect(L.water.x, L.water.y, L.water.w, L.sandY - L.water.y).fill({ color: 0x3fc6c9, alpha: (nightK - 0.2) * 0.12 });
     if (this.plants.showDebug) this.debugLabels();
@@ -427,7 +429,7 @@ export class HatcheryScene implements Scene {
       const vis = p.t < 0.6;
       p.sprite.visible = vis;
       if (!vis) {
-        if (p.t < 0.85) g.rect(hatchX - 6, L.sandY + 2, 12, 3).fill({ color: 0xffb86b, alpha: 1 - (p.t - 0.6) / 0.25 });
+        if (p.t < 0.85) g.rect(hatchX - 6, L.sandY + 2, 12, 3).fill({ color: 0x7fd8ff, alpha: 1 - (p.t - 0.6) / 0.25 });
         continue;
       }
       p.sprite.position.set(x + 3, y + 3);

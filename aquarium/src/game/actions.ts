@@ -19,17 +19,19 @@ export function feed(state: State, fishId: string, amount = 0.25) {
   if (f) f.hunger = Math.max(0, f.hunger - amount);
 }
 
-export function feedAll(state: State, amount = 0.25) {
-  for (const f of state.fish) f.hunger = Math.max(0, f.hunger - amount);
+/** Feeds every fish, or (with a tankId) just that tank's fish. */
+export function feedAll(state: State, amount = 0.25, tankId?: string) {
+  for (const f of state.fish) if (!tankId || f.tank === tankId) f.hunger = Math.max(0, f.hunger - amount);
 }
 
 /** Why these two can't breed, or null if they can. */
 export function breedProblem(state: State, a: Fish | undefined, b: Fish | undefined, now: number): string | null {
   if (!a || !b || a === b) return 'Pick two different fish.';
+  if (a.tank !== b.tank) return 'They need to share a tank.';
   if (!isAdult(a) || !isAdult(b)) return 'Both fish need to be adults.';
   if (genomeOf(a.code).sex === genomeOf(b.code).sex) return 'They need to be a male and a female.';
   if (a.spawnReadyAt > now || b.spawnReadyAt > now) return 'One of them is still resting from the last spawn.';
-  if (!hasRoom(state)) return 'The tank is full. Sell, seed, or extend the tank.';
+  if (!hasRoom(state, a.tank)) return 'The tank is full. Sell, seed, or extend the tank.';
   return null;
 }
 
@@ -41,7 +43,7 @@ export function breed(state: State, aId: string, bId: string, now: number): Resu
   const { child, events } = fish.breedDetailed(genomeOf(a.code), genomeOf(b.code), `${state.seed}:brood${state.nextId}`);
   const code = codeOf({ ...child, stage: 'fry' });
   const r = rng(`${state.seed}:egg${state.nextId}`);
-  const egg: Egg = { id: `e${state.nextId++}`, code, hatchAt: now + EGG_HATCH, x: 0.15 + r() * 0.7, laid: now };
+  const egg: Egg = { id: `e${state.nextId++}`, code, tank: a.tank, hatchAt: now + EGG_HATCH, x: 0.15 + r() * 0.7, laid: now };
   state.eggs.push(egg);
   a.spawnReadyAt = b.spawnReadyAt = now + SPAWN_COOLDOWN;
   state.stats.bred++;
@@ -162,6 +164,6 @@ export function sell(state: State, fishId: string, now: number): Result<{ fish: 
   state.fish.splice(state.fish.indexOf(f), 1);
   state.credits += price;
   state.stats.sold++;
-  addLog(state, now, '◎', `Sold ${nameOf(f.code)} to the Roe Counter for ${price} ◎.`);
+  addLog(state, now, '◎', `Sold ${nameOf(f.code)} to the Interchange for ${price} ◎.`);
   return { fish: f, price };
 }

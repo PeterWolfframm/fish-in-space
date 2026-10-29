@@ -1,4 +1,4 @@
-// Shared bits for the smaller rooms (Counter, Comms, Lab): a painted hull wall with a warm lamp, and a
+// Shared bits for the smaller rooms (Interchange, PIP, Lab): a painted lab wall under a cool ceiling light, and a
 // cast member standing in it, animated from their baked portrait sheet.
 
 import { Container, Graphics, Sprite } from 'pixi.js';
@@ -7,40 +7,40 @@ import { CharacterArt } from '../art/characters';
 import { retain, release, type Sheet } from '../art/atlas';
 import type { Who } from '../content/comms/types';
 
-/** A hull wall: panel seams, rivets, a floor strip. Returns the canvas so a room can paint more on it. */
+/** A lab wall: dark composite panels, a lit console rail, a deck strip. Returns the canvas so a room can
+ *  paint more on it. Kept dim so the rooms read as the same quiet station as the hatchery. */
 export function hullWall(W: number, H: number, seed = 5) {
   const { c, g } = canvas(W, H);
-  g.fillStyle = '#1b2140';
-  g.fillRect(0, 0, W, H);
+  const R = (x: number, y: number, w: number, h: number, col: string) => ((g.fillStyle = col), g.fillRect(x, y, w, h));
+  R(0, 0, W, H, '#0a0e1a');
   const r = lcg(seed);
-  const pw = 48;
+  const pw = 56;
   for (let x = 0; x < W; x += pw) {
-    g.fillStyle = r() < 0.5 ? '#1e2547' : '#192040';
-    g.fillRect(x + 1, 0, pw - 2, H);
-    g.fillStyle = '#121731';
-    g.fillRect(x, 0, 1, H);
-    g.fillStyle = '#2c3563';
-    g.fillRect(x + 1, 0, 1, H);
-    for (let y = 6; y < H - 20; y += 22) {
-      g.fillStyle = '#2c3563';
-      g.fillRect(x + 4, y, 1, 1);
-      g.fillRect(x + pw - 5, y, 1, 1);
-    }
+    R(x + 1, 0, pw - 2, H, r() < 0.5 ? '#0d1220' : '#0b101d');
+    R(x, 0, 1, H, '#05070d');
+    R(x + 1, 0, 1, H, '#161d30');
+    // A rounded inset panel per bay, the way consoles are framed aboard.
+    const iy = Math.round(H * 0.18);
+    const ih = Math.round(H * 0.42);
+    R(x + 8, iy + 1, pw - 16, ih - 2, '#0f1525');
+    R(x + 9, iy, pw - 18, ih, '#0f1525');
+    R(x + 9, iy, pw - 18, 1, '#1b2338');
   }
-  // A warm wash from the ceiling lamp.
-  for (let i = 0; i < 6; i++) {
-    g.fillStyle = `rgba(255,184,107,${0.018 * (6 - i)})`;
-    g.fillRect(0, 0, W, Math.round((H * (i + 1)) / 7));
+  // A cool wash from the ceiling strip.
+  for (let i = 0; i < 6; i++) R(0, 0, W, Math.round((H * (i + 1)) / 9), `rgba(143,180,255,${0.012 * (6 - i)})`);
+  R(0, 2, W, 1, 'rgba(174,244,255,0.35)');
+  // Console rail at waist height: amber, lilac and sky blocks like the hatchery lid.
+  const ry = H - 30;
+  R(0, ry, W, 3, '#141b2c');
+  for (let x = 6; x < W; x += 64) {
+    R(x, ry + 1, 18, 1, '#f0a24a');
+    R(x + 21, ry + 1, 8, 1, '#b79cf0');
+    R(x + 32, ry + 1, 5, 1, '#8fb4ff');
   }
-  // Floor.
-  g.fillStyle = '#10142a';
-  g.fillRect(0, H - 14, W, 14);
-  g.fillStyle = '#2c3563';
-  g.fillRect(0, H - 14, W, 1);
-  for (let x = 3; x < W; x += 8) {
-    g.fillStyle = '#161b36';
-    g.fillRect(x, H - 9, 4, 1);
-  }
+  // Deck.
+  R(0, H - 14, W, 14, '#07090f');
+  R(0, H - 14, W, 1, '#1a2133');
+  for (let x = 3; x < W; x += 24) R(x, H - 13, 1, 13, '#0c0f18');
   return { c, g };
 }
 
@@ -49,7 +49,7 @@ export class Backdrop {
   wall = new Sprite();
   lamp = new Sprite(glowTexture(64, 6));
   constructor() {
-    this.lamp.tint = 0xffb86b;
+    this.lamp.tint = 0x9fc4ff;
     this.lamp.blendMode = 'add';
     this.root.addChild(this.wall, this.lamp);
   }
@@ -60,7 +60,7 @@ export class Backdrop {
     this.lamp.position.set(lampX - lampR, -lampR * 0.7);
   }
   update(t: number, calm: boolean) {
-    this.lamp.alpha = calm ? 0.55 : 0.5 + 0.05 * Math.sin(t * 1.3);
+    this.lamp.alpha = calm ? 0.3 : 0.28 + 0.03 * Math.sin(t * 1.3);
   }
 }
 

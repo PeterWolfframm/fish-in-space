@@ -28,7 +28,7 @@ export const LORE: CommsEntry[] = [
       { who: 'sel', mood: 'talk', text: 'Ark log 4471-B. Around year 300 of the voyage, a whole generation chose to train as gardeners instead of engineers.' },
       { who: 'sel', mood: 'calm', text: 'The engineers called them “the soft hands.” Then the hydroponics failed on the Juniper, and the soft hands kept nine thousand people fed for six years.' },
       { who: 'sel', mood: 'talk', text: 'Every terraforming school is still named after them. Including yours, Ichthyologist.' },
-      { who: 'sel', mood: 'grin', text: 'Catalogue note: their seed bank is what the Roe Counter sells from. You’re shopping in their pantry.' },
+      { who: 'sel', mood: 'grin', text: 'Catalogue note: their seed bank is what the Interchange sells from. You’re shopping in their pantry.' },
     ],
   },
   {

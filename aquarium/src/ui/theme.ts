@@ -1,14 +1,19 @@
 // The palette, shared by Pixi scenes. theme.css carries the same values for the HTML layer.
 
 export const C = {
-  void: 0x0b0e1f,
-  hull: 0x1b2140,
-  hullHi: 0x2c3563,
-  lamp: 0xffb86b,
-  tank: 0x3fc6c9,
-  bloom: 0x9be37a,
-  signal: 0xff7aa8,
-  ink: 0xf3ead8,
+  void: 0x04050b,
+  hull: 0x0b0f1c,
+  hullHi: 0x1d263c,
+  line: 0x2a3552,
+  lamp: 0xf0a24a,
+  peach: 0xf6c38d,
+  lilac: 0xb79cf0,
+  sky: 0x8fb4ff,
+  tank: 0x6fe0ee,
+  bloom: 0x8fe39a,
+  signal: 0xff8a76,
+  gold: 0xf3cf6a,
+  ink: 0xe6ecfa,
 } as const;
 
 export const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;

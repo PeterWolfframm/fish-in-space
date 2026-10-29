@@ -17,7 +17,7 @@ export const game = signal<W.State>(W.newGame(Date.now(), 'boot'));
 export const now = signal(Date.now());
 export const ready = signal(false);
 
-export type Room = 'hatchery' | 'bridge' | 'counter' | 'comms' | 'lab';
+export type Room = 'hatchery' | 'bridge' | 'interchange' | 'pip' | 'lab';
 export const room = signal<Room>('hatchery');
 export const selected = signal<string | null>(null); // fish id with the dossier open
 export const pairWith = signal<string | null>(null); // first fish of a pairing in progress
@@ -53,7 +53,7 @@ function queueComms(e: { id: string; panels: CommsPanel[]; tags?: string[]; choi
   let entry!: W.CommsLogEntry;
   act((s) => void (entry = W.heard(s, e, Date.now(), ambient)));
   commsQueue.value = [...commsQueue.value, { key: commsKey++, id: e.id, panels: e.panels, choices: e.choices, at: entry.at, orbit: entry.orbit }];
-  if (room.value !== 'comms') commsUnread.value++;
+  if (room.value !== 'pip') commsUnread.value++;
   sfx.radio();
 }
 
@@ -383,9 +383,9 @@ export function setSetting<K extends keyof W.Settings>(k: K, v: W.Settings[K]) {
 
 export function goRoom(r: Room) {
   room.value = r;
-  if (r === 'comms') commsUnread.value = 0;
+  if (r === 'pip') commsUnread.value = 0;
   if (r === 'bridge' && game.value.stats.orders === 0 && game.value.orders.length) beat('window');
-  if (r === 'counter') beat('shop');
+  if (r === 'interchange') beat('shop');
 }
 
 /** Put the cutting being placed into a decor slot. */

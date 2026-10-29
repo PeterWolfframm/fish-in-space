@@ -1,4 +1,4 @@
-// Comms: the radio corner. A CRT with a scrolling waveform and scanlines, a dish readout, the signal
+// PIP: the radio corner. A CRT with a scrolling waveform and scanlines, a dish readout, the signal
 // lamp that blinks when a call is waiting, and PIP hovering by the set.
 
 import { Container, Graphics, Sprite } from 'pixi.js';
@@ -8,7 +8,7 @@ import { Backdrop, hullWall } from '../room';
 import { canvas, texOf, glowTexture } from '../paint';
 import { drawPip } from '../../art/characters';
 
-export class CommsScene implements Scene {
+export class PipScene implements Scene {
   root = new Container();
   private back = new Backdrop();
   private crt = new Graphics();

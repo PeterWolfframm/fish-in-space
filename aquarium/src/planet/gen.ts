@@ -18,9 +18,11 @@ export const REEF = 5;
 export const TRENCH = 6;
 
 const CLASS_BIOME: Record<number, BiomeId> = { [LAKE]: 'melt', [RIVER]: 'river', [DELTA]: 'delta', [REEF]: 'reef', [TRENCH]: 'trench' };
-const BIOME_CLASS: Record<BiomeId, number> = { melt: LAKE, river: RIVER, delta: DELTA, reef: REEF, trench: TRENCH };
-const BIOME_OPENS: Record<BiomeId, number> = { melt: 0, river: 1, delta: 2, reef: 3, trench: 4 };
-const KIND: Record<BiomeId, string> = { melt: 'Lake', river: 'River', delta: 'Delta', reef: 'Reef', trench: 'Deep' };
+// Sea has no cell class of its own (it never reclasses a cell); it only ever owns plain OCEAN cells
+// that no other region reached. BIOME_CLASS.sea is a sentinel no seed can ever carry.
+const BIOME_CLASS: Record<BiomeId, number> = { melt: LAKE, river: RIVER, delta: DELTA, reef: REEF, trench: TRENCH, sea: OCEAN };
+const BIOME_OPENS: Record<BiomeId, number> = { melt: 0, river: 1, delta: 2, reef: 3, trench: 4, sea: 1 };
+const KIND: Record<BiomeId, string> = { melt: 'Lake', river: 'River', delta: 'Delta', reef: 'Reef', trench: 'Deep', sea: 'Sea' };
 
 export interface RegionSeed {
   index: number;
@@ -412,6 +414,69 @@ export function generatePlanet(seed: string): PlanetMap {
   for (const b of Object.keys(BIOME_CLASS) as BiomeId[]) {
     const list = regions.filter((x) => x.biome === b).sort((p, q) => (b === 'melt' ? q.lat - p.lat : q.area - p.area) || p.index - q.index);
     list.forEach((x, k) => (x.opensAt = Math.min(5, BIOME_OPENS[b] + k)));
+  }
+
+  // 5. Open Sea: whatever plain ocean no region above reached (far from any reef, trench or delta)
+  // is carved into a handful of its own regions by straight Voronoi, nearest seed wins. Existing
+  // regions are untouched and keep their ids and indices; sea regions are appended after them.
+  const openOcean: number[] = [];
+  for (let i = 0; i < N; i++) if (cls[i] === OCEAN && region[i] < 0) openOcean.push(i);
+  if (openOcean.length >= 15) {
+    const nSea = Math.max(3, Math.min(6, Math.round(openOcean.length / 150)));
+    const seaSeeds: number[] = [openOcean[Math.floor(r() * openOcean.length)]];
+    // Farthest-point sampling: each new seed is the leftover cell farthest from every seed so far.
+    while (seaSeeds.length < nSea) {
+      let best = -1;
+      let bestD = -1;
+      for (const c of openOcean) {
+        let d = Infinity;
+        for (const s of seaSeeds) d = Math.min(d, cellDist(s, c));
+        if (d > bestD) {
+          bestD = d;
+          best = c;
+        }
+      }
+      seaSeeds.push(best);
+    }
+    const sums = seaSeeds.map(() => ({ x: 0, y: 0, z: 0, n: 0 }));
+    const base = regions.length;
+    for (const c of openOcean) {
+      let own = 0;
+      let bestD = Infinity;
+      seaSeeds.forEach((s, k) => {
+        const d = cellDist(s, c);
+        if (d < bestD) {
+          bestD = d;
+          own = k;
+        }
+      });
+      region[c] = base + own;
+      const lat = latOf((c / MAP_W) | 0);
+      const lon = lonOf(c % MAP_W);
+      const s = sums[own];
+      s.x += Math.cos(lat) * Math.cos(lon);
+      s.y += Math.sin(lat);
+      s.z += Math.cos(lat) * Math.sin(lon);
+      s.n++;
+    }
+    seaSeeds.forEach((_, k) => {
+      const s = sums[k];
+      const len = Math.hypot(s.x, s.y, s.z) || 1;
+      const lat = Math.asin(s.y / len);
+      const lon = (((Math.atan2(s.z, s.x) / (Math.PI * 2)) % 1) + 1) % 1;
+      regions.push({
+        index: base + k,
+        id: `${seed}-sea-${k + 1}`,
+        biome: 'sea',
+        opensAt: Math.min(5, BIOME_OPENS.sea + k),
+        lon,
+        lat: lat / (Math.PI / 2),
+        cx: Math.round(lon * MAP_W - 0.5),
+        cy: Math.round((0.5 - lat / Math.PI) * MAP_H - 0.5),
+        area: s.n,
+        survey: `Survey ${KIND.sea} ${KIND.sea[0]}-${k + 1}`,
+      });
+    });
   }
 
   return { seed, w: MAP_W, h: MAP_H, height, temp, moist, cls, region, sea, regions };

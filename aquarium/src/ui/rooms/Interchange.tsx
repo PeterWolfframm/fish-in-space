@@ -1,4 +1,4 @@
-// The Roe Counter: Sel's drawers of roe (restocked each orbit), the mystery crate, plant cuttings,
+// The Interchange: Sel's drawers of roe (restocked each orbit), the mystery crate, plant cuttings,
 // tank upgrades, and the buyback board where fish sell at today's market price.
 
 import { useState } from 'preact/hooks';
@@ -10,7 +10,7 @@ import { mmss } from '../Sheet';
 const KIND: Record<W.DrawerKind, string> = { biome: 'Biome roe', wild: 'Wild roe', heritage: 'Heritage roe' };
 const ARROW = { up: '▲', down: '▼', flat: '•' };
 
-export function CounterPanel() {
+export function InterchangePanel() {
   const s = game.value;
   const t = now.value;
   const o = orbit.value;
@@ -74,7 +74,7 @@ export function CounterPanel() {
             class="btn ghost small"
             disabled={cutSold.includes(c.index)}
             onClick={() => buy((x) => W.buyCutting(x, c.index, Date.now()))}
-            aria-label={`${c.name}, ${c.cost} credits`}
+            aria-label={`${c.name}, ${c.cost} Allotment`}
           >
             <SpriteArt family={c.family} code={c.code} anim={c.family === 'plant3' ? 'idle' : 'sway'} class="mini" />
             {c.name} · {cutSold.includes(c.index) ? 'sold' : `${c.cost} ◎`}

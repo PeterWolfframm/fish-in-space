@@ -1,15 +1,15 @@
-// The Roe Counter. Six cryo-drawers restock every orbit, weighted toward open biomes and the next
+// The Interchange. Six cryo-drawers restock every orbit, weighted toward open biomes and the next
 // forecast. Stock is derived from seed and orbit, so it needs no saving beyond what was bought.
 
-import { DRAWERS, CRATE_EVERY, ROE_THAW, MAX_CAPACITY, ANNEX_BERTHS } from './constants';
+import { DRAWERS, CRATE_EVERY, ROE_THAW, MAX_CAPACITY, ANNEX_BERTHS, TANK_CAPACITY, TANK_DIMS, TANK_PRICE, TANK_GRID_W } from './constants';
 import { BIOMES, biomeById, nextNeeds, openBiomes, type Biome } from './biomes';
 import { ALLELES, codeOf, genomeOf, rollForBiome, rollWild } from './fish';
 import { rng, pick, weighted } from './rng';
 import { priceOf } from './market';
 import { orbitAt } from './orbit';
 import { plantCode, plantName, type PlantFamily } from './plants';
-import { addLog, hasRoom, occupied } from './state';
-import type { Egg, State } from './types';
+import { addLog, hasRoom, occupied, SHELF_SLOTS, tankCapacity, totalCapacity } from './state';
+import type { Egg, State, Tank, TankShape } from './types';
 import type { Result } from './actions';
 
 export type DrawerKind = 'biome' | 'wild' | 'heritage';
@@ -60,9 +60,9 @@ export function drawers(state: State, orbit: number): Drawer[] {
 export const currentOrbit = (state: State, now: number) => orbitAt(state.orbitEpoch, now).n;
 export const stock = (state: State, now: number) => drawers(state, currentOrbit(state, now)).filter((d) => !(state.shop.orbit === currentOrbit(state, now) && state.shop.sold.includes(d.index)));
 
-function lay(state: State, code: string, now: number, kind: Egg['kind']): Egg {
+function lay(state: State, code: string, now: number, kind: Egg['kind'], tankId: string): Egg {
   const r = rng(`${state.seed}:roe${state.nextId}`);
-  const egg: Egg = { id: `e${state.nextId++}`, code, hatchAt: now + ROE_THAW, x: 0.15 + r() * 0.7, laid: now, roe: true, kind };
+  const egg: Egg = { id: `e${state.nextId++}`, code, tank: tankId, hatchAt: now + ROE_THAW, x: 0.15 + r() * 0.7, laid: now, roe: true, kind };
   state.eggs.push(egg);
   return egg;
 }
@@ -72,15 +72,15 @@ function syncShop(state: State, now: number) {
   if (state.shop.orbit !== n) state.shop = { ...state.shop, orbit: n, sold: [], cuttingsSold: [] };
 }
 
-export function buyDrawer(state: State, index: number, now: number): Result<{ egg: Egg; drawer: Drawer }> {
+export function buyDrawer(state: State, index: number, now: number, tankId = 'T1'): Result<{ egg: Egg; drawer: Drawer }> {
   syncShop(state, now);
   const d = drawers(state, state.shop.orbit)[index];
   if (!d || state.shop.sold.includes(index)) return { error: 'That drawer is empty.' };
-  if (state.credits < d.cost) return { error: 'Not enough credits.' };
-  if (!hasRoom(state)) return { error: 'The tank is full.' };
+  if (state.credits < d.cost) return { error: 'Not enough Allotment.' };
+  if (!hasRoom(state, tankId)) return { error: 'The tank is full.' };
   state.credits -= d.cost;
   state.shop.sold.push(index);
-  return { egg: lay(state, d.code, now, d.kind === 'heritage' ? 'heritage' : 'roe'), drawer: d };
+  return { egg: lay(state, d.code, now, d.kind === 'heritage' ? 'heritage' : 'roe', tankId), drawer: d };
 }
 
 // --- mystery crate ---------------------------------------------------------------------------------
@@ -97,14 +97,14 @@ export function crateContents(state: State, orbit: number): string[] {
   return codes;
 }
 
-export function buyCrate(state: State, now: number): Result<{ eggs: Egg[] }> {
+export function buyCrate(state: State, now: number, tankId = 'T1'): Result<{ eggs: Egg[] }> {
   syncShop(state, now);
   if (!crateReady(state, now)) return { error: 'Sel is still packing the next crate.' };
-  if (state.credits < CRATE_COST) return { error: 'Not enough credits.' };
-  if (occupied(state) + 3 > state.capacity) return { error: 'You need three free berths.' };
+  if (state.credits < CRATE_COST) return { error: 'Not enough Allotment.' };
+  if (occupied(state, tankId) + 3 > tankCapacity(state, tankId)) return { error: 'You need three free berths.' };
   state.credits -= CRATE_COST;
   state.shop.crateOrbit = state.shop.orbit;
-  const eggs = crateContents(state, state.shop.orbit).map((c) => lay(state, c, now, 'crate'));
+  const eggs = crateContents(state, state.shop.orbit).map((c) => lay(state, c, now, 'crate', tankId));
   addLog(state, now, '▣', 'Cranked open a mystery crate: three roe.');
   return { eggs };
 }
@@ -131,27 +131,53 @@ export function buyCutting(state: State, index: number, now: number): Result<{ c
   syncShop(state, now);
   const c = cuttings(state, state.shop.orbit)[index];
   if (!c || state.shop.cuttingsSold.includes(index)) return { error: 'Sold out.' };
-  if (state.credits < c.cost) return { error: 'Not enough credits.' };
+  if (state.credits < c.cost) return { error: 'Not enough Allotment.' };
   state.credits -= c.cost;
   state.shop.cuttingsSold.push(index);
   state.ownedCuttings.push({ family: c.family, code: c.code });
   return { cutting: c };
 }
 
-/** Put an owned cutting into a decor slot (the old plant goes back to the shelf). */
-export function plant(state: State, cuttingIndex: number, slot: number): Result<{ slot: number }> {
+/** Put an owned cutting (or shelf decor) into a decor slot of one tank (the old occupant goes back to stock). */
+export function plant(state: State, cuttingIndex: number, slot: number, tankId = 'T1'): Result<{ slot: number }> {
   const c = state.ownedCuttings[cuttingIndex];
   if (!c) return { error: 'No such cutting.' };
-  const ledge = slot >= 6;
-  if (ledge !== (c.family === 'plant3')) return { error: ledge ? 'Only land plants go on the ledge.' : 'Only water plants go in the tank.' };
+  const shelf = SHELF_SLOTS.includes(slot);
+  const fits = shelf ? c.family === 'plant3' || c.family === 'object' : c.family === 'waterplant2';
+  if (!fits) return { error: shelf ? 'Only shelf decor goes there.' : 'Only water plants go in the tank.' };
   state.ownedCuttings.splice(cuttingIndex, 1);
-  const old = state.decor.find((d) => d.slot === slot);
+  const old = state.decor.find((d) => d.slot === slot && d.tank === tankId);
   if (old) {
     state.ownedCuttings.push({ family: old.family, code: old.code });
     state.decor.splice(state.decor.indexOf(old), 1);
   }
-  state.decor.push({ slot, family: c.family, code: c.code });
+  state.decor.push({ slot, tank: tankId, family: c.family, code: c.code });
   return { slot };
+}
+
+// --- shelf decor (non-plant) -------------------------------------------------------------------------
+
+export interface DecorItem {
+  code: string;
+  name: string;
+  cost: number;
+}
+
+/** Fixed little objects for the shelf: a cosmonaut figurine, a samovar, a pennant, a crystal. */
+export const SHELF_DECOR: DecorItem[] = [
+  { code: 'astronaut', name: 'Cosmonaut figurine', cost: 90 },
+  { code: 'teapot', name: 'Tiny samovar', cost: 60 },
+  { code: 'pennant', name: 'Red pennant', cost: 40 },
+  { code: 'crystal', name: 'Mineral crystal', cost: 70 },
+];
+
+export function buyDecor(state: State, code: string): Result<{ item: DecorItem }> {
+  const item = SHELF_DECOR.find((d) => d.code === code);
+  if (!item) return { error: 'No such decor.' };
+  if (state.credits < item.cost) return { error: 'Not enough Allotment.' };
+  state.credits -= item.cost;
+  state.ownedCuttings.push({ family: 'object', code });
+  return { item };
 }
 
 // --- upgrades ----------------------------------------------------------------------------------------
@@ -166,11 +192,13 @@ export interface Upgrade {
   owned: boolean;
 }
 
+/** 'extend' and 'annex' both only ever grow tank 1; other tanks come from buyTank instead. */
 export function upgrades(state: State): Upgrade[] {
   const u = state.upgrades;
-  const room = MAX_CAPACITY - (state.capacity - (u.annex ? ANNEX_BERTHS : 0));
+  const t1 = tankCapacity(state, 'T1');
+  const room = MAX_CAPACITY - (t1 - (u.annex ? ANNEX_BERTHS : 0));
   return [
-    { id: 'extend', name: 'Tank extension', blurb: '+4 berths.', cost: 120 + 30 * Math.max(0, state.capacity - 10), available: room > 0, owned: room <= 0 },
+    { id: 'extend', name: 'Tank extension', blurb: '+4 berths.', cost: 120 + 30 * Math.max(0, t1 - 10), available: room > 0, owned: room <= 0 },
     { id: 'feeder', name: 'Auto-feeder', blurb: 'Feeds the whole tank once per orbit.', cost: 220, available: !u.feeder, owned: u.feeder },
     { id: 'heater', name: 'Heated zone', blurb: 'Tropical fish keep growing at full speed even when hungry.', cost: 260, available: !u.heater && state.phase >= 2, owned: u.heater },
     { id: 'annex', name: 'Annex tank', blurb: `A second tank: +${ANNEX_BERTHS} berths.`, cost: 600, available: !u.annex && state.phase >= 4, owned: u.annex },
@@ -180,17 +208,52 @@ export function upgrades(state: State): Upgrade[] {
 export function buyUpgrade(state: State, id: UpgradeId, now: number): Result<{ upgrade: Upgrade }> {
   const up = upgrades(state).find((x) => x.id === id);
   if (!up || !up.available) return { error: 'Not available.' };
-  if (state.credits < up.cost) return { error: 'Not enough credits.' };
+  if (state.credits < up.cost) return { error: 'Not enough Allotment.' };
   state.credits -= up.cost;
-  if (id === 'extend') state.capacity += 4;
+  if (id === 'extend') state.upgrades.extendBerths += 4;
   if (id === 'feeder') state.upgrades.feeder = true;
   if (id === 'heater') state.upgrades.heater = true;
-  if (id === 'annex') {
-    state.upgrades.annex = true;
-    state.capacity += ANNEX_BERTHS;
-  }
+  if (id === 'annex') state.upgrades.annex = true;
+  state.capacity = totalCapacity(state);
   addLog(state, now, '⚒', `${up.name} installed.`);
   return { upgrade: up };
 }
 
 export const biomeName = (id?: string) => (id ? biomeById(id)?.name ?? id : 'Any water');
+
+// --- tanks (the wall gallery) --------------------------------------------------------------------------
+
+/** Cells occupied by existing tanks, as "x,y" keys, on the wall-grid. */
+export function packTanks(tanks: Tank[]): Set<string> {
+  const used = new Set<string>();
+  for (const t of tanks) {
+    const { w, h } = TANK_DIMS[t.shape];
+    for (let dx = 0; dx < w; dx++) for (let dy = 0; dy < h; dy++) used.add(`${t.slot.x + dx},${t.slot.y + dy}`);
+  }
+  return used;
+}
+
+/** First-fit: the first free spot (scanning rows top-down, left-right) a tank of this shape fits in. */
+export function nextSlot(tanks: Tank[], shape: TankShape): { x: number; y: number } {
+  const used = packTanks(tanks);
+  const { w, h } = TANK_DIMS[shape];
+  for (let y = 0; y < 1000; y++) {
+    for (let x = 0; x + w <= TANK_GRID_W; x++) {
+      let fits = true;
+      for (let dx = 0; dx < w && fits; dx++) for (let dy = 0; dy < h && fits; dy++) if (used.has(`${x + dx},${y + dy}`)) fits = false;
+      if (fits) return { x, y };
+    }
+  }
+  return { x: 0, y: 0 }; // unreachable: 1000 rows is plenty
+}
+
+export function buyTank(state: State, shape: TankShape, now: number): Result<{ tank: Tank }> {
+  const price = TANK_PRICE[shape];
+  if (state.credits < price) return { error: 'Not enough Allotment.' };
+  state.credits -= price;
+  const tank: Tank = { id: `T${state.tanks.length + 1}`, name: `Tank ${state.tanks.length + 1}`, shape, slot: nextSlot(state.tanks, shape) };
+  state.tanks.push(tank);
+  state.capacity = totalCapacity(state);
+  addLog(state, now, '⛺', `${tank.name} requisitioned: a ${shape} aquarium, +${TANK_CAPACITY[shape]} berths.`);
+  return { tank };
+}

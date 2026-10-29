@@ -22,26 +22,24 @@ export function HatcheryPanel() {
       )}
       {cutting && (
         <div class="banner plant" role="status">
-          <span>✿ Tap a glowing slot {cutting.family === 'plant3' ? 'on the dry ledge' : 'in the sand'} to plant {W.plantName(cutting.family, cutting.code)}.</span>
+          <span>✿ Tap a glowing slot {cutting.family === 'plant3' ? 'in the lid tray' : 'in the sand'} to plant {W.plantName(cutting.family, cutting.code)}.</span>
           <button class="btn small ghost" onClick={() => (placing.value = null)}>
             Cancel
           </button>
         </div>
       )}
-      <div class="section-title">
-        <h3>
-          Tank · {s.fish.length}/{cap}
-        </h3>
+      <div class="tank-head">
+        <h3>Tank</h3>
+        <span class="count">
+          {s.fish.length}/{cap}
+        </span>
         <span class="note">
-          {s.eggs.length ? `${s.eggs.length} clutch${s.eggs.length > 1 ? 'es' : ''} on the sand · ` : ''}
+          {s.eggs.length ? `${s.eggs.length} clutch${s.eggs.length > 1 ? 'es' : ''} · ` : ''}
           {hungry ? `${hungry} hungry` : 'all fed'}
         </span>
-      </div>
-      <div class="row">
-        <button class="btn tank" onClick={feedTank}>
-          ✦ Feed the tank
+        <button class="btn tank small" onClick={feedTank} title="Or tap the water to drop a pinch">
+          Feed
         </button>
-        <span class="note">or tap the water to drop a pinch</span>
       </div>
       {s.fish.length ? (
         <div class="roster" role="group" aria-label="Fish in the tank">
@@ -67,7 +65,7 @@ export function HatcheryPanel() {
           })}
         </div>
       ) : (
-        <p class="empty">The tank is empty. The Roe Counter has roe to thaw.</p>
+        <p class="empty">The tank is empty. The Interchange has roe to thaw.</p>
       )}
       {s.ownedCuttings.length > 0 && (
         <>

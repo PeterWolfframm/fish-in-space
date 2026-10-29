@@ -74,6 +74,18 @@ node cli/forge.mjs plant2 --size giant --anim wind --sheet
 npm test
 ```
 
+The Seedfall aquarium game runs on its own Vite server:
+
+```sh
+cd aquarium
+npm ci
+npm run dev                     # http://localhost:5173/
+```
+
+To open it through the PixelForge site instead, build it with `npm run build` in `aquarium/`,
+then start the app server and visit `http://localhost:8017/aquarium/`. The landing page is at
+`http://localhost:8017/`; PixelForge is at `/app/#forge`.
+
 The CLI writes PNGs plus `manifest.json` (seed → code → size → files) into `out/<kind>/`.
 `--size <class|all>` works on v2 kinds only. Contact sheets pad mixed sizes on the generator's
 anchor (bottom for plants and pilots).
@@ -171,7 +183,9 @@ fly deploy --ha=false        # first deploy also creates the 1GB pb_data volume
 
 Change `primary_region` in `fly.toml` before the first deploy if Frankfurt is the wrong region.
 
-- App: `https://pixelforge.fly.dev/app/`
+- Landing page: `https://pixelforge.fly.dev/`
+- PixelForge: `https://pixelforge.fly.dev/app/#forge`
+- Seedfall aquarium: `https://pixelforge.fly.dev/aquarium/`
 - PocketBase dashboard: `https://pixelforge.fly.dev/_/` (the superuser from the secrets above)
 - A member, so they can swipe: `fly ssh console -C "node /app/scripts/pixelgen-user.mjs you@example.com 'a long password' Ada"`
 - Admin, for someone who already has an account: `fly ssh console -C "node /app/scripts/pixelgen-admin.mjs you@example.com"`, then reload

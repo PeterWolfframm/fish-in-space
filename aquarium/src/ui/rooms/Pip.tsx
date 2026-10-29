@@ -1,4 +1,4 @@
-// Comms: the call log grouped by orbit, the market wire, and the station settings.
+// PIP: the call log grouped by orbit, the market wire, and the station settings.
 
 import { useState } from 'preact/hooks';
 import { game, now, setSetting, resetGame, commsQueue } from '../../store/signals';
@@ -6,7 +6,7 @@ import * as W from '../../game';
 import { CAST, type Who } from '../../content/comms/types';
 import { Portrait } from '../Art';
 
-export function CommsPanel() {
+export function PipPanel() {
   const s = game.value;
   const t = now.value;
   const groups = W.logByOrbit(s);
