@@ -285,7 +285,7 @@ function tailFin(ctx) {
       const sv = -0.7 + (1.4 * i) / n;
       pairs.push([map(inset, sv * up * 0.5), map(len * 0.95, sv * spread)]);
     }
-    rays(ctx, pairs, 1);
+    rays(ctx, pairs, Math.round(ctx.detailScale ?? 1));
   }
   const rim = set.finPattern === 'gilded' ? fin.mark : fin.rim;
   for (const [r0, s0, r1, s1] of spec.trail) {
@@ -350,7 +350,7 @@ function edgeFin(ctx, dir, t0, t1, height, opts = {}) {
     const rFrac = Math.min(1, Math.abs(y - inner[i][1]) / span);
     g.px(x, y, finColor(ctx, x, y, rFrac, facingAt[i]));
   });
-  if (opts.rays !== false && ctx.s >= 0.6) rays(ctx, inner.map((p, i) => [p, outer[i]]), Math.max(2, Math.round(3 * Math.min(1.5, ctx.s))));
+  if (opts.rays !== false && ctx.s >= 0.6) rays(ctx, inner.map((p, i) => [p, outer[i]]), Math.max(2, Math.round(3 * Math.min(1.5, ctx.s) * (ctx.detailScale ?? 1))));
   if (opts.rim !== false) {
     const rim = ctx.set.finPattern === 'gilded' ? fin.mark : fin.rim;
     outer.forEach(([x, y], i) => {
@@ -545,7 +545,11 @@ function scales(ctx) {
   const { g, set, bodyCols, edges, rampOf, s, ph, toneAt } = ctx;
   const kind = set.scales;
   if (kind === 'smooth' || s < 0.7) return;
-  const w = s >= 1.9 ? 4 : 3;
+  // `detailScale` (fish4's scaled detail; 1 = fish3) widens the texture's pitch on big fish.
+  const d = ctx.detailScale ?? 1;
+  const w = Math.round((s >= 1.9 ? 4 : 3) * d);
+  const finePitch = Math.round(4 * d);
+  const platePitch = Math.round(5 * d);
   for (const c of bodyCols) {
     const { yb, yv } = edges(c);
     const R = rampOf(skinAt(ctx, c));
@@ -555,14 +559,14 @@ function scales(ctx) {
       if (k === 'dark') continue;
       const dy = Math.round(y - c.mid);
       let hit = false;
-      if (kind === 'fine') hit = (((bx + 2 * dy) % 4) + 4) % 4 === 0 && (((dy % 2) + 2) % 2 === 0);
+      if (kind === 'fine') hit = (((bx + 2 * dy) % finePitch) + finePitch) % finePitch === 0 && (((dy % 2) + 2) % 2 === 0);
       else if (kind === 'scallops') {
         const row = Math.floor(dy / (w - 1));
         const lx = (((bx + (row % 2 ? Math.floor(w / 2) : 0)) % w) + w) % w;
         const ly = ((dy % (w - 1)) + (w - 1)) % (w - 1);
         const arc = Math.round((1 - ((lx + 0.5) / w * 2 - 1) ** 2) * (w - 2));
         hit = ly === w - 2 - arc;
-      } else if (kind === 'plates') hit = (((bx + dy) % 5) + 5) % 5 === 0 || (((bx - dy) % 5) + 5) % 5 === 0;
+      } else if (kind === 'plates') hit = (((bx + dy) % platePitch) + platePitch) % platePitch === 0 || (((bx - dy) % platePitch) + platePitch) % platePitch === 0;
       else if (kind === 'sandpaper') hit = hash01(`${bx},${dy}`, 31) < 0.1;
       if (!hit) continue;
       g.px(c.x, y, kind === 'sandpaper' ? R.light : k === 'belly' ? R.base : R.core);
@@ -571,7 +575,7 @@ function scales(ctx) {
   // A lateral line on big fish.
   if (s >= 1.9) {
     for (const c of bodyCols) {
-      if (c.t < 0.08 || c.t > ph.eyeT - 0.1 || c.x % 3 === 0) continue;
+      if (c.t < 0.08 || c.t > ph.eyeT - 0.1 || c.x % Math.round(3 * d) === 0) continue;
       const y = Math.round(c.mid - c.back * 0.28);
       if (toneAt(c.x, y)) g.px(c.x, y, rampOf(skinAt(ctx, c)).core);
     }

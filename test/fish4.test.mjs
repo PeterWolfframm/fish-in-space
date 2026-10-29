@@ -386,3 +386,12 @@ test('sim: pacing bands hold and no strategy dominates', async () => {
   const rates = Object.values(s).map((x) => x.perHour).sort((a, b) => b - a);
   assert.ok(rates[0] <= 1.5 * rates[1], `per hour ${rates}`);
 });
+
+test('scaled detail: the same fish below large, coarser texture on giants; ecotype fish use it', () => {
+  const same = (a, b) => a.data.length === b.data.length && a.data.every((v, i) => v === b.data[i]);
+  const fish = (size, detail) => frame({ body: 'carp', scales: 'plates', tail: 'fan', size, stage: 'adult', detail }, 'swim', 2);
+  for (const size of ['tiny', 'small', 'medium', 'large']) assert.ok(same(fish(size, 'v3'), fish(size, 'v4')), size);
+  assert.ok(!same(fish('giant', 'v3'), fish('giant', 'v4')));
+  assert.equal(fromSeed('detail-1').detail, 'v4');
+  assert.equal(fromSeed('detail-1', 'classic').detail, 'v3');
+});

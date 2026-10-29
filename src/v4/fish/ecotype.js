@@ -251,7 +251,8 @@ export function ecotypeFromSeed(seed, P, weightOf, place) {
   const cohesion = P.clusters?.cohesion ?? 0.9;
   const stick = { ...STICK, ...(P.clusters?.stick ?? {}) };
 
-  const out = { ...where };
+  // fish4-native fish draw with scaled detail.
+  const out = { ...where, detail: 'v4' };
   for (const f of T.fields) {
     if (f.locus || PLACED.has(f.id)) continue;
     const g = groupOf(f);

@@ -62,6 +62,8 @@ export function drawFish4(set, pose, look, opts) {
     ext: extOf(set),
     prepare(ctx) {
       ctx.v4 = set;
+      // Scaled detail: past a large adult, texture pitch and ray spacing grow with the fish.
+      if (set.detail === 'v4') ctx.detailScale = Math.max(1, ctx.s / 1.5);
     },
   });
 }
