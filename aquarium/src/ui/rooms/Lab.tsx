@@ -9,6 +9,8 @@ import * as W from '../../game';
 import { FishTile, Heading } from '../kit';
 import { alleleColor, labelOf, shows } from '../genes';
 import { Heritage } from '../heritage';
+import { PinButton } from '../pins';
+import { fishDraft, pairDraft } from '../pindrafts';
 
 /** The colour of a Punnett cell: what the egg would show, or slate for wild type. */
 function cellStyle(x: string, y: string) {
@@ -21,7 +23,13 @@ const showsLabel = (x: string, y: string) => shows(x, y).map(labelOf).join(' + '
 function Slot({ side, fish }: { side: 0 | 1; fish?: W.Fish }) {
   const pick = labPick.value;
   const open = () => (labPick.value = pick === side ? null : side);
-  if (fish) return <FishTile fish={fish} size="lg" selected={pick === side} onClick={open} badge={`Tank ${side + 1} · tap to swap`} />;
+  if (fish)
+    return (
+      <div class="lab-slot-fish">
+        <FishTile fish={fish} size="lg" selected={pick === side} onClick={open} badge={`Tank ${side + 1} · tap to swap`} />
+        <PinButton compact draft={() => fishDraft(fish)} label={`Pin ${W.fishName(fish)}'s portrait`} />
+      </div>
+    );
   return (
     <button type="button" class={`lab-slot ${pick === side ? 'on' : ''}`} aria-pressed={pick === side} onClick={open}>
       <span class="plus">+</span>
@@ -136,9 +144,12 @@ function Breeding() {
                 </div>
               ))}
           </div>
-          <button class="btn signal lab-go" disabled={Boolean(why) || labBusy.value} onClick={labSpawn}>
-            {labBusy.value ? 'Shh… blanket’s down' : '♡ Pair them'}
-          </button>
+          <div class="lab-go-row">
+            <button class="btn signal lab-go" disabled={Boolean(why) || labBusy.value} onClick={labSpawn}>
+              {labBusy.value ? 'Shh… blanket’s down' : '♡ Pair them'}
+            </button>
+            <PinButton draft={() => pairDraft(fa, fb)} label="Pin goal" />
+          </div>
           {why && <p class="note warn">{why}</p>}
           {!why && <p class="note">The eggs are laid in their tank in the Hatchery.</p>}
         </>

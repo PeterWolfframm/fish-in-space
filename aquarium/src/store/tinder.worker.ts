@@ -1,4 +1,4 @@
-// The taste net, off the main thread. It learns from Fish Tinder swipes and nothing else: the
+// The taste net, off the main thread. It learns from Fish-der swipes and nothing else: the
 // personal model is fine-tuned from the public one (when signed in) on this player's swipes, and
 // scores cards for the "match" readout. Messages: setPublic, train, score; each replies {id, result}.
 

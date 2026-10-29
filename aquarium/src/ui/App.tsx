@@ -1,7 +1,7 @@
 // The station shell: one persistent Pixi canvas behind every room, the HUD, the dock and the room panel.
 
 import { useEffect, useRef } from 'preact/hooks';
-import { game, room, ready, activeTank, setTank, waking, tankPan, tankMenuOpen } from '../store/signals';
+import { game, room, ready, activeTank, setTank, waking, tankPan, tankMenuOpen, type Room } from '../store/signals';
 import { stage, batterySaver } from '../scenes/stage';
 import { HatcheryScene } from '../scenes/hatchery/tank';
 import { BridgeScene } from '../scenes/bridge/bridge';
@@ -15,6 +15,7 @@ import { Hud } from './Hud';
 import { Dock } from './Dock';
 import { Toasts } from './Toasts';
 import { FishPost } from './FishPost';
+import { PinBoard, PinToggle } from './pins';
 import { ComicStrip } from './comic/ComicStrip';
 import { Briefing, ProfPop, Countdown } from './briefing/Briefing';
 import { HatcheryPanel } from './rooms/Hatchery';
@@ -22,9 +23,10 @@ import { BridgePanel } from './rooms/Bridge';
 import { InterchangePanel } from './rooms/Interchange';
 import { PipPanel } from './rooms/Pip';
 import { LabPanel } from './rooms/Lab';
-import { TinderPanel, TinderDeck } from './rooms/Tinder';
+import { Fishder } from './rooms/Tinder';
 
-const PANELS = { hatchery: HatcheryPanel, bridge: BridgePanel, interchange: InterchangePanel, pip: PipPanel, lab: LabPanel, tinder: TinderPanel };
+// Fish-der has no panel: it is its own app, tab bar and all, in the scene.
+const PANELS: Partial<Record<Room, () => preact.JSX.Element>> = { hatchery: HatcheryPanel, bridge: BridgePanel, interchange: InterchangePanel, pip: PipPanel, lab: LabPanel };
 
 export function App() {
   const host = useRef<HTMLDivElement>(null);
@@ -57,7 +59,7 @@ export function App() {
       <div class="scene">
         <div class="scene-host" ref={host} />
         {room.value === 'hatchery' && <TankOverlay />}
-        {room.value === 'tinder' && <TinderDeck />}
+        {room.value === 'tinder' && <Fishder />}
         {waking.value && (
           <div class="wake" aria-hidden="true">
             <i />
@@ -65,9 +67,11 @@ export function App() {
           </div>
         )}
       </div>
-      <section class="panel" aria-label={`${room.value} controls`}>
-        <Panel />
-      </section>
+      {Panel && (
+        <section class="panel" aria-label={`${room.value} controls`}>
+          <Panel />
+        </section>
+      )}
       <Dock />
       <FishPost />
       <ComicStrip />
@@ -87,6 +91,8 @@ function TankOverlay() {
   const pan = tankPan.value;
   return (
     <>
+      <PinBoard />
+      <PinToggle />
       <div class="tank-plate" aria-hidden="true">
         <b>{cur?.name ?? 'Hatchery'}</b> · above {W.PLANET_NAME}
       </div>

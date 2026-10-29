@@ -1,13 +1,15 @@
-// Fish Tinder: fresh procgen fish, one profile at a time. Nothing here comes from the tanks: every card
+// Fish-der: fresh procgen fish, one profile at a time. Nothing here comes from the tanks: every card
 // is a plain fish3 roll from a random seed, so the swipes describe the generator, not your breeding.
 // Swipes are the only thing the pixelgen net learns from (store/tinder.ts, server/trainer.mjs).
 //
 // The profile is read off the genome: name, an "age" from the life stage, how far below the station
 // it would live, a bio in its own voice, interests from its ecology, and its care edict as
-// dealbreakers. Whether it likes you back is seeded by its code, so undo and redo agree.
+// dealbreakers. The full dossier (factsOf) is the same genome laid out section by section.
 
 import { hash01 } from '@forge/pixel/rng.js';
-import { fish, genomeOf, codeOf } from './fish';
+import { WORDS } from '@forge/v3/fish/ecology-data.js';
+import { fish, genomeOf, codeOf, ecoOf, withStage, cap } from './fish';
+import type { Stage } from './types';
 
 export const TINDER_KIND = 'fish3';
 export const TINDER_MODE = 'fishtinder';
@@ -23,7 +25,6 @@ export interface TinderSwipe {
   seed: string;
   verdict: Verdict;
   superlike?: boolean;
-  matched?: boolean;
   at: number;
   /** The PocketBase record, once uploaded. */
   remote?: string;
@@ -156,11 +157,164 @@ export function profileOf(code: string): Profile {
   return p;
 }
 
-/** Whether the fish likes you back: seeded by its code; a super like always lands. */
-export const likesBack = (code: string, superlike = false) => superlike || hash01(code, 77) < 0.45;
+// ---------- photos ----------
 
-/** The "photos" of a profile: its animations, one per pip at the top of the card. */
-export const PHOTOS = ['swim', 'idle', 'glide', 'eat', 'sprint', 'turn'] as const;
+export interface Shot {
+  code: string;
+  anim: string;
+  /** A caption under the shot, for the stage pairs. */
+  caption?: string;
+}
+export interface Photo {
+  label: string;
+  shots: Shot[];
+}
+
+const STAGES: Stage[] = ['fry', 'juvenile', 'adult', 'elder'];
+
+/**
+ * The "photos" of a profile, one per pip: the fish as rolled, then its life stages two at a time,
+ * then every animation it has.
+ */
+export function photosOf(code: string): Photo[] {
+  const pairs: Photo[] = [];
+  for (let i = 0; i < STAGES.length; i += 2) {
+    const two = STAGES.slice(i, i + 2);
+    pairs.push({ label: two.join(' · '), shots: two.map((st) => ({ code: withStage(code, st), anim: 'swim', caption: st })) });
+  }
+  const anims = fish.anims.map((a) => ({ label: a.label ?? a.id, shots: [{ code, anim: a.id }] }));
+  return [{ label: 'profile', shots: [{ code, anim: 'swim' }] }, ...pairs, ...anims];
+}
+
+// ---------- the full dossier ----------
+
+export interface FactSection {
+  title: string;
+  rows: [string, string][];
+}
+
+const word = (k: string, v: string) => (WORDS as Record<string, Record<string, string>>)[k]?.[v] ?? v;
+const choice = (field: string, id: string) => fish.traits.fieldById(field)?.choices.find((c) => c.id === id)?.label ?? id;
+
+const facts = new Map<string, FactSection[]>();
+
+/** Everything the generator knows about a fish, in labelled sections; empty rows are left out. */
+export function factsOf(code: string): FactSection[] {
+  const hit = facts.get(code);
+  if (hit) return hit;
+  const g = genomeOf(code);
+  const p = profileOf(code);
+  const e = fish.ecology(g) as unknown as Record<string, { value: string }> & {
+    care: { cm: number; group: number; litres: number; tempC: [number, number]; pH: [number, number] };
+  };
+  const v = (k: string) => e[k]?.value ?? '';
+  const w = (k: string) => cap(word(k, v(k)));
+  const c = e.care;
+  const genes = [g.geneA, g.geneB].filter((a) => a !== 'wild');
+  const out: FactSection[] = [
+    {
+      title: 'Identity',
+      rows: [
+        ['Species', p.binomial],
+        ['Title', p.title ?? ''],
+        ['Life stage', `${cap(p.stage)}, ${p.age}`],
+        ['Sex', p.sex === 'f' ? 'Female' : 'Male'],
+        ['Rarity', cap(p.rarity)],
+        ['Signature', p.signature],
+        ['Generation', String(g.generation ?? '')],
+      ],
+    },
+    {
+      title: 'Lifestyle',
+      rows: [
+        ['Diet', w('diet')],
+        ['Feeding', w('feeding')],
+        ['Swims', w('level')],
+        ['Active', w('activity')],
+        ['Social', w('sociality')],
+        ['Temperament', w('temperament')],
+      ],
+    },
+    {
+      title: 'Habitat',
+      rows: [
+        ['Water', w('salinity')],
+        ['Temperature', `${w('temp')}, ${c.tempC[0]}–${c.tempC[1]} °C`],
+        ['pH', `${c.pH[0]}–${c.pH[1]}`],
+        ['Hardness', w('hardness')],
+        ['Current', w('current')],
+        ['Depth', w('depth')],
+      ],
+    },
+    {
+      title: 'Care',
+      rows: [
+        ['Grows to', `${c.cm} cm`],
+        ['Tank', `${c.litres} L`],
+        ['Keep', c.group > 1 ? `${c.group} together` : 'alone'],
+      ],
+    },
+    {
+      title: 'Genes',
+      rows: [
+        ['Body', cap(choice('body', g.body))],
+        ['Hybrid', g.hybrid && g.hybrid !== 'none' ? cap(choice('hybrid', g.hybrid)) : ''],
+        ['Alleles', genes.length ? genes.join(' / ') : 'wild / wild'],
+        ['Expressed', fish.describe(g)],
+      ],
+    },
+  ];
+  for (const s of out) s.rows = s.rows.filter(([, x]) => !!x);
+  if (facts.size > 400) facts.clear();
+  facts.set(code, out);
+  return out;
+}
+
+// ---------- what you go for ----------
+
+export interface Preference {
+  trait: string;
+  rows: { value: string; likes: number; total: number }[];
+}
+
+/** The traits a swipe is judged on in the stats, with how each is read off a code. */
+const TRAITS: [string, (code: string) => string][] = [
+  ['Diet', (c) => ecoOf(c).diet],
+  ['Temperament', (c) => ecoOf(c).temperament],
+  ['Depth', (c) => ecoOf(c).depth],
+  ['Water', (c) => ecoOf(c).salinity],
+  ['Climate', (c) => ecoOf(c).temp],
+  ['Social', (c) => ecoOf(c).sociality],
+  ['Active', (c) => ecoOf(c).activity],
+  ['Swims', (c) => ecoOf(c).level],
+  ['Body', (c) => choice('body', genomeOf(c).body)],
+  ['Life stage', (c) => genomeOf(c).stage],
+  ['Rarity', (c) => genomeOf(c).rarity],
+  ['Sex', (c) => (genomeOf(c).sex === 'f' ? 'female' : 'male')],
+];
+
+/**
+ * How often you like each value of each trait. A super like counts twice, as it does for the taste
+ * net. Values seen fewer than `min` times are left out; rows run from most to least liked.
+ */
+export function preferences(swipes: TinderSwipe[], min = 2): Preference[] {
+  return TRAITS.map(([trait, read]) => {
+    const tally = new Map<string, { likes: number; total: number }>();
+    for (const s of swipes) {
+      const n = s.superlike ? 2 : 1;
+      const k = read(s.code);
+      const t = tally.get(k) ?? { likes: 0, total: 0 };
+      t.total += n;
+      if (s.verdict === 'approve') t.likes += n;
+      tally.set(k, t);
+    }
+    const rows = [...tally]
+      .filter(([, t]) => t.total >= min)
+      .map(([value, t]) => ({ value, ...t }))
+      .sort((a, b) => b.likes / b.total - a.likes / a.total || b.total - a.total);
+    return { trait, rows };
+  }).filter((p) => p.rows.length > 0);
+}
 
 // ---------- tiers ----------
 

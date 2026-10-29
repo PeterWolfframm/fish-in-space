@@ -13,10 +13,11 @@ export interface Fish3 {
   fromSeed(s: string): Genome;
   breedDetailed(a: Genome, b: Genome, seed: string): { child: Genome; events: { text: string }[] };
   name(g: Genome): string;
+  describe(g: Genome): string;
   names(g: Genome): { common?: string; binomial?: string; title?: string | null };
   ecology(g: Genome): Record<string, { value: string }> & { care: { tempC: [number, number] } };
   lore(g: Genome): { quote: string | null; codex?: { key: string; text: string }[] };
-  anims: { id: string; frames: number; fps: number }[];
+  anims: { id: string; frames: number; fps: number; label?: string }[];
   fpsOf(g: Genome, a: unknown): number;
   frame(g: Genome, anim: string, i: number): { w: number; h: number; data: Uint8Array | number[]; palette: number[][] };
 }

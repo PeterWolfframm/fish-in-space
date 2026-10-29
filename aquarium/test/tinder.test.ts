@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import * as T from '../src/game/tinder';
+import { fish, genomeOf } from '../src/game/fish';
 
 const sw = (code: string, verdict: T.Verdict, extra: Partial<T.TinderSwipe> = {}): T.TinderSwipe => ({ id: code + verdict, code, seed: code, verdict, at: 0, ...extra });
 
-describe('fish tinder', () => {
+describe('fish-der', () => {
   it('rolls the same fish for the same seed, different fish for different seeds', () => {
     expect(T.roll('abc').code).toBe(T.roll('abc').code);
     const codes = new Set(['a', 'b', 'c', 'd', 'e', 'f'].map((s) => T.roll(s).code));
@@ -22,10 +23,35 @@ describe('fish tinder', () => {
     }
   });
 
-  it('likes back by code, and always on a super like', () => {
-    const c = T.roll('m1').code;
-    expect(T.likesBack(c)).toBe(T.likesBack(c));
-    expect(T.likesBack(c, true)).toBe(true);
+  it('shows the profile, then the life stages two at a time, then every animation', () => {
+    const code = T.roll('ph1').code;
+    const ph = T.photosOf(code);
+    expect(ph[0].shots).toEqual([{ code, anim: 'swim' }]);
+    const pairs = ph.slice(1, 3);
+    expect(pairs.every((p) => p.shots.length === 2)).toBe(true);
+    expect(pairs.flatMap((p) => p.shots.map((s) => genomeOf(s.code).stage))).toEqual(['fry', 'juvenile', 'adult', 'elder']);
+    expect(ph.slice(3).map((p) => p.shots[0].anim)).toEqual(fish.anims.map((a) => a.id));
+    expect(ph.slice(3).every((p) => p.shots.length === 1 && p.shots[0].code === code)).toBe(true);
+  });
+
+  it('lays the full dossier out in sections with no empty rows', () => {
+    for (const seed of ['f1', 'f2', 'f3']) {
+      const f = T.factsOf(T.roll(seed).code);
+      const by = Object.fromEntries(f.map((s) => [s.title, s.rows]));
+      for (const t of ['Identity', 'Lifestyle', 'Habitat', 'Care', 'Genes']) expect(by[t]?.length).toBeGreaterThan(0);
+      expect(f.flatMap((s) => s.rows).every(([k, v]) => k && v && !v.includes('undefined'))).toBe(true);
+      expect(by.Habitat.find(([k]) => k === 'Temperature')?.[1]).toMatch(/°C/);
+    }
+  });
+
+  it('tallies what you like per trait, a super like counting twice', () => {
+    const codes = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((s) => T.roll(s).code);
+    const sws = [sw(codes[0], 'approve', { superlike: true }), sw(codes[1], 'approve'), sw(codes[2], 'pass'), sw(codes[3], 'pass'), sw(codes[4], 'approve'), sw(codes[5], 'pass')];
+    const sex = T.preferences(sws, 1).find((p) => p.trait === 'Sex')!;
+    expect(sex.rows.reduce((n, r) => n + r.total, 0)).toBe(7);
+    expect(sex.rows.reduce((n, r) => n + r.likes, 0)).toBe(4);
+    for (let i = 1; i < sex.rows.length; i++) expect(sex.rows[i - 1].likes / sex.rows[i - 1].total).toBeGreaterThanOrEqual(sex.rows[i].likes / sex.rows[i].total);
+    expect(T.preferences([sw(codes[0], 'approve')], 2)).toEqual([]);
   });
 
   it('pours likes into the pool, super likes into S, and drops passes and unlikes', () => {

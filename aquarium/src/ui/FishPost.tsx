@@ -8,6 +8,8 @@ import * as W from '../game';
 import { SpriteArt } from './Art';
 import { Heading, mmss, regionName, statusOf } from './kit';
 import { labelOf, modeOf } from './genes';
+import { PinButton } from './pins';
+import { fishDraft } from './pindrafts';
 
 const STAGE: Record<string, string> = { fry: 'Fry', juvenile: 'Juvenile', adult: 'Adult', elder: 'Elder' };
 const RARITY_COLOR: Record<string, string> = { common: 'var(--ink-dim)', uncommon: 'var(--bloom)', rare: 'var(--lilac)', myth: 'var(--gold)' };
@@ -153,6 +155,7 @@ export function FishPost() {
                 {priceTrend === 'up' ? '▲' : priceTrend === 'down' ? '▼' : ''}
               </span>
             </button>
+            <PinButton draft={() => fishDraft(f, 'fish')} label="Pin portrait" />
           </div>
 
           <button class="post-details-toggle" aria-expanded={details} onClick={() => setDetails((v) => !v)}>

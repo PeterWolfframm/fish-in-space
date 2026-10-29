@@ -6,7 +6,7 @@ const ROOMS: { id: Room; label: string; ico: string }[] = [
   { id: 'interchange', label: 'Interchange', ico: '🧺' },
   { id: 'pip', label: 'PIP', ico: '📡' },
   { id: 'lab', label: 'Lab', ico: '🧬' },
-  { id: 'tinder', label: 'Tinder', ico: '💘' },
+  { id: 'tinder', label: 'Fish-der', ico: '💘' },
 ];
 
 export function Dock() {

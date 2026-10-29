@@ -1,4 +1,4 @@
-// Fish Tinder's backdrop: a dim lab wall with bubbles and the odd pixel heart drifting up behind the
+// Fish-der's backdrop: a dim lab wall with bubbles and the odd pixel heart drifting up behind the
 // cards. The deck itself is HTML over this.
 
 import { Container, Graphics, Sprite } from 'pixi.js';

@@ -1,8 +1,8 @@
-// Fish Tinder's state: the deck of fresh rolls, every swipe, the tier list, and the taste net.
+// Fish-der's state: the deck of fresh rolls, every swipe, the tier list, and the taste net.
 //
 // Swipes live in IndexedDB on this device. For a signed-in member each one is also written to
 // PocketBase's `swipes` collection as kind fish3, mode "fishtinder"; the trainer reads only those,
-// so Fish Tinder is the one source the pixelgen net learns from. The personal net trains in a worker
+// so Fish-der is the one source the pixelgen net learns from. The personal net trains in a worker
 // a moment after each swipe and scores the cards in view.
 
 import { signal, computed } from '@preact/signals';
@@ -23,11 +23,10 @@ export const scores = signal<Record<string, number | null>>({});
 export const taste = signal<{ swipes: number; likes: string[]; dislikes: string[]; fromPublic: boolean } | null>(null);
 export const training = signal(false);
 export const publicModel = signal<{ swipes: number; users: number } | null>(null);
-/** The last match, for the "It's a match" screen. */
-export const match = signal<T.TinderSwipe | null>(null);
+/** Which screen of the app is up: the deck, the gallery of likes, your stats, or the tier list. */
+export const tab = signal<'swipe' | 'gallery' | 'stats' | 'tiers'>('swipe');
 
 export const liked = computed(() => swipes.value.filter((s) => s.verdict === 'approve').reverse());
-export const matches = computed(() => liked.value.filter((s) => s.matched));
 
 let undoable: T.TinderSwipe[] = [];
 export const canUndo = signal(false);
@@ -78,7 +77,6 @@ export function swipe(verdict: T.Verdict, superlike = false): T.TinderSwipe | nu
     seed: card.seed,
     verdict,
     ...(superlike ? { superlike: true } : {}),
-    matched: verdict === 'approve' && T.likesBack(card.code, superlike),
     at: Date.now(),
     score: scores.peek()[card.code] ?? null,
   };
@@ -87,7 +85,6 @@ export function swipe(verdict: T.Verdict, superlike = false): T.TinderSwipe | nu
   tiers.value = T.syncTiers(tiers.peek(), swipes.value);
   undoable = [...undoable, s].slice(-HISTORY);
   canUndo.value = true;
-  if (s.matched) match.value = s;
   persist();
   fill();
   retrain();
@@ -150,7 +147,7 @@ async function upload(s: T.TinderSwipe) {
   }
 }
 
-/** Pull this account's Fish Tinder swipes from other devices, push the ones made offline. */
+/** Pull this account's Fish-der swipes from other devices, push the ones made offline. */
 async function syncAccount() {
   const uid = mine();
   if (!uid) return;
@@ -172,7 +169,6 @@ async function syncAccount() {
           seed: String(r.seed ?? ''),
           verdict: r.verdict as T.Verdict,
           ...(superlike ? { superlike } : {}),
-          matched: r.verdict === 'approve' && T.likesBack(String(r.code), superlike),
           at: Date.parse(String(r.created)) || Date.now(),
           remote: r.id,
         };

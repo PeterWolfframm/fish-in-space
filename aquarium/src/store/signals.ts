@@ -10,6 +10,7 @@ import { sfx, unlock } from '../audio/sfx';
 import { ambientTick, startAmbient } from '../audio/ambient';
 import { reducedMotion } from '../ui/theme';
 import { LocalBackend, tallyOnce, type Backend, type Tally } from './backend';
+import { SPAN } from '../scenes/hatchery/layout';
 
 // --- state -----------------------------------------------------------------------------------------
 
@@ -411,6 +412,63 @@ export function askProf() {
 
 export function setSetting<K extends keyof W.Settings>(k: K, v: W.Settings[K]) {
   act((s) => void (s.settings[k] = v));
+}
+
+// --- pins on the glass ----------------------------------------------------------------------------------
+
+/** The pin open (enlarged) on the glass, and one that just landed or was re-pinned, for a wiggle. */
+export const openPin = signal<string | null>(null);
+export const freshPin = signal<string | null>(null);
+
+/** Stick a note or portrait to a tank's glass (the tank in view by default). */
+export function pinTo(draft: W.PinDraft, tankId = activeTank.value) {
+  // On the tank in view, land the pin in the part of the glass the camera shows.
+  const tank = game.value.tanks.find((t) => t.id === tankId);
+  const span = tank ? (SPAN[tank.shape] ?? 1) : 1;
+  const x0 = tankId === activeTank.value ? ((tankPan.value ?? 0) * (span - 1)) / span : 0;
+  const view: [number, number] = tankId === activeTank.value ? [x0, x0 + 1 / span] : [0, 1 / span];
+  const r = act((s) => W.addPin(s, draft, tankId, Date.now(), view));
+  if ('error' in r) {
+    sfx.nope();
+    return toast(r.error, 'bad');
+  }
+  sfx.stamp();
+  freshPin.value = r.pin.id;
+  setTimeout(() => freshPin.value === r.pin.id && (freshPin.value = null), 1400);
+  const name = tank?.name ?? 'the tank';
+  toast(r.fresh ? `📌 Pinned to ${name}` : `Already on ${name}'s glass`, r.fresh ? 'good' : undefined);
+}
+
+export function movePin(id: string, x: number, y: number) {
+  act((s) => W.movePin(s, id, x, y));
+}
+
+export function repinTo(id: string, tankId: string) {
+  const err = act((s) => W.repin(s, id, tankId));
+  if (err) return toast(err, 'bad');
+  openPin.value = null;
+  toast(`📌 Moved to ${game.value.tanks.find((t) => t.id === tankId)?.name ?? 'the other tank'}`);
+}
+
+export function unpinNote(id: string) {
+  act((s) => W.unpin(s, id));
+  if (openPin.value === id) openPin.value = null;
+  sfx.plip();
+}
+
+export function clearAllPins() {
+  act((s) => W.clearPins(s));
+  openPin.value = null;
+}
+
+/** Put a pair in the Lab's breeding tanks (from a PIP plan or a pin) and go there. Skips fish no longer aboard. */
+export function planInLab(ids: string[]) {
+  const aboard = ids.filter((id) => game.value.fish.some((f) => f.id === id));
+  if (!aboard.length) return toast('Those fish are no longer aboard.', 'bad');
+  const [a, b] = aboard;
+  labPair.value = [a ?? null, b ?? null];
+  labPick.value = b ? null : 1;
+  goRoom('lab');
 }
 
 export function goRoom(r: Room) {

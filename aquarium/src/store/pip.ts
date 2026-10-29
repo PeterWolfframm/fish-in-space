@@ -3,10 +3,10 @@
 
 import { signal } from '@preact/signals';
 import * as W from '../game';
-import { game } from './signals';
+import { game, focusRegion } from './signals';
 import { sfx } from '../audio/sfx';
 
-export type Topic = 'advice' | 'news' | 'archive' | 'log' | 'stats' | 'settings';
+export type Topic = 'plan' | 'advice' | 'news' | 'archive' | 'log' | 'stats' | 'settings';
 export interface ChatMsg {
   key: number;
   from: 'pip' | 'you';
@@ -15,6 +15,7 @@ export interface ChatMsg {
 }
 
 export const PHRASES: { topic: Topic; say: string }[] = [
+  { topic: 'plan', say: 'What should I breed?' },
   { topic: 'advice', say: 'What should I send where?' },
   { topic: 'news', say: 'Any news?' },
   { topic: 'archive', say: 'Open the archive.' },
@@ -23,7 +24,7 @@ export const PHRASES: { topic: Topic; say: string }[] = [
   { topic: 'settings', say: 'Settings, please.' },
 ];
 
-const LINES: Record<Exclude<Topic, 'advice'>, string[]> = {
+const LINES: Record<Exclude<Topic, 'advice' | 'plan'>, string[]> = {
   news: [
     'Interchange bulletin, freshly scraped. PIP has read every word. Twice.',
     'News! PIP loves news. Here is the bulletin. PIP has highlighted the numbers.',
@@ -60,7 +61,20 @@ const CORRECTIONS = [
   'PIP has double-checked and is now 4% less confident. Still recommends it.',
   'Update: PIP misread one decimal. Not that one. A different one. It is fine.',
 ];
-const HELLO = 'PIP online. Ask PIP anything. PIP knows six things, and they are below.';
+const PLAN_YES = [
+  'PIP has studied {place}. It wants: {needs}. PIP test-bred every likely pair in a very small virtual bucket:',
+  '{place} needs {needs}. PIP ran {sims} test clutches per pair. The bucket is fine. Here are the parents:',
+  'Analysis of {place}: {needs}. These pairings should hatch what it needs. PIP has shown its working:',
+];
+const PLAN_NO = [
+  '{place} needs {needs}, and nobody aboard can breed that. PIP has a shopping list instead.',
+  'PIP has looked at {place}: {needs}. No pair aboard gets close. PIP suggests shopping. PIP always suggests shopping.',
+];
+const HELLO = 'PIP online. Ask PIP anything. PIP knows seven things, and they are below.';
+
+/** The region PIP's breeding plan is about: picked in the plan folder, else the Bridge's focus, else PIP's choice. */
+export const planRegion = signal<string | null>(null);
+export const planTargetOf = (s: W.State) => W.planTarget(s, planRegion.value ?? focusRegion.value);
 
 let key = 0;
 let said = 0;
@@ -89,7 +103,22 @@ export function ask(topic: Topic) {
   setTimeout(() => {
     pipThinking.value = false;
     sfx.blip();
-    if (topic === 'advice') {
+    if (topic === 'plan') {
+      const s = game.peek();
+      const region = planTargetOf(s);
+      if (!region) {
+        emote('alarm');
+        chat.value = [...chat.value, msg('pip', 'No water on Mirelle is open yet. PIP will plan when there is somewhere to plan for.')].slice(-40);
+        return;
+      }
+      planRegion.value = region.id;
+      const plan = W.breedPlan(s, region, Date.now());
+      const good = plan.pairs.length > 0 && !plan.seek;
+      emote(good ? 'grin' : 'alarm');
+      const fill = (t: string) =>
+        t.replace('{place}', W.regionLabel(region)).replace('{sims}', String(plan.sims)).replace('{needs}', plan.target.needs.map((n) => n.label.toLowerCase()).join(', '));
+      chat.value = [...chat.value, msg('pip', fill(line(good ? PLAN_YES : PLAN_NO)), 'plan')].slice(-40);
+    } else if (topic === 'advice') {
       const cards = W.advise(game.peek());
       const yes = cards[0]?.kind !== 'none';
       emote(yes ? 'grin' : 'alarm');

@@ -137,6 +137,7 @@ export interface Settings {
   shortPods: boolean;
   uiScale: 1 | 1.15 | 1.3 | 1.5;
   tankMenuEdge: 'left' | 'right' | 'top' | 'bottom';
+  hidePins?: boolean; // hide the notes stuck to the tank glass (they stay saved)
 }
 
 export interface Upgrades {
@@ -153,6 +154,33 @@ export interface FieldNotes {
   alleles: string[];
   regions: string[]; // region ids named
   lore: string[]; // comms entry ids heard
+}
+
+/** Where a pin came from: a PIP folder, the Lab, or a fish's post. */
+export type PinSource = 'news' | 'advice' | 'call' | 'plan' | 'lab' | 'fish';
+
+/** A fish shown on a pin, kept as it was when pinned so the portrait survives the fish leaving. */
+export interface PinFish {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** A note or portrait stuck to a tank's glass. x and y are its centre, 0..1 across the whole glass. */
+export interface Pin {
+  id: string;
+  ref: string; // what it pins (e.g. 'news:herbivore', 'fish:f12'); one pin per ref per tank
+  tank: string;
+  kind: 'note' | 'portrait';
+  source: PinSource;
+  title: string;
+  text: string;
+  fish: PinFish[];
+  tone: 'lamp' | 'tank' | 'lilac' | 'bloom' | 'signal' | 'sky' | 'gold';
+  x: number;
+  y: number;
+  tilt: number; // degrees
+  at: number;
 }
 
 export interface State {
@@ -184,6 +212,7 @@ export interface State {
   upgrades: Upgrades;
   fieldNotes: FieldNotes;
   patches: string[];
+  pins: Pin[];
   settings: Settings;
 }
 
