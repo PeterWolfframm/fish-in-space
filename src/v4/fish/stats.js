@@ -19,6 +19,7 @@ import {
 import DEFAULT_RULES from './data/rules.js';
 import { lociOf } from './loci.js';
 import { toFish3, jitterKey } from './genome.js';
+import { extOf } from './bodies/index.js';
 import { FEATURES } from './features/registry.js';
 import { familyOf, FAMILIES } from './taxonomy.js';
 import { test, tierRank, SIZE_ORDER } from './rules.js';
@@ -34,10 +35,13 @@ const WORDS = ['very low', 'low', 'moderate', 'high', 'very high'];
 /** The rule list for an option: an array as given, 'default' / nothing → the default rules. */
 export const rulesFor = (rules) => (Array.isArray(rules) ? rules : DEFAULT_RULES);
 
-/** The facts a condition can ask about: fish3's ecology values plus a few resolved genes. */
-export function factsOf(f3) {
-  const ph = phenotype(f3);
-  const eco = ecologyOf(f3);
+/**
+ * The facts a condition can ask about: fish3's ecology values plus a few resolved genes. `ext` is
+ * the fish4 body or pigment (bodies/index.js extOf), if any.
+ */
+export function factsOf(f3, ext) {
+  const ph = phenotype(f3, -1, ext);
+  const eco = ecologyOf(f3, ext);
   const facts = {};
   for (const k of Object.keys(SCALES)) facts[k] = eco[k]?.value;
   Object.assign(facts, {
@@ -76,7 +80,7 @@ export function lookFor(set, { facts, loci, family, tier, stats }) {
  */
 export function statsOf(set, opts = {}) {
   const f3 = toFish3(set);
-  const { ph, eco, facts } = factsOf(f3);
+  const { ph, eco, facts } = factsOf(f3, extOf(set));
   const loci = lociOf(set);
   const family = familyOf(ph.body);
   const tier = opts.tier ?? set.rarity;

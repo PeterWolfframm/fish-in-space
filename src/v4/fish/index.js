@@ -26,7 +26,9 @@ import { TIERS, TIER_LABELS } from './rules.js';
 import { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES } from './stats.js';
 import { taxonomyOf, ORDERS, FAMILIES } from './taxonomy.js';
 import { namesOf4 } from './names.js';
+import { extOf, bodyOf, BODY_RECORDS, NEW_FORMS } from './bodies/index.js';
 
+export { extOf, bodyOf, BODY_RECORDS, NEW_FORMS };
 export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
 export { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, lociOf, LOCI, PRESETS, resolveParams, paramsHash, FEATURES, EXPRESSIONS, TIERS, TIER_LABELS, FISH3_IDS, V4_IDS, FEATURE_IDS };
 
@@ -103,7 +105,7 @@ export const poseOf = (set, a, i) => {
 
 // Fields that never reach the paint (breeding bookkeeping, hidden genes, colour passes after the
 // crop): the window cache ignores them.
-const NOT_GEOMETRY = ['chaos', 'generation', 'lineA', 'lineB', 'purity', 'chroma', ...LOCI.flatMap((l) => [`${l.id}A`, `${l.id}B`])];
+const NOT_GEOMETRY = ['terrain', 'region', 'niche', 'clade', 'chaos', 'generation', 'lineA', 'lineB', 'purity', 'chroma', ...LOCI.flatMap((l) => [`${l.id}A`, `${l.id}B`])];
 const windowKey = (set, opts) => {
   const plain = { ...set };
   for (const id of NOT_GEOMETRY) plain[id] = T.fieldById(id).default ?? T.fieldById(id).choices[0].id;
@@ -174,6 +176,7 @@ export function frame(genome, animId, i = 0, opts) {
 }
 
 const f3 = (genome) => toFish3(T.normalize(genome));
+const ext = (genome) => extOf(T.normalize(genome));
 
 /** Options for the text side: params (or a preset id) plus optional studio rules / flavour. */
 const textOpts = (opts) => {
@@ -194,7 +197,7 @@ export function profile(genome, opts) {
   const o = textOpts(opts);
   const stats = statsOf(set, o);
   const n = namesOf4(set, { look: stats.look, humour: o.humour, flavour: o.flavour });
-  return { code: T.encode(set), names: n, taxonomy: n.taxonomy, stats, rulesFired: stats.rulesFired, summary: summaryOf(stats), loci: lociOf(set), ecology: ecologyOf(toFish3(set)) };
+  return { code: T.encode(set), names: n, taxonomy: n.taxonomy, stats, rulesFired: stats.rulesFired, summary: summaryOf(stats), loci: lociOf(set), ecology: ecologyOf(toFish3(set), extOf(set)) };
 }
 
 export default {
@@ -221,8 +224,8 @@ export default {
   name: (genome) => namesOf4(T.normalize(genome)).full,
   describe: (genome) => describeGenes(f3(genome)),
   names,
-  ecology: (genome) => ecologyOf(f3(genome)),
-  lore: (genome) => loreOf(f3(genome)),
+  ecology: (genome) => ecologyOf(f3(genome), ext(genome)),
+  lore: (genome) => loreOf(f3(genome), ext(genome)),
   loci: (genome) => lociOf(T.normalize(genome)),
   stats: (genome, opts) => statsOf(T.normalize(genome), textOpts(opts)),
   behaviour: (genome, opts) => behaviourProfile(T.normalize(genome), textOpts(opts)),

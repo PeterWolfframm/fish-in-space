@@ -139,7 +139,8 @@ function build(set, stageOverride, ext) {
   const beakH = jaw === 'bill' ? 0.9 : jaw === 'tube' ? 0.8 : 1.4;
 
   const eyeT = Math.min(0.95, 0.82 + 0.015 * stepOf(set.eyePos) + (r(130) - 0.5) * wob * 0.15 + (stage === 'fry' ? 0.02 : 0));
-  const eyeUp = 0.55 + 0.06 * stepOf(set.eyePos);
+  // `arch.eyeUp` (fish4 bodies only) raises the eye: a sand fish keeps it on top of its head.
+  const eyeUp = (arch.eyeUp ?? 0.55) + 0.06 * stepOf(set.eyePos);
 
   // Eye stamp: grows with the fish, one step per eye trait, fry get big eyes.
   const eyeBias = { small: -1, normal: 0, big: 1 }[set.eye ?? 'normal'] + (stage === 'fry' ? 1 : 0) + (stage === 'juvenile' ? 0.5 : 0);

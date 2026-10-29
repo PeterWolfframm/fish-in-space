@@ -1,4 +1,4 @@
-// fish4's painter: fish3's parts with the feature modules spliced in, a face channel for
+// fish4's painter: fish3's parts with the feature modules and the anatomy parts spliced in, a face channel for
 // expressions (`pose.expr`), and palette passes for the chroma gene and for tired / dead fish.
 //
 // A fish4 set is drawn as its fish3 kin (toFish3) so every fish3 pixel is kept; the parts see the
@@ -8,6 +8,8 @@ import { PARTS, paintFish } from '../../v3/fish/draw.js';
 import { INK } from '../../v3/fish/colors.js';
 import { partsWith } from './features/registry.js';
 import { toFish3 } from './genome.js';
+import { extOf } from './bodies/index.js';
+import { withAnatomy } from './parts/anatomy.js';
 
 /** Face per expression: the fish3 mood its eye and mouth are drawn with. */
 export const EXPRESSIONS = {
@@ -47,7 +49,7 @@ export function partsFor(opts = {}) {
   const key = opts.key ?? '';
   let parts = partCache.get(key);
   if (!parts) {
-    parts = partsWith(PARTS, opts).map((p) => (p.id === 'eye' || p.id === 'mouth' ? face(p) : p));
+    parts = withAnatomy(partsWith(PARTS, opts), opts).map((p) => (p.id === 'eye' || p.id === 'mouth' ? face(p) : p));
     if (partCache.size > 50) partCache.clear();
     partCache.set(key, parts);
   }
@@ -57,6 +59,7 @@ export function partsFor(opts = {}) {
 /** One frame on the scratch canvas: `{ img, origin }`. */
 export function drawFish4(set, pose, look, opts) {
   return paintFish(toFish3(set), pose, look, partsFor(opts), {
+    ext: extOf(set),
     prepare(ctx) {
       ctx.v4 = set;
     },

@@ -16,6 +16,10 @@ export const ORDERS = {
   Serpentiformes: { label: 'Ribbon-fish', note: 'Long bodies that swim by waves: eels, knifefish and oarfish.' },
   Abyssiformes: { label: 'Dark-water fish', note: 'Made for pressure and night: lures, soft bodies and big eyes.' },
   Archaeiformes: { label: 'Old-lines', note: 'Living fossils and bottom-sifters whose shape has not changed in an age.' },
+  // The terrain orders: fish that left water altogether.
+  Pyriformes: { label: 'Fire-fish', note: 'Fish of molten rock: stone shells, glowing seams, blood that runs hot.', terrain: 'lava' },
+  Psammiformes: { label: 'Sand-swimmers', note: 'Fish that swim through sand as through water, and the glass-plated drifters of the flats.', terrain: 'sand' },
+  Radiiformes: { label: 'Lamp-fish', note: 'Radiant fish of reactor lakes and isotope springs: they glow, and harm nothing.', terrain: 'nuclear' },
 };
 
 /** Families, each in one order, with stat priors (deltas on 0..1 stats). */
@@ -35,9 +39,18 @@ export const FAMILIES = {
   Gelatidae: { order: 'Abyssiformes', label: 'Soft-bodies', priors: { energy: -0.1, stamina: -0.06, stressResistance: 0.06 } },
   Fossilidae: { order: 'Archaeiformes', label: 'Living fossils', priors: { lifespan: 0.12, maturationMul: 0.08, hardiness: 0.05 } },
   Barbatidae: { order: 'Archaeiformes', label: 'Whiskered sifters', priors: { dietBreadth: 0.06, sociability: 0.04, hardiness: 0.04 } },
+  Scoriidae: { order: 'Pyriformes', label: 'Slag-fish', priors: { hardiness: 0.1, swimSpeed: -0.06, stressResistance: 0.05 } },
+  Ignidae: { order: 'Pyriformes', label: 'Flame-fish', priors: { energy: 0.08, metabolicRate: 0.1, schooling: 0.04 } },
+  Arenidae: { order: 'Psammiformes', label: 'Dune-fish', priors: { verticalPref: -0.1, territoriality: 0.05, zoneBreadth: -0.05 } },
+  Vitridae: { order: 'Psammiformes', label: 'Glass-fish', priors: { stressResistance: -0.05, curiosity: 0.05, sociability: 0.04 } },
+  Lucidae: { order: 'Radiiformes', label: 'Lamp-bellies', priors: { sociability: 0.08, curiosity: 0.06, aggression: -0.05 } },
+  Isotopidae: { order: 'Radiiformes', label: 'Half-lives', priors: { schooling: 0.06, lifespan: 0.06, stamina: 0.04 } },
 };
 
-/** Every fish3 body's family. Hybrids not listed here take their first parent's family. */
+/**
+ * Every fish3 body's family. Hybrids not listed here take their first parent's family; fish4's
+ * own forms name theirs in their body record (bodies/*.js).
+ */
 export const FAMILY_OF = {
   torpedo: 'Cursoridae', flyingfish: 'Cursoridae',
   shark: 'Dentidae', piranha: 'Dentidae', barracuda: 'Dentidae',
