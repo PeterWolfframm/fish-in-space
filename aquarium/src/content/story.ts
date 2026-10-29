@@ -21,7 +21,7 @@ export const CHAPTERS: Chapter[] = [
     bullets: ['The delta is open: brackish and temperate.', 'The lakes have warmed to temperate.', 'Requests may want a specific allele. Breed for it.'] },
   { title: 'Coral Weather', patch: 'Reef Season',
     mission: 'Reef season! Colour is a feature, not a bug.',
-    bullets: ['Reefs are open: marine and tropical.', 'Rivers and the delta are warming to tropical.', 'Heritage roe at the Interchange brings new genes in.'] },
+    bullets: ['Reefs are open: marine and tropical.', 'Rivers and the delta are warming to tropical.', 'Heritage roe at the X-change brings new genes in.'] },
   { title: 'Lanternfall', patch: 'Lanternfall',
     mission: 'Something down there is glowing back at us. I love this job.',
     bullets: ['The trench is open: marine, cold and deep.', 'Upwelling has chilled the delta to cold.', 'Twilight and abyss fish only; check depth in the dossier.'] },
@@ -83,7 +83,7 @@ export const BEATS: Record<BeatTrigger, CommsEntry> = {
     { who: 'prof', mood: 'grin', text: 'And that, Ichthyologist, is a fan. Keep going: every delivery adds Bloom.' },
   ] },
   shop: { id: 'ob-shop', tags: ['onboard'], panels: [
-    { who: 'sel', mood: 'talk', text: 'Archivist Sel, the Interchange. Six drawers of Ark roe, restocked every orbit. Allotment accepted. Manners appreciated.' },
+    { who: 'sel', mood: 'talk', text: 'Archivist Sel, the X-change. Six vials of Ark roe, restocked every orbit. Space karma accepted. Manners appreciated.' },
   ] },
   'phase-end-0': { id: 'ob-done', tags: ['onboard'], panels: [
     { who: 'prof', mood: 'grin', text: 'Shift one, done. You’re a natural. I’ll leave you to it; ping me with Ask the Prof any time.' },

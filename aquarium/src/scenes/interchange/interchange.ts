@@ -4,9 +4,9 @@
 // mystery crate sits on the deck with its seam lit when it's ready. Cold mist pools along the bottom.
 
 import { Container, Graphics, Sprite } from 'pixi.js';
-import { game, now } from '../../store/signals';
+import { armedVial, buy, game, goRoom, now, panelOpen, vialHits } from '../../store/signals';
 import * as W from '../../game';
-import { calm, fx, type Scene } from '../stage';
+import { calm, fx, stage, type Scene } from '../stage';
 import { Backdrop, Figure, hullWall } from '../room';
 import { glowTexture } from '../paint';
 
@@ -38,6 +38,7 @@ export class InterchangeScene implements Scene {
   private slots: Slot[] = [];
   private pulled = new Map<number, number>(); // drawer index → seconds since tapped
   private crate = { x: 0, y: 0, w: 0, h: 0 };
+  private hitKey = '';
 
   fps = () => 30;
 
@@ -93,9 +94,28 @@ export class InterchangeScene implements Scene {
     const d = this.slots.find((s) => x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h + 6);
     if (d) {
       this.pulled.set(d.i, 0);
+      const s = game.peek();
+      const t = now.peek();
+      const n = W.currentOrbit(s, t);
+      const dr = W.drawers(s, n)[d.i];
+      const gone = s.shop.orbit === n && s.shop.sold.includes(d.i);
+      if (dr && !gone) {
+        if (armedVial.peek() === d.i) {
+          buy(
+            (x) => W.buyDrawer(x, d.i, Date.now()),
+            () => {
+              armedVial.value = null;
+              goRoom('hatchery');
+            },
+          );
+        } else {
+          armedVial.value = d.i;
+          panelOpen.value = true;
+          stage.callout(d.x + d.w / 2, d.y, `Buy for ${dr.cost} ◎`, '#ffd84a');
+        }
+      }
       const el = document.getElementById(`drawer-${d.i}`);
       el?.scrollIntoView({ behavior: calm() ? 'auto' : 'smooth', block: 'center' });
-      el?.focus({ preventScroll: true });
       return;
     }
     const k = this.crate;
@@ -190,6 +210,16 @@ export class InterchangeScene implements Scene {
       g.rect(x + Math.floor(cw / 2) - 1, y + ch - 3, 3, 1).fill(gone ? 0xff6b8b : 0x6ff28a);
       this.slots.push({ x, y, w: cw, h: ch, i: dr.index });
     });
+    const hits = this.slots.map((sl) => {
+      const a = stage.toScreen(sl.x, sl.y);
+      const b = stage.toScreen(sl.x + sl.w, sl.y + sl.h);
+      return { index: sl.i, x: Math.round(a.x), y: Math.round(a.y), w: Math.max(1, Math.round(b.x - a.x)), h: Math.max(1, Math.round(b.y - a.y)) };
+    });
+    const key = hits.map((h) => `${h.index}:${h.x},${h.y},${h.w},${h.h}`).join('|');
+    if (key !== this.hitKey) {
+      this.hitKey = key;
+      vialHits.value = hits;
+    }
 
     // Sel behind the counter, on the right.
     const cy = this.cy;
@@ -233,7 +263,13 @@ export class InterchangeScene implements Scene {
     }
   }
 
+  hide() {
+    this.hitKey = '';
+    vialHits.value = [];
+  }
+
   destroy() {
+    this.hide();
     this.sel.destroy();
     this.root.destroy({ children: true });
   }

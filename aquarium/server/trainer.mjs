@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Retrain the public pixelgen model from swipes in PocketBase. Only Fish-der swipes count (mode
+// Retrain the public pixelgen model from swipes in PocketBase. Only Fish Tinder swipes count (mode
 // "fishtinder", kind fish3): fresh procgen rolls judged on their own, never bred fish or other tools'
 // swipes. A super like is heard twice.
 
@@ -30,7 +30,7 @@ export async function round(pb) {
     .getFirstListItem('scope = "public"', { fields: 'id,schema,stats' })
     .catch(() => null);
   if (current && current.schema === schema() && current.stats?.key === key) return 'unchanged';
-  if (rows.length < MIN_SWIPES) return `waiting (${rows.length}/${MIN_SWIPES} Fish-der swipes)`;
+  if (rows.length < MIN_SWIPES) return `waiting (${rows.length}/${MIN_SWIPES} Fish Tinder swipes)`;
   const t = Date.now();
   const out = trainModel(swipes, { scope: 'public', k: swipes.length >= 40 ? 5 : 0, cache });
   if (!out) return 'nothing to learn';
@@ -39,7 +39,7 @@ export async function round(pb) {
   const rec = modelRecord('public', out.net, stats);
   if (current) await pb.collection('models').update(current.id, rec);
   else await pb.collection('models').create(rec);
-  return `trained on ${rows.length} Fish-der swipes from ${stats.users} users${stats.accuracy != null ? `, held-out ${(stats.accuracy * 100).toFixed(0)}%` : ''} (${stats.ms} ms)`;
+  return `trained on ${rows.length} Fish Tinder swipes from ${stats.users} users${stats.accuracy != null ? `, held-out ${(stats.accuracy * 100).toFixed(0)}%` : ''} (${stats.ms} ms)`;
 }
 
 async function main() {

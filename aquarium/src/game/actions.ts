@@ -165,6 +165,6 @@ export function sell(state: State, fishId: string, now: number): Result<{ fish: 
   state.fish.splice(state.fish.indexOf(f), 1);
   state.credits += price;
   state.stats.sold++;
-  addLog(state, now, '◎', `Sold ${nameOf(f.code)} to the Interchange for ${price} ◎.`);
+  addLog(state, now, '◎', `Sold ${nameOf(f.code)} to the X-change for ${price} ◎.`);
   return { fish: f, price };
 }

@@ -1,56 +1,55 @@
-import { useState } from 'preact/hooks';
-import { game, selected, pairWith, placing, selectFish, cancelPair, feedTank, activeTank } from '../../store/signals';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { game, selected, pairWith, placing, selectFish, feedTank, activeTank, setTank } from '../../store/signals';
 import * as W from '../../game';
 import { SpriteArt } from '../Art';
-import { Heading, FishTile, Pill, Keepsake } from '../kit';
+import { Heading, FishTile, Keepsake } from '../kit';
+import { ProgressPanel } from '../Hud';
+
+const TABS = [
+  { id: 'roster', label: 'Roster' },
+  { id: 'tanks', label: 'Tanks' },
+  { id: 'manage', label: 'Manage' },
+  { id: 'progress', label: 'Progress' },
+] as const;
 
 export function HatcheryPanel() {
   const s = game.value;
-  const pair = pairWith.value ? s.fish.find((f) => f.id === pairWith.value) : null;
-  const cutting = placing.value != null ? s.ownedCuttings[placing.value] : null;
   const tank = s.tanks.find((k) => k.id === activeTank.value) ?? s.tanks[0];
   const fish = s.fish.filter((f) => f.tank === tank.id);
   const eggs = s.eggs.filter((g) => g.tank === tank.id);
-  const hungry = fish.filter((f) => f.hunger > 0.5).length;
   const cap = W.tankCapacity(s, tank.id);
-  const [open, setOpen] = useState(fish.length <= 6);
+  const pager = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(0);
+  const scrollTo = (i: number) => {
+    const el = pager.current;
+    if (!el) return;
+    el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+  };
+  const syncPage = useCallback(() => {
+    const el = pager.current;
+    if (!el || el.clientWidth <= 0) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    setPage(Math.min(TABS.length - 1, Math.max(0, i)));
+  }, []);
+  useEffect(() => {
+    const el = pager.current;
+    if (!el) return;
+    el.addEventListener('scroll', syncPage, { passive: true });
+    return () => el.removeEventListener('scroll', syncPage);
+  }, [syncPage]);
+
   return (
-    <div class={`roster-sheet${open ? ' open' : ''}`}>
-      {pair && (
-        <div class="banner" role="status">
-          <span>♡ Pick a partner for {W.fishName(pair)}: tap a fish of the other sex.</span>
-          <button class="btn small ghost" onClick={cancelPair}>
-            Cancel
+    <div class="hatchery-sheet">
+      <nav class="sheet-tabs" aria-label="Hatchery sections">
+        {TABS.map((t, i) => (
+          <button key={t.id} type="button" aria-current={page === i ? 'true' : undefined} onClick={() => scrollTo(i)}>
+            {t.label}
           </button>
-        </div>
-      )}
-      {cutting && (
-        <div class="banner plant" role="status">
-          <span>✿ Tap a glowing slot in the sand to plant {W.itemName(cutting)}.</span>
-          <button class="btn small ghost" onClick={() => (placing.value = null)}>
-            Cancel
-          </button>
-        </div>
-      )}
-      <div class="tank-head">
-        <h3>{tank.name}</h3>
-        <span class="count numeral">
-          {fish.length}/{cap}
-        </span>
-        {eggs.length > 0 && <span class="note">{eggs.length} clutch{eggs.length > 1 ? 'es' : ''}</span>}
-        {hungry > 0 && <Pill tone="signal">{hungry} hungry</Pill>}
-        <button class="btn tank" onClick={feedTank} title="Or tap the water to drop a pinch">
-          🍤 Feed
-        </button>
-        {fish.length > 6 && (
-          <button class="btn small ghost roster-toggle" aria-expanded={open} aria-controls="hatchery-roster" onClick={() => setOpen((v) => !v)}>
-            {open ? 'Close' : 'Fish'}
-          </button>
-        )}
-      </div>
-      {open && (
-        <div id="hatchery-roster">
-          <Heading title="Tank roster" emoji="🐟🐠🫧" />
+        ))}
+      </nav>
+      <div ref={pager} class="sheet-pager" role="region" aria-label="Hatchery details">
+        <section class="sheet-page">
+          <Heading title="Tank roster" emoji="🐟🐠🫧" note={`${tank.name} · ${fish.length}/${cap}${eggs.length ? ` · ${eggs.length} clutch${eggs.length > 1 ? 'es' : ''}` : ''}`} />
           {fish.length ? (
             <div class="roster" role="group" aria-label="Fish in the tank">
               {fish.map((f) => (
@@ -65,7 +64,7 @@ export function HatcheryPanel() {
               ))}
             </div>
           ) : (
-            <p class="empty">The tank is empty. The Interchange has roe to thaw.</p>
+            <p class="empty">The tank is empty. The X-change has roe to thaw.</p>
           )}
           {s.ownedCuttings.length > 0 && (
             <>
@@ -86,16 +85,61 @@ export function HatcheryPanel() {
               </div>
             </>
           )}
-          <Heading title="Station log" emoji="📜🛰️🕰️" />
-          <div class="log-list">
-            {s.log.slice(-6).reverse().map((l, i) => (
-              <div key={i} class="log-list-entry">
-                {l.icon} {l.text}
-              </div>
+        </section>
+        <section class="sheet-page">
+          <Heading title="Tank selection" emoji="🧱🐠✨" note={`${s.tanks.length} on the wall`} />
+          <div class="stack">
+            {s.tanks.map((k) => (
+              <button
+                key={k.id}
+                class="tank-menu-row"
+                aria-current={k.id === tank.id}
+                onClick={() => setTank(k.id)}
+              >
+                <span class="dot" aria-hidden="true" />
+                <span class="nm">{k.name}</span>
+                <span class="shape">{k.shape}</span>
+              </button>
             ))}
           </div>
-        </div>
-      )}
+        </section>
+        <section class="sheet-page">
+          <Heading title="Tank management" emoji="🌡️🍤🔧" note={tank.name} />
+          <div class="stack">
+            <button class="btn tank" onClick={feedTank} title="Or tap the water to drop a pinch">
+              🍤 Feed tank
+            </button>
+            <div class="card placeholder-card">
+              <h4>Temperature</h4>
+              <p class="note">Sensor not installed — placeholder for a future thermostat.</p>
+            </div>
+            <div class="card placeholder-card">
+              <h4>Salinity</h4>
+              <p class="note">Sensor not installed — placeholder for brackish tuning.</p>
+            </div>
+            <div class="card placeholder-card">
+              <h4>Grow light</h4>
+              <p class="note">Not wired yet — day/night follows orbit for now.</p>
+            </div>
+          </div>
+        </section>
+        <section class="sheet-page">
+          <Heading title="Progress" emoji="🪐✿📈" />
+          <ProgressPanel />
+        </section>
+      </div>
+      <div class="sheet-dots" role="tablist" aria-label="Hatchery pages">
+        {TABS.map((t, i) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={page === i}
+            aria-label={t.label}
+            onClick={() => scrollTo(i)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -10,7 +10,7 @@ export const COLONIES = ['Port Halcyon', 'Tessaly Dome', 'Kettle Hollow', 'Vespe
 /** The colony that sits on a region's shore. */
 export const colonyOf = (regionId: string) => COLONIES[hash(`colony:${regionId}`) % COLONIES.length];
 
-export const ROLE: Record<string, Record<string, string>> = {
+const ROLE: Record<string, Record<string, string>> = {
   diet: {
     herbivore: 'Algae mats are smothering the water. Send a grazer.',
     detritivore: 'Dead moss is piling up on the bed. Send a sifter.',
@@ -34,7 +34,7 @@ export const ROLE: Record<string, Record<string, string>> = {
     retinue: 'A fish that leads others.',
   },
 };
-export const GENE: Record<string, string> = {
+const GENE: Record<string, string> = {
   albino: 'Cave lakes have no light: pigment-free genes wanted.',
   leucistic: 'Pale genes for the bright glacier shallows.',
   melanistic: 'UV is still harsh up top. Dark pigment protects.',

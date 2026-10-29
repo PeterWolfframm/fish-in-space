@@ -10,7 +10,6 @@ import { sfx, unlock } from '../audio/sfx';
 import { ambientTick, startAmbient } from '../audio/ambient';
 import { reducedMotion } from '../ui/theme';
 import { LocalBackend, tallyOnce, type Backend, type Tally } from './backend';
-import { SPAN } from '../scenes/hatchery/layout';
 
 // --- state -----------------------------------------------------------------------------------------
 
@@ -22,10 +21,15 @@ export const ready = signal(false);
 export type Room = 'hatchery' | 'bridge' | 'interchange' | 'pip' | 'lab' | 'tinder';
 export const room = signal<Room>('hatchery');
 export const selected = signal<string | null>(null); // fish id with the dossier open
+/** A breeder who has left the station, opened from a Lab polaroid. The card is the catalogue only. */
+export const recall = signal<{ id: string; code: string; name: string } | null>(null);
 export const pairWith = signal<string | null>(null); // first fish of a pairing in progress
 export const labPair = signal<[string | null, string | null]>([null, null]);
-/** Which of the Lab's two breeding tanks is asking for a fish (tapped in the scene or the panel). */
+/** Which of the Lab's two breeding tanks is asking for a fish. */
 export const labPick = signal<0 | 1 | null>(null);
+/** Lab bottom sheet: the fish picker, the genetics view, or closed so the tanks stay the interface. */
+export type LabSheet = 'pick' | 'genes' | null;
+export const labSheet = signal<LabSheet>(null);
 /** True while the blanket is over the breeding tanks. */
 export const labBusy = signal(false);
 export const seeding = signal<string | null>(null); // fish id waiting for a region pick
@@ -46,7 +50,27 @@ export function setTank(id: string) {
 /** 0..1: how far the camera has panned across the active tank's glass, for the pan-position indicator.
  * null when the tank is no wider than the viewport (nothing to pan). */
 export const tankPan = signal<number | null>(null);
-export const tankMenuOpen = signal(false); // the popout tank-listing menu
+export const tankMenuOpen = signal(false); // legacy; tank list lives in the hatchery sheet
+/** Room detail sheet above the dock. Tap the active dock item again to close it. */
+export const panelOpen = signal(false);
+/** Cryo-vial waiting for a buy confirmation in the X-change, by drawer index. */
+export const armedVial = signal<number | null>(null);
+/** Screen-pixel rects of the X-change vials, so the glass can show the roe it holds. */
+export interface VialHit {
+  index: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+export const vialHits = signal<VialHit[]>([]);
+
+export function setLabSheet(sheet: LabSheet, pick: 0 | 1 | null = null) {
+  labSheet.value = sheet;
+  labPick.value = sheet === 'pick' ? pick : null;
+  if (room.peek() === 'lab') panelOpen.value = sheet !== null;
+}
+export const pipSettingsOpen = signal(false);
 /** A fresh game opens on a slow blink: you've just been woken up. */
 export const waking = signal(false);
 
@@ -244,6 +268,7 @@ async function closeRegion(regionId: string) {
 export function selectFish(id: string | null) {
   unlock();
   startAmbient();
+  recall.value = null;
   if (id && pairWith.value) return tryPair(id);
   selected.value = id;
   if (id) {
@@ -254,8 +279,24 @@ export function selectFish(id: string | null) {
   }
 }
 
+/** Open the fish card from a Lab polaroid. A fish still aboard gets the full card; one that left gets the catalogue. */
+export function openBreeder(id: string, code: string, name: string) {
+  unlock();
+  startAmbient();
+  setLabSheet(null);
+  pairWith.value = null;
+  const live = game.peek().fish.find((f) => f.id === id);
+  if (live) return selectFish(live.id);
+  batch(() => {
+    selected.value = null;
+    recall.value = { id, code, name };
+  });
+  sfx.select();
+}
+
 export function startPair(id: string) {
   selected.value = null;
+  recall.value = null;
   pairWith.value = id;
 }
 export const cancelPair = () => (pairWith.value = null);
@@ -414,65 +455,23 @@ export function setSetting<K extends keyof W.Settings>(k: K, v: W.Settings[K]) {
   act((s) => void (s.settings[k] = v));
 }
 
-// --- pins on the glass ----------------------------------------------------------------------------------
-
-/** The pin open (enlarged) on the glass, and one that just landed or was re-pinned, for a wiggle. */
-export const openPin = signal<string | null>(null);
-export const freshPin = signal<string | null>(null);
-
-/** Stick a note or portrait to a tank's glass (the tank in view by default). */
-export function pinTo(draft: W.PinDraft, tankId = activeTank.value) {
-  // On the tank in view, land the pin in the part of the glass the camera shows.
-  const tank = game.value.tanks.find((t) => t.id === tankId);
-  const span = tank ? (SPAN[tank.shape] ?? 1) : 1;
-  const x0 = tankId === activeTank.value ? ((tankPan.value ?? 0) * (span - 1)) / span : 0;
-  const view: [number, number] = tankId === activeTank.value ? [x0, x0 + 1 / span] : [0, 1 / span];
-  const r = act((s) => W.addPin(s, draft, tankId, Date.now(), view));
-  if ('error' in r) {
-    sfx.nope();
-    return toast(r.error, 'bad');
-  }
-  sfx.stamp();
-  freshPin.value = r.pin.id;
-  setTimeout(() => freshPin.value === r.pin.id && (freshPin.value = null), 1400);
-  const name = tank?.name ?? 'the tank';
-  toast(r.fresh ? `📌 Pinned to ${name}` : `Already on ${name}'s glass`, r.fresh ? 'good' : undefined);
-}
-
-export function movePin(id: string, x: number, y: number) {
-  act((s) => W.movePin(s, id, x, y));
-}
-
-export function repinTo(id: string, tankId: string) {
-  const err = act((s) => W.repin(s, id, tankId));
-  if (err) return toast(err, 'bad');
-  openPin.value = null;
-  toast(`📌 Moved to ${game.value.tanks.find((t) => t.id === tankId)?.name ?? 'the other tank'}`);
-}
-
-export function unpinNote(id: string) {
-  act((s) => W.unpin(s, id));
-  if (openPin.value === id) openPin.value = null;
-  sfx.plip();
-}
-
-export function clearAllPins() {
-  act((s) => W.clearPins(s));
-  openPin.value = null;
-}
-
-/** Put a pair in the Lab's breeding tanks (from a PIP plan or a pin) and go there. Skips fish no longer aboard. */
-export function planInLab(ids: string[]) {
-  const aboard = ids.filter((id) => game.value.fish.some((f) => f.id === id));
-  if (!aboard.length) return toast('Those fish are no longer aboard.', 'bad');
-  const [a, b] = aboard;
-  labPair.value = [a ?? null, b ?? null];
-  labPick.value = b ? null : 1;
-  goRoom('lab');
-}
-
 export function goRoom(r: Room) {
+  if (r !== 'interchange') armedVial.value = null;
+  if (room.value === r) {
+    if (r === 'lab') {
+      labSheet.value = null;
+      labPick.value = null;
+      panelOpen.value = false;
+      return;
+    }
+    panelOpen.value = !panelOpen.value;
+    return;
+  }
   room.value = r;
+  labSheet.value = null;
+  labPick.value = null;
+  panelOpen.value = r !== 'lab';
+  pipSettingsOpen.value = false;
   if (r === 'pip') commsUnread.value = 0;
   if (r === 'bridge' && game.value.stats.orders === 0 && game.value.orders.length) beat('window');
   if (r === 'interchange') beat('shop');

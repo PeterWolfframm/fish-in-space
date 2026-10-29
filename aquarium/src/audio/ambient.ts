@@ -3,12 +3,16 @@
 
 import { audioContext, masterOut, isMuted } from './sfx';
 
+// Off for now — the looping pad reads as music and gets tiring. Flip this to bring it back.
+const AMBIENT_ON = false;
+
 let started = false;
 let pad: GainNode | null = null;
 let padFilter: BiquadFilterNode | null = null;
 let crackleAt = 0;
 
 export function startAmbient() {
+  if (!AMBIENT_ON) return;
   const ac = audioContext();
   const out = masterOut();
   if (started || !ac || !out) return;

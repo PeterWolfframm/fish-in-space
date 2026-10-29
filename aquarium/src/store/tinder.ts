@@ -1,8 +1,8 @@
-// Fish-der's state: the deck of fresh rolls, every swipe, the tier list, and the taste net.
+// Fish Tinder's state: the deck of fresh rolls, every swipe, the tier list, and the taste net.
 //
-// Swipes live in IndexedDB on this device. For a signed-in member each one is also written to
-// PocketBase's `swipes` collection as kind fish3, mode "fishtinder"; the trainer reads only those,
-// so Fish-der is the one source the pixelgen net learns from. The personal net trains in a worker
+// Swipes and tiers cache in IndexedDB. For a signed-in member PocketBase is canonical (`swipes`,
+// `tinder_state`); the trainer reads only Fish Tinder swipes from `swipes`,
+// so Fish Tinder is the one source the pixelgen net learns from. The personal net trains in a worker
 // a moment after each swipe and scores the cards in view.
 
 import { signal, computed } from '@preact/signals';
@@ -23,10 +23,11 @@ export const scores = signal<Record<string, number | null>>({});
 export const taste = signal<{ swipes: number; likes: string[]; dislikes: string[]; fromPublic: boolean } | null>(null);
 export const training = signal(false);
 export const publicModel = signal<{ swipes: number; users: number } | null>(null);
-/** Which screen of the app is up: the deck, the gallery of likes, your stats, or the tier list. */
-export const tab = signal<'swipe' | 'gallery' | 'stats' | 'tiers'>('swipe');
+/** The last match, for the "It's a match" screen. */
+export const match = signal<T.TinderSwipe | null>(null);
 
 export const liked = computed(() => swipes.value.filter((s) => s.verdict === 'approve').reverse());
+export const matches = computed(() => liked.value.filter((s) => s.matched));
 
 let undoable: T.TinderSwipe[] = [];
 export const canUndo = signal(false);
@@ -35,9 +36,16 @@ export const canUndo = signal(false);
 
 let loaded: Promise<void> | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
+let tiersTimer: ReturnType<typeof setTimeout> | undefined;
+let tinderStateId: string | null = null;
+
 const persist = () => {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => void set(KEY, { swipes: swipes.peek(), tiers: tiers.peek() }).catch(() => {}), 200);
+  if (isMember()) {
+    clearTimeout(tiersTimer);
+    tiersTimer = setTimeout(() => void uploadTiers(), 400);
+  }
 };
 
 /** Load once, fill the deck, and start syncing with the account. */
@@ -67,8 +75,8 @@ function fill() {
   void scoreCodes(d.map((c) => c.code));
 }
 
-/** Swipe the top card. Returns the stored swipe. */
-export function swipe(verdict: T.Verdict, superlike = false): T.TinderSwipe | null {
+/** Swipe the top card. Returns the stored swipe. Feedback rides along when the sheet held anything. */
+export function swipe(verdict: T.Verdict, superlike = false, feedback?: T.Feedback): T.TinderSwipe | null {
   const [card, ...rest] = deck.peek();
   if (!card) return null;
   const s: T.TinderSwipe = {
@@ -77,6 +85,8 @@ export function swipe(verdict: T.Verdict, superlike = false): T.TinderSwipe | nu
     seed: card.seed,
     verdict,
     ...(superlike ? { superlike: true } : {}),
+    ...(feedback && T.feedbackCount(feedback) ? { feedback } : {}),
+    matched: verdict === 'approve' && T.likesBack(card.code, superlike),
     at: Date.now(),
     score: scores.peek()[card.code] ?? null,
   };
@@ -85,6 +95,7 @@ export function swipe(verdict: T.Verdict, superlike = false): T.TinderSwipe | nu
   tiers.value = T.syncTiers(tiers.peek(), swipes.value);
   undoable = [...undoable, s].slice(-HISTORY);
   canUndo.value = true;
+  if (s.matched) match.value = s;
   persist();
   fill();
   retrain();
@@ -120,6 +131,21 @@ export function moveTo(code: string, rank: T.Rank, before?: string | null) {
   persist();
 }
 
+async function uploadTiers() {
+  const uid = mine();
+  if (!uid) return;
+  try {
+    const body = { user: uid, tiers: tiers.peek() };
+    if (tinderStateId) await pb.collection('tinder_state').update(tinderStateId, body);
+    else {
+      const rec = await pb.collection('tinder_state').create(body);
+      tinderStateId = rec.id;
+    }
+  } catch {
+    /* offline */
+  }
+}
+
 // ---------- the account ----------
 
 const mine = () => (isMember() ? user()?.id ?? null : null);
@@ -134,8 +160,11 @@ async function upload(s: T.TinderSwipe) {
       code: s.code,
       seed: s.seed,
       verdict: s.verdict,
-      note: s.superlike ? 'super like' : '',
-      scores: { personal: s.score ?? null },
+      note: s.feedback ? T.feedbackNote(s.feedback) : '',
+      fix: s.feedback?.fix ?? [],
+      instead: s.feedback?.instead ?? {},
+      asKind: s.feedback?.asKind ?? '',
+      scores: { personal: s.score ?? null, ...(s.superlike ? { superlike: true } : {}) },
       mode: T.TINDER_MODE,
     });
     // It may have been undone while the request was out.
@@ -147,7 +176,7 @@ async function upload(s: T.TinderSwipe) {
   }
 }
 
-/** Pull this account's Fish-der swipes from other devices, push the ones made offline. */
+/** Pull Fish Tinder state from PocketBase; push any swipes still local-only. */
 async function syncAccount() {
   const uid = mine();
   if (!uid) return;
@@ -155,30 +184,38 @@ async function syncAccount() {
     const remote = await pb.collection('swipes').getFullList({
       filter: pb.filter('user = {:u} && mode = {:m}', { u: uid, m: T.TINDER_MODE }),
       sort: 'created',
-      fields: 'id,code,seed,verdict,note,created',
+      fields: 'id,code,seed,verdict,note,fix,instead,asKind,scores,created',
       batch: 500,
     });
-    const known = new Set(swipes.peek().map((s) => s.remote).filter(Boolean));
-    const pulled: T.TinderSwipe[] = remote
-      .filter((r) => !known.has(r.id))
-      .map((r) => {
-        const superlike = r.note === 'super like';
-        return {
-          id: `r${r.id}`,
-          code: String(r.code),
-          seed: String(r.seed ?? ''),
-          verdict: r.verdict as T.Verdict,
-          ...(superlike ? { superlike } : {}),
-          at: Date.parse(String(r.created)) || Date.now(),
-          remote: r.id,
-        };
-      });
-    if (pulled.length) {
-      swipes.value = [...swipes.peek(), ...pulled].sort((a, b) => a.at - b.at);
-      tiers.value = T.syncTiers(tiers.peek(), swipes.value);
-      persist();
-    }
+    const fromCloud: T.TinderSwipe[] = remote.map((r) => {
+      const read = T.readCloudSwipe({ note: r.note as string, fix: r.fix, instead: r.instead, asKind: r.asKind as string, scores: r.scores });
+      return {
+        id: `r${r.id}`,
+        code: String(r.code),
+        seed: String(r.seed ?? ''),
+        verdict: r.verdict as T.Verdict,
+        ...(read.superlike ? { superlike: true } : {}),
+        ...(read.feedback ? { feedback: read.feedback } : {}),
+        matched: r.verdict === 'approve' && T.likesBack(String(r.code), read.superlike),
+        at: Date.parse(String(r.created)) || Date.now(),
+        remote: r.id,
+        score: read.score,
+      };
+    });
+    const pending = swipes.peek().filter((s) => !s.remote);
+    swipes.value = [...fromCloud, ...pending].sort((a, b) => a.at - b.at);
+
+    const stateRec = await pb
+      .collection('tinder_state')
+      .getFirstListItem(pb.filter('user = {:u}', { u: uid }), { fields: 'id,tiers' })
+      .catch(() => null);
+    tinderStateId = stateRec?.id ?? null;
+    const cloudTiers = (stateRec?.tiers as T.Tiers | undefined) ?? null;
+    tiers.value = T.syncTiers(cloudTiers ?? tiers.peek(), swipes.value);
+    persist();
+
     for (const s of swipes.peek()) if (!s.remote) await upload(s);
+    if (isMember() && !tinderStateId) await uploadTiers();
     const pub = await pb
       .collection('models')
       .getFirstListItem('scope = "public"')

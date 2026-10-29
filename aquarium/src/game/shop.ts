@@ -76,7 +76,7 @@ export function buyDrawer(state: State, index: number, now: number, tankId = 'T1
   syncShop(state, now);
   const d = drawers(state, state.shop.orbit)[index];
   if (!d || state.shop.sold.includes(index)) return { error: 'That drawer is empty.' };
-  if (state.credits < d.cost) return { error: 'Not enough Allotment.' };
+  if (state.credits < d.cost) return { error: 'Not enough space karma.' };
   if (!hasRoom(state, tankId)) return { error: 'The tank is full.' };
   state.credits -= d.cost;
   state.shop.sold.push(index);
@@ -100,7 +100,7 @@ export function crateContents(state: State, orbit: number): string[] {
 export function buyCrate(state: State, now: number, tankId = 'T1'): Result<{ eggs: Egg[] }> {
   syncShop(state, now);
   if (!crateReady(state, now)) return { error: 'Sel is still packing the next crate.' };
-  if (state.credits < CRATE_COST) return { error: 'Not enough Allotment.' };
+  if (state.credits < CRATE_COST) return { error: 'Not enough space karma.' };
   if (occupied(state, tankId) + 3 > tankCapacity(state, tankId)) return { error: 'You need three free berths.' };
   state.credits -= CRATE_COST;
   state.shop.crateOrbit = state.shop.orbit;
@@ -131,7 +131,7 @@ export function buyCutting(state: State, index: number, now: number): Result<{ c
   syncShop(state, now);
   const c = cuttings(state, state.shop.orbit)[index];
   if (!c || state.shop.cuttingsSold.includes(index)) return { error: 'Sold out.' };
-  if (state.credits < c.cost) return { error: 'Not enough Allotment.' };
+  if (state.credits < c.cost) return { error: 'Not enough space karma.' };
   state.credits -= c.cost;
   state.shop.cuttingsSold.push(index);
   state.ownedCuttings.push({ family: c.family, code: c.code });
@@ -180,7 +180,7 @@ export function itemName(c: { family: PlantFamily | 'object'; code: string }): s
 export function buyDecor(state: State, code: string): Result<{ item: DecorItem }> {
   const item = SHELF_DECOR.find((d) => d.code === code);
   if (!item) return { error: 'No such decor.' };
-  if (state.credits < item.cost) return { error: 'Not enough Allotment.' };
+  if (state.credits < item.cost) return { error: 'Not enough space karma.' };
   state.credits -= item.cost;
   state.ownedCuttings.push({ family: 'object', code });
   return { item };
@@ -214,7 +214,7 @@ export function upgrades(state: State): Upgrade[] {
 export function buyUpgrade(state: State, id: UpgradeId, now: number): Result<{ upgrade: Upgrade }> {
   const up = upgrades(state).find((x) => x.id === id);
   if (!up || !up.available) return { error: 'Not available.' };
-  if (state.credits < up.cost) return { error: 'Not enough Allotment.' };
+  if (state.credits < up.cost) return { error: 'Not enough space karma.' };
   state.credits -= up.cost;
   if (id === 'extend') state.upgrades.extendBerths += 4;
   if (id === 'feeder') state.upgrades.feeder = true;
@@ -255,7 +255,7 @@ export function nextSlot(tanks: Tank[], shape: TankShape): { x: number; y: numbe
 
 export function buyTank(state: State, shape: TankShape, now: number): Result<{ tank: Tank }> {
   const price = TANK_PRICE[shape];
-  if (state.credits < price) return { error: 'Not enough Allotment.' };
+  if (state.credits < price) return { error: 'Not enough space karma.' };
   state.credits -= price;
   const tank: Tank = { id: `T${state.tanks.length + 1}`, name: `Tank ${state.tanks.length + 1}`, shape, slot: nextSlot(state.tanks, shape) };
   state.tanks.push(tank);

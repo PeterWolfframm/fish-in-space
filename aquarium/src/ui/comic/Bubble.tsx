@@ -23,11 +23,38 @@ export function useTyping(text: string, skip: boolean, onDone: () => void) {
   return text.slice(0, n);
 }
 
-export function Bubble({ name, color, text, skip, onDone }: { name: string; color: string; text: string; skip: boolean; onDone: () => void }) {
+export function Bubble({
+  name,
+  color,
+  text,
+  skip,
+  onDone,
+  onClose,
+}: {
+  name: string;
+  color: string;
+  text: string;
+  skip: boolean;
+  onDone: () => void;
+  onClose?: () => void;
+}) {
   const shown = useTyping(text, skip, onDone);
   const typing = shown.length < text.length;
   return (
     <div class="bubble" style={{ '--who-dark': shade(color) }}>
+      {onClose && (
+        <button
+          type="button"
+          class="bubble-close"
+          aria-label="Dismiss"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+        >
+          ×
+        </button>
+      )}
       <span class="who">{name}</span>
       <span aria-hidden="true">{shown}</span>
       {typing && <span class="caret" aria-hidden="true" />}

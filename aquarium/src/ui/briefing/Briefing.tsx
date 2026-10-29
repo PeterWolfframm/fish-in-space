@@ -54,7 +54,7 @@ export function ProfPop() {
           <div class="portrait-box" style={{ '--who': CAST.prof.color }}>
             <Portrait who="prof" mood="talk" talking={!done} />
           </div>
-          <Bubble name="PROF" color={CAST.prof.color} text={text} skip={false} onDone={() => setDone(true)} />
+          <Bubble name="PROF" color={CAST.prof.color} text={text} skip={false} onDone={() => setDone(true)} onClose={() => (profOpen.value = null)} />
         </div>
         <div class="tap">tap to close ▸</div>
       </section>

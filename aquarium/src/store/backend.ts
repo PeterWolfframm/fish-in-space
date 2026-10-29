@@ -5,7 +5,7 @@ import { get, set } from 'idb-keyval';
 import { simTally } from '../game/polls';
 import { headlines, type Headline } from '../game/market';
 import type { State } from '../game/types';
-import { isMember, pb, user } from './auth';
+import { isMember, online, pb, user } from './auth';
 import type PocketBase from '../../vendor/pocketbase.es.mjs';
 
 export const SAVE_SCHEMA = 3;
@@ -125,10 +125,12 @@ function mergeByProgress(local: State | null, cloud: State | null): State | null
   return local.lastTick >= cloud.lastTick ? local : cloud;
 }
 
-/** Local polls + IndexedDB; cloud save when signed in. */
+/** IndexedDB cache + PocketBase for saves and poll votes when signed in. */
 export class PocketBaseBackend implements Backend {
   private local = new LocalBackend();
   private recordId: string | null = null;
+  private voteRecIds = new Map<string, string>();
+  private sim = new SimPolls({ persist: (mine) => void this.syncPollVotes(mine) });
 
   constructor(private client: PocketBase = pb) {}
 
@@ -138,11 +140,54 @@ export class PocketBaseBackend implements Backend {
     return u.id;
   }
 
+  private voteKey(regionId: string, nameId: string) {
+    return `${regionId}|${nameId}`;
+  }
+
+  private async loadPollVotes() {
+    const uid = this.uid();
+    const rows = await this.client.collection('poll_votes').getFullList({
+      filter: this.client.filter('user = {:id}', { id: uid }),
+      batch: 500,
+    });
+    const mine: Record<string, Tally> = {};
+    this.voteRecIds.clear();
+    for (const r of rows) {
+      const regionId = String(r.regionId);
+      const nameId = String(r.nameId);
+      (mine[regionId] ??= {})[nameId] = Number(r.weight) || 0;
+      this.voteRecIds.set(this.voteKey(regionId, nameId), r.id);
+    }
+    this.sim.load(mine);
+  }
+
+  private async syncPollVotes(mine: Record<string, Tally>) {
+    if (!isMember()) return;
+    try {
+      const uid = this.uid();
+      for (const [regionId, tally] of Object.entries(mine)) {
+        for (const [nameId, weight] of Object.entries(tally)) {
+          const key = this.voteKey(regionId, nameId);
+          const body = { user: uid, regionId, nameId, weight };
+          const id = this.voteRecIds.get(key);
+          if (id) await this.client.collection('poll_votes').update(id, body);
+          else {
+            const rec = await this.client.collection('poll_votes').create(body);
+            this.voteRecIds.set(key, rec.id);
+          }
+        }
+      }
+    } catch {
+      /* offline — local sim still has votes */
+    }
+  }
+
   save = {
     load: async () => {
       const localRaw = (await this.local.save.load()) as State | null;
       if (!isMember()) return localRaw;
       try {
+        await this.loadPollVotes();
         const uid = this.uid();
         const { items } = await this.client.collection('seedfall_saves').getList(1, 1, {
           filter: this.client.filter('user = {:id}', { id: uid }),
@@ -186,13 +231,17 @@ export class PocketBaseBackend implements Backend {
     },
   };
 
-  polls = this.local.polls;
+  polls = {
+    open: (id: string, info: PollInfo) => this.sim.open(id, info),
+    watch: (id: string, cb: (t: Tally) => void) => this.sim.watch(id, cb),
+    vote: (id: string, nameId: string, weight: number) => this.sim.vote(id, nameId, weight),
+  };
   market = this.local.market;
 }
 
-/** Pick backend for boot: cloud-capable when signed in. */
+/** Pick backend for boot: cloud when online and signed in. */
 export function bootBackend(): Backend {
-  return isMember() ? new PocketBaseBackend() : new LocalBackend();
+  return online && isMember() ? new PocketBaseBackend() : new LocalBackend();
 }
 
 /** After sign-in, merge cloud/local and attach cloud saves. */

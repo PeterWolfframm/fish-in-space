@@ -31,30 +31,10 @@ const GAP_X = 14;
 const GAP_Y = 54;
 const ORIGIN: Record<W.Origin, string> = { bred: 'bred here', roe: '🧊 roe', heritage: '🏺 heritage', crate: '📦 crate', starter: '🚀 first crew' };
 
-/** Which of the child's two alleles came from which parent. If neither split fits, a mutation slipped in. */
-function inherited(child: string, a: string, b: string): [string, string] {
-  const [c1, c2] = W.allelesOf(child);
-  const A = W.allelesOf(a);
-  const B = W.allelesOf(b);
-  if (A.includes(c1) && B.includes(c2)) return [c1, c2];
-  if (A.includes(c2) && B.includes(c1)) return [c2, c1];
-  return [c1, c2];
-}
-
 function build(s: W.State) {
   const nodes = new Map<string, Node>();
-  for (const f of s.fish)
-    nodes.set(f.id, { id: f.id, code: f.code, name: W.fishName(f), gen: W.generationOf(W.genomeOf(f.code)), alive: true, parents: f.parents ?? [], origin: f.origin, tank: f.tank, x: 0, y: 0 });
-  for (const f of s.fish)
-    for (const p of f.parents ?? [])
-      if (!nodes.has(p.id)) nodes.set(p.id, { id: p.id, code: p.code, name: p.name, gen: W.generationOf(W.genomeOf(p.code)), alive: false, parents: [], x: 0, y: 0 });
-  // A child always sits below its parents, whatever its genome says.
+  for (const n of W.lineageNodes(s)) nodes.set(n.id, { ...n, x: 0, y: 0 });
   const all = [...nodes.values()];
-  for (let pass = 0; pass < 6; pass++)
-    for (const n of all) for (const p of n.parents) {
-      const pn = nodes.get(p.id);
-      if (pn && n.gen <= pn.gen) n.gen = pn.gen + 1;
-    }
   const gens = [...new Set(all.map((n) => n.gen))].sort((a, b) => a - b);
   const rows = gens.map((g) => all.filter((n) => n.gen === g));
   // Order: founders by id, then each row by the average x of its parents so lines stay short.
@@ -100,7 +80,7 @@ function FamilyTree() {
   for (const n of nodes.values()) {
     if (n.parents.length !== 2) continue;
     const [pa, pb] = n.parents;
-    const got = inherited(n.code, pa.code, pb.code);
+    const got = W.handedDown(n.code, pa.code, pb.code);
     [pa, pb].forEach((p, i) => {
       const pn = nodes.get(p.id);
       if (!pn) return;

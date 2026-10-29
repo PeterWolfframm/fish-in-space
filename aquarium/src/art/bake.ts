@@ -1,12 +1,14 @@
 // One generator animation as a horizontal RGBA strip. Generic over the fish-in-space families the game
 // uses. Runs in the bake worker (and on the main thread as a fallback).
 
+import fishV1, { fishTraits } from '@forge/gen/fish.js';
+import fish2 from '@forge/v2/fish/index.js';
 import fish3 from '@forge/v3/fish/index.js';
 import waterplant2 from '@forge/v2/waterplant/index.js';
 import plant3 from '@forge/v3/plant/index.js';
 import pilot2 from '@forge/v2/pilot/index.js';
 
-export type Family = 'fish3' | 'waterplant2' | 'plant3' | 'pilot2';
+export type Family = 'fish3' | 'fish' | 'fish2' | 'waterplant2' | 'plant3' | 'pilot2';
 
 interface Frame {
   w: number;
@@ -22,7 +24,16 @@ interface Gen {
   fpsOf?(g: unknown, a: unknown): number;
   frame(g: unknown, anim: string, i: number): Frame;
 }
-const GENS: Record<Family, Gen> = { fish3, waterplant2, plant3, pilot2 };
+/** v1's generator has no fromCode; the trait code is the genome. */
+const fish: Gen = {
+  anims: fishV1.anims,
+  fromCode: (c) => fishTraits.decode(c) ?? fishTraits.defaults(),
+  normalize: (g) => fishTraits.normalize(g),
+  fromSeed: (s) => fishV1.fromSeed(s),
+  frame: (g, anim, i) => fishV1.frame(g, anim, i),
+};
+
+const GENS: Record<Family, Gen> = { fish3, fish, fish2, waterplant2, plant3, pilot2 };
 
 /** A character code is `seed|figure`; the portrait framing is always used. */
 function genomeOf(family: Family, code: string): unknown {
@@ -33,6 +44,7 @@ function genomeOf(family: Family, code: string): unknown {
     return gen.normalize ? gen.normalize({ ...g, size: 'portrait' }) : { ...g, size: 'portrait' };
   }
   const g = gen.fromCode(code);
+  if (!g) throw new Error(`not a ${family} code`);
   return gen.normalize ? gen.normalize(g) : g;
 }
 

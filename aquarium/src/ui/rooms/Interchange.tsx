@@ -2,8 +2,8 @@
 // aquariums for the wall, shelf keepsakes, tank upgrades, and the buyback board where fish return to the
 // commons at this orbit's research valuation.
 
-import { useState } from 'preact/hooks';
-import { game, now, orbit, buy, sellFish, goRoom } from '../../store/signals';
+import { useEffect, useState } from 'preact/hooks';
+import { game, now, orbit, buy, sellFish, goRoom, armedVial, vialHits } from '../../store/signals';
 import * as W from '../../game';
 import { SpriteArt } from '../Art';
 import { Heading, FishTile, Pill, Keepsake, mmss } from '../kit';
@@ -18,14 +18,55 @@ const SHAPES: { shape: W.TankShape; name: string; blurb: string }[] = [
   { shape: '2x2', name: 'Grand reef', blurb: 'The big one.' },
 ];
 
-/** A row of roe pearls in a vial, tinted by the drawer's kind. */
-function Vial({ kind, gone }: { kind: W.DrawerKind; gone: boolean }) {
+/** One cryo vial: the glass is labelled with the product type and name. A second tap buys it. */
+function RoeVial({
+  drawer: d,
+  gone,
+  short,
+  armed,
+  onArm,
+  onBuy,
+}: {
+  drawer: W.Drawer;
+  gone: boolean;
+  short: boolean;
+  armed: boolean;
+  onArm: () => void;
+  onBuy: () => void;
+}) {
+  const name = W.nameOf(d.code);
+  const kind = KIND[d.kind];
   return (
-    <span class={`vial ${kind} ${gone ? 'empty' : ''}`} aria-hidden="true">
-      <span class="fluid">
-        {!gone && [0, 1, 2, 3, 4].map((i) => <i key={i} style={{ '--i': i }} />)}
-      </span>
-    </span>
+    <div id={`drawer-${d.index}`} class={`roe-vial ${d.kind} ${gone ? 'empty' : ''} ${armed ? 'armed' : ''}`}>
+      {gone && <span class="stamp">Requisitioned</span>}
+      <button
+        type="button"
+        class="vial-body"
+        disabled={gone}
+        aria-pressed={armed}
+        aria-label={`${kind}, ${name}, ${d.cost} space karma${gone ? ', requisitioned' : ''}`}
+        onClick={onArm}
+      >
+        <span class="fluid" aria-hidden="true">
+          {!gone && [0, 1, 2, 3, 4].map((i) => <i key={i} style={{ '--i': i }} />)}
+        </span>
+        <span class="vial-copy">
+          <span class="kind">{kind}</span>
+          <b class="nm">{gone ? 'Empty' : name}</b>
+          <span class="tag">“{d.tag}”</span>
+        </span>
+      </button>
+      {armed && !gone ? (
+        <button type="button" class="btn lamp vial-buy" onClick={onBuy}>
+          Buy for {d.cost} ◎
+        </button>
+      ) : (
+        <span class={`price numeral ${short && !gone ? 'short' : ''}`}>
+          {gone ? '—' : d.cost}
+          {!gone && <small> ◎</small>}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -38,6 +79,56 @@ function Footprint({ shape }: { shape: W.TankShape }) {
         <i key={i} />
       ))}
     </span>
+  );
+}
+
+/** Product type and name printed on the glass. A tap arms the vial; "Buy for …" completes it. */
+export function VialScreen() {
+  const hits = vialHits.value;
+  const s = game.value;
+  const n = W.currentOrbit(s, now.value);
+  const sold = s.shop.orbit === n ? s.shop.sold : [];
+  const armed = armedVial.value;
+  if (!hits.length) return null;
+  const stock = W.drawers(s, n);
+  return (
+    <div class="scene-vials">
+      {hits.map((h) => {
+        const d = stock.find((x) => x.index === h.index);
+        if (!d) return null;
+        const gone = sold.includes(d.index);
+        const name = W.nameOf(d.code);
+        const on = armed === d.index;
+        return (
+          <div key={d.index} class={`scene-vial ${d.kind} ${gone ? 'empty' : ''} ${on ? 'armed' : ''}`} style={{ left: `${h.x}px`, top: `${h.y}px`, width: `${h.w}px`, height: `${h.h}px` }}>
+            {!gone && (
+              <span class="copy">
+                <span class="kind">{KIND[d.kind]}</span>
+                <b class="nm">{name}</b>
+                {!on && <span class="cost">{d.cost} ◎</span>}
+              </span>
+            )}
+            {on && !gone && (
+              <button
+                type="button"
+                class="confirm"
+                onClick={() =>
+                  buy(
+                    (x) => W.buyDrawer(x, d.index, Date.now()),
+                    () => {
+                      armedVial.value = null;
+                      goRoom('hatchery');
+                    },
+                  )
+                }
+              >
+                Buy for {d.cost} ◎
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -54,40 +145,37 @@ export function InterchangePanel() {
   const crate = W.crateReady(s, t);
   const ask = (key: string, run: () => void) => (confirm === key ? (setConfirm(null), run()) : setConfirm(key));
   const owned = (code: string) => s.ownedCuttings.filter((c) => c.code === code).length + s.decor.filter((d) => d.code === code).length;
+  const armed = armedVial.value;
+  useEffect(() => {
+    if (armed == null) return;
+    document.getElementById(`drawer-${armed}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [armed]);
   return (
     <div class="stack">
-      <Heading title="Cryo drawers" emoji="🧊🥚🧬" note={`Sel restocks in ${mmss(restock)} · ${W.occupied(s)}/${s.capacity} berths`} />
-      <div class="drawers">
+      <Heading title="Roe vials" emoji="🧊🥚🧬" note={`Sel restocks in ${mmss(restock)} · ${W.occupied(s)}/${s.capacity} berths`} />
+      <div class="roe-vials">
         {all.map((d) => {
           const gone = sold.includes(d.index);
-          const short = s.credits < d.cost;
           return (
-            <button
+            <RoeVial
               key={d.index}
-              id={`drawer-${d.index}`}
-              class={`drawer ${d.kind}`}
-              disabled={gone}
-              onClick={() => buy((x) => W.buyDrawer(x, d.index, Date.now()), () => goRoom('hatchery'))}
-              aria-label={`${KIND[d.kind]}, ${W.biomeName(d.biome)}, ${d.cost} Allotment${gone ? ', requisitioned' : ''}`}
-            >
-              {gone && <span class="stamp">Requisitioned</span>}
-              <span class="drawer-top">
-                <Vial kind={d.kind} gone={gone} />
-                <span class="drawer-id">
-                  <span class="kind">{KIND[d.kind]}</span>
-                  <span class="bay">Bay {String.fromCharCode(65 + d.index)}</span>
-                </span>
-              </span>
-              <span class={`price numeral ${short ? 'short' : ''}`}>
-                {d.cost}
-                <small> ◎</small>
-              </span>
-              <span class="tag">“{d.tag}”</span>
-              <span class="row">
-                <span class="chip water">{W.biomeName(d.biome)}</span>
-                {d.allele && <span class="chip r-rare">🧬 {d.allele}</span>}
-              </span>
-            </button>
+              drawer={d}
+              gone={gone}
+              short={s.credits < d.cost}
+              armed={armed === d.index}
+              onArm={() => {
+                if (!gone) armedVial.value = armed === d.index ? null : d.index;
+              }}
+              onBuy={() =>
+                buy(
+                  (x) => W.buyDrawer(x, d.index, Date.now()),
+                  () => {
+                    armedVial.value = null;
+                    goRoom('hatchery');
+                  },
+                )
+              }
+            />
           );
         })}
       </div>
@@ -118,7 +206,7 @@ export function InterchangePanel() {
         {W.cuttings(s, n).map((c) => {
           const gone = cutSold.includes(c.index);
           return (
-            <button key={c.index} class="shop-tile" disabled={gone} onClick={() => buy((x) => W.buyCutting(x, c.index, Date.now()))} aria-label={`${c.name}, ${c.cost} Allotment`}>
+            <button key={c.index} class="shop-tile" disabled={gone} onClick={() => buy((x) => W.buyCutting(x, c.index, Date.now()))} aria-label={`${c.name}, ${c.cost} space karma`}>
               {gone && <span class="stamp">Taken</span>}
               <span class="pic">
                 <SpriteArt family={c.family} code={c.code} anim={c.family === 'plant3' ? 'idle' : 'sway'} animate />

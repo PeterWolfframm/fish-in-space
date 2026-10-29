@@ -52,7 +52,14 @@ export function ComicStrip() {
               <div class="portrait-box" style={{ '--who': cast.color }}>
                 <Portrait who={p.who as Who} mood={p.mood} talking={i === shown - 1 && typed < shown} />
               </div>
-              <Bubble name={cast.name} color={cast.color} text={p.text} skip={skip || i < shown - 1} onDone={() => setTyped((t) => Math.max(t, i + 1))} />
+              <Bubble
+                name={cast.name}
+                color={cast.color}
+                text={p.text}
+                skip={skip || i < shown - 1}
+                onDone={() => setTyped((t) => Math.max(t, i + 1))}
+                onClose={() => dismissComms()}
+              />
             </div>
           );
         })}

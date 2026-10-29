@@ -56,7 +56,7 @@ export function handOver(state: State, fishId: string, now: number): Result<{ wo
 export function profHint(state: State, now: number): string {
   const hungry = state.fish.filter((f) => f.hunger > 0.6);
   if (hungry.length) return `${hungry.length === 1 ? 'One fish is' : `${hungry.length} fish are`} hungry. Feed them: fed fish grow twice as fast.`;
-  if (!state.fish.length && !state.eggs.length) return 'The tank is empty! The Interchange has roe that thaws in seconds.';
+  if (!state.fish.length && !state.eggs.length) return 'The tank is empty! The X-change has roe that thaws in seconds.';
   for (const o of state.orders) {
     if (state.fish.some((f) => meetsAll(f.code, o.reqs))) continue;
     const gene = o.reqs.find((q) => q.kind === 'gene');
@@ -65,7 +65,7 @@ export function profHint(state: State, now: number): string {
       const carriers = state.fish.filter((f) => allelesOf(f.code).includes(gene.allele));
       if (carriers.length) return `Nobody fills the ${o.colony} request yet. ${nameOf(carriers[0].code)} carries ${gene.allele}; pair it with a fish that fits the water.`;
     }
-    return `Nobody in the tank fits the ${o.colony} request (${left} min left). The Interchange has roe for that water.`;
+    return `Nobody in the tank fits the ${o.colony} request (${left} min left). The X-change has roe for that water.`;
   }
   if (occupied(state) >= state.capacity - 1) return 'The tank is nearly full. Seed a fish into a region, sell one, or extend the tank.';
   const ready = liveRegions(state).find((r) => r.poll && r.poll.tokens > 0 && !r.name);

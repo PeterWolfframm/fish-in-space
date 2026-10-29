@@ -23,6 +23,12 @@ export function SpriteArt({ family, code, anim, scale = 1, animate = false, clas
     let alive = true;
     let timer: ReturnType<typeof setInterval> | undefined;
     let f = 0;
+    // Drop the previous picture immediately, so a tap never keeps the last stage up while the next one bakes.
+    const canvas = ref.current;
+    if (canvas) {
+      canvas.width = 1;
+      canvas.height = 1;
+    }
     const draw = (s: Sheet) => {
       if (!alive || !ref.current) return;
       frameCanvas(s, f, scale, ref.current);

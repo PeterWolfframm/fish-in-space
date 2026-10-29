@@ -7,7 +7,6 @@ import { rng } from './rng';
 import { planetRegions } from '../planet/gen';
 import { regionNames } from '../content/names';
 import { plantCode, starterPlants } from './plants';
-import { sanePins } from './pins';
 import type { DecorSlot, Fish, Region, State, Stage, Tank } from './types';
 
 /** Plant slots: 0..5 sit on the sand inside the tank, 6..9 on the lit shelf behind the glass. */
@@ -128,7 +127,6 @@ export function newGame(now: number, seed = String(now)): State {
     upgrades: { feeder: false, heater: false, annex: false, feederOrbit: 0, extendBerths: 0 },
     fieldNotes: { species: [], bodies: [], alleles: [], regions: [], lore: [] },
     patches: [],
-    pins: [],
     settings: { muted: false, batterySaver: false, shortPods: false, uiScale: 1, tankMenuEdge: 'right' },
   };
   state.capacity = totalCapacity(state);
@@ -248,7 +246,6 @@ export function restore(raw: unknown, now = Date.now()): State | null {
   st.decor = Array.isArray(st.decor) ? st.decor : [];
   for (const d of st.decor) if (!st.tanks.some((t) => t.id === d.tank)) d.tank = st.tanks[0].id;
   st.upgrades.extendBerths ??= 0;
-  st.pins = sanePins(st.pins, st.tanks);
   st.capacity = Math.max(1, num(st.capacity) ? st.capacity : totalCapacity(st));
   if (!UI_SCALES.includes(st.settings?.uiScale)) st.settings.uiScale = 1;
   st.log = Array.isArray(st.log) ? st.log.slice(0, 80) : [];

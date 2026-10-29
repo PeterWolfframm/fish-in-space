@@ -7,17 +7,21 @@ import type { Req, Stage } from './types';
 export const fish = fish3 as Fish3;
 
 export interface Fish3 {
-  traits: { encode(g: unknown): string; decode(c: string): Genome | null; fieldById(id: string): { choices: { id: string; label: string }[]; default?: string } };
+  traits: {
+    fields: { id: string; label?: string; group?: string; choices: { id: string; label?: string }[] }[];
+    encode(g: unknown): string;
+    decode(c: string): Genome | null;
+    fieldById(id: string): { choices: { id: string; label: string }[]; default?: string };
+  };
   normalize(g: unknown): Genome;
   fromCode(c: string): Genome;
   fromSeed(s: string): Genome;
   breedDetailed(a: Genome, b: Genome, seed: string): { child: Genome; events: { text: string }[] };
   name(g: Genome): string;
-  describe(g: Genome): string;
-  names(g: Genome): { common?: string; binomial?: string; title?: string | null };
-  ecology(g: Genome): Record<string, { value: string }> & { care: { tempC: [number, number] } };
-  lore(g: Genome): { quote: string | null; codex?: { key: string; text: string }[] };
-  anims: { id: string; frames: number; fps: number; label?: string }[];
+  names(g: Genome): { common: string; binomial: string; title: string | null; full: string };
+  ecology(g: Genome): FishEcology;
+  lore(g: Genome): FishLore;
+  anims: { id: string; frames: number; fps: number }[];
   fpsOf(g: Genome, a: unknown): number;
   frame(g: Genome, anim: string, i: number): { w: number; h: number; data: Uint8Array | number[]; palette: number[][] };
 }
@@ -33,6 +37,54 @@ export interface Genome {
   geneB: string;
   generation: string;
   [k: string]: unknown;
+}
+
+export interface EcoFact {
+  value: string;
+}
+
+/** Keeper numbers from the generator: length, tank, temperature, acidity. */
+export interface FishCare {
+  cm: number;
+  group: number;
+  litres: number;
+  tempC: [number, number];
+  pH: [number, number];
+}
+
+/** One ecology fact per trait the body decides, plus the care numbers and any signature. */
+export interface FishEcology {
+  diet: EcoFact;
+  feeding: EcoFact;
+  level: EcoFact;
+  temperament: EcoFact;
+  sociality: EcoFact;
+  activity: EcoFact;
+  depth: EcoFact;
+  salinity: EcoFact;
+  temp: EcoFact;
+  current: EcoFact;
+  hardness: EcoFact;
+  care: FishCare;
+  signature: string;
+  relic: string;
+  rarity: string;
+}
+
+export interface LoreBit {
+  key: string;
+  text: string;
+}
+
+/** The catalogue entry: designation, a quote, three codex lines, a keeper rule, and a legend for the rare. */
+export interface FishLore {
+  name: string;
+  binomial: string;
+  designation: string;
+  quote: { text: string; by: string; key: string } | null;
+  codex: LoreBit[];
+  edict: LoreBit;
+  legend: LoreBit | null;
 }
 
 export interface Eco {
@@ -65,7 +117,7 @@ export function ecoOf(code: string): Eco {
   const hit = ecoCache.get(code);
   if (hit) return hit;
   const e = fish.ecology(genomeOf(code));
-  const v = (k: string) => NORM[k]?.[e[k].value] ?? e[k].value;
+  const v = (k: 'salinity' | 'temp' | 'depth' | 'diet' | 'level' | 'sociality' | 'temperament' | 'activity') => NORM[k]?.[e[k].value] ?? e[k].value;
   return remember(ecoCache, code, {
     salinity: v('salinity'), temp: v('temp'), depth: v('depth'), diet: v('diet'), level: v('level'),
     sociality: v('sociality'), temperament: v('temperament'), activity: v('activity'), care: e.care,
@@ -80,6 +132,7 @@ export const allelesOf = (code: string) => {
 };
 export const stageOf = (code: string): Stage => genomeOf(code).stage;
 export const withStage = (code: string, stage: Stage) => codeOf({ ...genomeOf(code), stage });
+export const withSize = (code: string, size: string) => codeOf({ ...genomeOf(code), size });
 export const ALLELES = fish.traits.fieldById('geneA').choices.map((c) => c.id).filter((a) => a !== 'wild');
 
 export function fitsBiome(code: string, biome: Biome, phase: number): boolean {

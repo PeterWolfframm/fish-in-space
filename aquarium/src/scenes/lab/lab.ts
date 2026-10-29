@@ -1,15 +1,17 @@
 // The Lab: two small breeding aquariums on a bench with a turning double helix between them, and the Prof
-// keeping an eye on things. Tap a tank to choose who goes in it. The helix rungs take the parents' allele
-// colours. Pairing from here drops a quilted blanket over both tanks ("gosh, give them some privacy"),
-// it wiggles, hearts rise, it lifts, and a heart pops.
+// keeping an eye on things. The tanks are the interface: tap one to choose who goes in it, tap the heart
+// on the helix to pair them, tap the lineage chart on the wall for genetics. Mature fish that have bred
+// leave still polaroids plastered on the wall; tap one for that fish's card. Pairing drops a quilted blanket over both tanks ("gosh, give them
+// some privacy"), it wiggles, hearts rise, it lifts, and a heart pops.
 
 import { Container, Graphics, Sprite } from 'pixi.js';
-import { game, labPair, labPick, labBusy, onScene } from '../../store/signals';
+import { game, labPair, labPick, labBusy, labSpawn, setLabSheet, openBreeder, onScene } from '../../store/signals';
 import * as W from '../../game';
 import { sheet, retain, release, type Sheet } from '../../art/atlas';
 import { alleleNum } from '../../ui/genes';
 import { calm, fx, stage, type Scene } from '../stage';
 import { Backdrop, Figure, hullWall } from '../room';
+import { PolaroidWall } from './polaroids';
 
 const BLANKET_T = 3.4;
 const HEART = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
@@ -20,6 +22,9 @@ interface Tank {
   w: number;
   h: number;
 }
+
+const LINE_H = 34;
+const WALL = 58;
 
 /** One breeding tank's occupant: a baked swim strip that paces the glass. */
 class Occupant {
@@ -80,6 +85,8 @@ export class LabScene implements Scene {
   private fish = [new Occupant(), new Occupant()];
   private glassFront = new Graphics();
   private strand = new Graphics();
+  private lineage = new Graphics();
+  private polaroids = new PolaroidWall();
   private bench = new Graphics();
   private blanket = new Graphics();
   private W = 360;
@@ -88,6 +95,9 @@ export class LabScene implements Scene {
   private benchY = 120;
   private tanks: Tank[] = [];
   private col = { x: 0, y: 0, w: 0, h: 0 };
+  private lineageBox: Tank | null = null;
+  private wall: Tank | null = null;
+  private heartBox: Tank | null = null;
   private cover = -1; // seconds into the blanket, or -1
   private said = false;
   private popped = false;
@@ -97,7 +107,18 @@ export class LabScene implements Scene {
 
   constructor() {
     this.prof.scale = 2;
-    this.root.addChild(this.back.root, this.prof.root, this.glassBack, ...this.fish.map((f) => f.sprite), this.glassFront, this.strand, this.bench, this.blanket);
+    this.root.addChild(
+      this.back.root,
+      this.polaroids.root,
+      this.prof.root,
+      this.glassBack,
+      ...this.fish.map((f) => f.sprite),
+      this.glassFront,
+      this.strand,
+      this.lineage,
+      this.bench,
+      this.blanket,
+    );
     this.off = onScene((e) => {
       if (e.kind !== 'blanket') return;
       this.cover = calm() ? BLANKET_T - 0.4 : 0;
@@ -110,39 +131,31 @@ export class LabScene implements Scene {
     this.H = H;
     this.benchY = H - 14 - Math.round(H * 0.14);
     const { c, g } = hullWall(W, H, 41);
-    // A shelf of reagent bottles and a pinned gene chart on the back wall.
-    g.fillStyle = '#1d2540';
-    g.fillRect(8, 26, 58, 2);
-    ['#3ee6f5', '#6ff28a', '#ffb3c9', '#ffd84a', '#c79bff'].forEach((col, i) => {
-      g.fillStyle = 'rgba(232,238,252,0.25)';
-      g.fillRect(11 + i * 11, 15, 7, 11);
-      g.fillStyle = col;
-      g.globalAlpha = 0.65;
-      g.fillRect(12 + i * 11, 19, 5, 6);
-      g.globalAlpha = 1;
-      g.fillStyle = '#c3cde6';
-      g.fillRect(13 + i * 11, 13, 3, 2);
-    });
-    // Gene chart: a little grid of coloured squares on a pale card.
-    if (W > 300) {
-      const gx = W - 52;
-      g.fillStyle = '#1b2338';
-      g.fillRect(gx - 1, 11, 42, 30);
-      g.fillStyle = '#dfe7f7';
-      g.fillRect(gx, 12, 40, 28);
-      const cols = ['#ffb3c9', '#ffd84a', '#5d6a8a', '#ffa53d', '#3ee6f5', '#c79bff'];
-      for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < 5; xx++) {
-        g.fillStyle = cols[(xx * 3 + yy * 5) % cols.length];
-        g.fillRect(gx + 3 + xx * 7, 15 + yy * 8, 5, 5);
-      }
+    // Reagent bottles sit left of the lineage chart when the wall is wide enough.
+    const lineX = W > 280 ? 72 : 8;
+    if (W > 280) {
+      g.fillStyle = '#1d2540';
+      g.fillRect(8, 26, 58, 2);
+      ['#3ee6f5', '#6ff28a', '#ffb3c9', '#ffd84a', '#c79bff'].forEach((col, i) => {
+        g.fillStyle = 'rgba(232,238,252,0.25)';
+        g.fillRect(11 + i * 11, 15, 7, 11);
+        g.fillStyle = col;
+        g.globalAlpha = 0.65;
+        g.fillRect(12 + i * 11, 19, 5, 6);
+        g.globalAlpha = 1;
+        g.fillStyle = '#c3cde6';
+        g.fillRect(13 + i * 11, 13, 3, 2);
+      });
     }
     this.back.set(c, W * 0.5, Math.min(110, W * 0.34));
 
     // Two tanks with the helix column between them, centred; the Prof gets the right-hand margin.
+    // Polaroids are plastered on the wall under the lineage chart and above the helix.
     const colW = 22;
     const gap = colW + 14;
     const tw = Math.max(64, Math.min(124, Math.floor((W - gap - 24) * 0.36)));
-    const th = Math.max(40, Math.min(this.benchY - 22, Math.round(tw * 0.78)));
+    const topReserve = 6 + LINE_H + WALL + 8;
+    const th = Math.max(36, Math.min(this.benchY - topReserve, Math.round(tw * 0.72)));
     const left = Math.round(W * 0.46 - gap / 2 - tw);
     const ty = this.benchY - th - 3;
     this.tanks = [
@@ -150,7 +163,12 @@ export class LabScene implements Scene {
       { x: left + tw + gap, y: ty, w: tw, h: th },
     ];
     this.col = { x: left + tw + Math.round((gap - colW) / 2), y: ty - 6, w: colW, h: th + 3 };
+    this.lineageBox = { x: lineX, y: 6, w: Math.max(48, W - lineX - 8), h: LINE_H };
+    const wallTop = 6 + LINE_H + 4;
+    const right = Math.min(W - 6, this.tanks[1].x + this.tanks[1].w + 6);
+    this.wall = { x: 6, y: wallTop, w: Math.max(48, right - 6), h: Math.max(24, this.col.y - 6 - wallTop) };
     this.paintStatic();
+    this.polaroids.place(this.wall);
   }
 
   /** Glass, water and gravel behind the fish; frame and highlights in front. Repainted on resize and when
@@ -196,15 +214,33 @@ export class LabScene implements Scene {
 
   tap(x: number, y: number) {
     if (labBusy.peek()) return;
+    const shot = this.polaroids.hit(x, y);
+    if (shot) {
+      openBreeder(shot.id, shot.code, shot.name);
+      return;
+    }
+    const line = this.lineageBox;
+    if (line && x >= line.x && x < line.x + line.w && y >= line.y && y < line.y + line.h) {
+      setLabSheet('genes');
+      return;
+    }
+    const heart = this.heartBox;
+    if (heart && x >= heart.x && x < heart.x + heart.w && y >= heart.y && y < heart.y + heart.h) {
+      setLabSheet(null);
+      labSpawn();
+      return;
+    }
     const i = this.tanks.findIndex((k) => x >= k.x - 3 && x < k.x + k.w + 3 && y >= k.y - 4 && y < k.y + k.h + 6);
     if (i < 0) return;
-    labPick.value = labPick.peek() === i ? null : (i as 0 | 1);
+    const side = i as 0 | 1;
+    setLabSheet(labPick.peek() === side ? null : 'pick', side);
   }
 
   update(dt: number) {
     this.t += dt;
     const quiet = calm();
     this.back.update(this.t, quiet);
+    if (this.tanks.length < 2) return;
     const s = game.peek();
     const pair = labPair.peek();
     const pick = labPick.peek();
@@ -214,6 +250,9 @@ export class LabScene implements Scene {
       this.fish[i].set(p?.code ?? '');
       this.fish[i].update(dt, this.tanks[i], quiet);
     });
+    this.polaroids.sync();
+    if (this.wall) this.polaroids.place(this.wall);
+    this.drawLineage();
 
     // The Prof at the right edge, talking while the blanket is down.
     const covering = this.cover >= 0 && this.cover < BLANKET_T;
@@ -281,7 +320,65 @@ export class LabScene implements Scene {
       st.rect(Math.round(x2), yy - 1, 2, 3).fill({ color: 0xe8eefc, alpha: front ? 0.4 : 1 });
     }
 
+    // The pair control lives on the helix, once both tanks have a fish.
+    this.heartBox = null;
+    if (parents[0] && parents[1] && this.cover < 0) {
+      const hx = Math.round(cx - 3);
+      const hy = Math.round(y + h / 2 - 4);
+      const pulse = quiet ? 1 : 0.7 + 0.3 * Math.sin(this.t * 4);
+      this.heart(st, hx, hy, 0xff6b8b, pulse);
+      this.heartBox = { x: hx - 6, y: hy - 4, w: 20, h: 18 };
+    }
+
     this.drawBlanket(dt, quiet);
+  }
+
+  /** Compact family tree on the wall. Tap opens the genetics sheet. */
+  private drawLineage() {
+    const g = this.lineage.clear();
+    const box = this.lineageBox;
+    if (!box) return;
+    g.roundRect(box.x, box.y, box.w, box.h, 2).fill({ color: 0x12182c, alpha: 0.92 });
+    g.rect(box.x, box.y, box.w, 1).fill({ color: 0xc79bff, alpha: 0.75 });
+    g.rect(box.x, box.y + box.h - 1, box.w, 1).fill({ color: 0x3a4568, alpha: 0.9 });
+    const nodes = W.lineageNodes(game.peek());
+    if (!nodes.length) return;
+    const gens = [...new Set(nodes.map((n) => n.gen))].sort((a, b) => a - b);
+    const rows = gens.map((gen) => nodes.filter((n) => n.gen === gen));
+    const idNum = (id: string) => Number(id.replace(/\D/g, '')) || 0;
+    const pos = new Map<string, { x: number; y: number }>();
+    const pad = 6;
+    rows.forEach((row, ri) => {
+      if (ri === 0) row.sort((a, b) => idNum(a.id) - idNum(b.id));
+      else {
+        const bary = (n: (typeof nodes)[number]) => {
+          const xs = n.parents.map((p) => pos.get(p.id)?.x).filter((v): v is number => v !== undefined);
+          return xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : 1e6 + idNum(n.id);
+        };
+        row.sort((a, b) => bary(a) - bary(b));
+      }
+      const yy = box.y + pad + ((ri + 0.55) * (box.h - pad * 2)) / rows.length;
+      row.forEach((n, i) => {
+        pos.set(n.id, { x: box.x + pad + ((i + 0.5) * (box.w - pad * 2)) / row.length, y: yy });
+      });
+    });
+    for (const n of nodes) {
+      if (n.parents.length !== 2) continue;
+      const child = pos.get(n.id);
+      if (!child) continue;
+      const got = W.handedDown(n.code, n.parents[0].code, n.parents[1].code);
+      n.parents.forEach((p, i) => {
+        const from = pos.get(p.id);
+        if (!from) return;
+        g.moveTo(from.x, from.y).lineTo(child.x, child.y).stroke({ color: alleleNum(got[i]), width: 1, alpha: 0.9 });
+      });
+    }
+    for (const n of nodes) {
+      const p = pos.get(n.id);
+      if (!p) continue;
+      const [a] = W.allelesOf(n.code);
+      g.rect(Math.round(p.x) - 1, Math.round(p.y) - 1, 3, 3).fill({ color: alleleNum(a), alpha: n.alive ? 1 : 0.4 });
+    }
   }
 
   private drawBlanket(dt: number, quiet: boolean) {
@@ -290,11 +387,12 @@ export class LabScene implements Scene {
     this.cover += dt;
     const k = this.cover;
     const [a, b] = this.tanks;
-    const x0 = a.x - 7;
-    const x1 = b.x + b.w + 7;
-    const top = Math.min(a.y, this.col.y) - 9;
+    const x0 = a.x - 4;
+    const x1 = b.x + b.w + 4;
+    // From the helix cap and the lids down over the glass to the bench.
+    const top = Math.min(a.y, this.col.y) - 2;
     const bottom = this.benchY + 1;
-    const full = bottom - top;
+    const full = Math.max(1, bottom - top);
     // Drop with a little bounce, hold and wiggle, then lift away.
     let drop: number;
     if (k < 0.55) {
@@ -302,17 +400,19 @@ export class LabScene implements Scene {
       drop = u * u * (1 + 0.12 * Math.sin(u * Math.PI));
     } else if (k < 2.75) drop = 1;
     else drop = Math.max(0, 1 - ((k - 2.75) / 0.5) ** 2);
-    const hem = Math.round(top - full + full * Math.min(1, drop) + (k < 0.7 && k > 0.55 ? Math.sin((k - 0.55) * 40) * 2 : 0));
+    const bounce = k < 0.7 && k > 0.55 ? Math.sin((k - 0.55) * 40) * 2 : 0;
+    const hem = Math.round(Math.min(bottom + 2, Math.max(top, top + full * Math.min(1, drop) + bounce)));
 
-    if (drop > 0) {
+    if (drop > 0 && hem > top) {
       const wig = k > 0.6 && k < 2.75 && !quiet;
       const w = x1 - x0;
+      const span = hem - top;
       // Body: lilac and peach quilt squares with stitching, lumped where the fish are busy underneath.
       const sq = 9;
-      for (let yy = Math.max(0, hem - full); yy < hem; yy += sq) {
+      for (let yy = top; yy < hem; yy += sq) {
         for (let xx = x0; xx < x1; xx += sq) {
           const ix = Math.floor((xx - x0) / sq);
-          const iy = Math.floor((yy - (hem - full)) / sq);
+          const iy = Math.floor((yy - top) / sq);
           const lump = wig ? Math.round(Math.sin(this.t * 9 + ix * 0.9) * Math.sin(this.t * 5.3 + iy) * 1.4) : 0;
           const col = (ix + iy) % 2 ? 0xb48cff : 0xf6c38d;
           g.rect(xx, yy + lump, Math.min(sq, x1 - xx), Math.min(sq, hem - yy)).fill(col);
@@ -321,21 +421,21 @@ export class LabScene implements Scene {
         }
       }
       // Side shading so it reads as cloth draped over two boxes.
-      g.rect(x0, Math.max(0, hem - full), 2, Math.min(full, hem)).fill({ color: 0x04050b, alpha: 0.25 });
-      g.rect(x1 - 2, Math.max(0, hem - full), 2, Math.min(full, hem)).fill({ color: 0x04050b, alpha: 0.25 });
+      g.rect(x0, top, 2, span).fill({ color: 0x04050b, alpha: 0.25 });
+      g.rect(x1 - 2, top, 2, span).fill({ color: 0x04050b, alpha: 0.25 });
       const dip = Math.round(this.col.x + this.col.w / 2);
-      g.rect(dip - 1, Math.max(0, hem - full + 10), 3, Math.max(0, full - 14)).fill({ color: 0x04050b, alpha: 0.16 });
+      g.rect(dip - 1, top + 8, 3, Math.max(0, span - 12)).fill({ color: 0x04050b, alpha: 0.16 });
       // Scalloped hem.
       for (let xx = x0; xx < x1; xx += 4) g.rect(xx, hem, 3, 2).fill(0xff8fb8);
-      // A wiggle now and then: the whole thing hops.
-      if (wig && Math.sin(this.t * 2.4) > 0.92) g.rect(x0 + w * 0.3, hem - full - 2, w * 0.4, 2).fill(0xb48cff);
+      // A wiggle now and then: the cloth bunches at the lids.
+      if (wig && Math.sin(this.t * 2.4) > 0.92) g.rect(x0 + w * 0.3, top - 2, w * 0.4, 2).fill(0xb48cff);
 
-      // Hearts drifting up from under the blanket.
+      // Hearts drifting up from the lids.
       if (wig && fx()) {
         for (let i = 0; i < 4; i++) {
           const u = ((k - 0.6) * 0.6 + i * 0.27) % 1;
           const hx = x0 + w * (0.2 + 0.2 * i) + Math.sin(u * 8 + i) * 4;
-          const hy = hem - full - 4 - u * 30;
+          const hy = top - 4 - u * 28;
           this.heart(g, Math.round(hx), Math.round(hy), 0xff6b8b, 1 - u);
         }
       }
@@ -367,6 +467,7 @@ export class LabScene implements Scene {
 
   destroy() {
     this.off();
+    this.polaroids.destroy();
     this.fish.forEach((f) => f.destroy());
     this.prof.destroy();
     this.root.destroy({ children: true });
