@@ -42,6 +42,28 @@ export const BASE_PARAMS = {
   mutation: { strength: 1, sport: 0.03 },
   /** Rarity roll odds per tier (relative). Mythic is mainly bred: see `mythic`. */
   rarity: { common: 70, uncommon: 22, rare: 7, epic: 0, legendary: 0, myth: 1 },
+  /** Rarity score (rarity.js): points per source and the tier thresholds over them. */
+  rarityPoints: {
+    thresholds: { uncommon: 8, rare: 14, epic: 24, legendary: 36, myth: 56 },
+    /** Looks: bits of surprisal ignored per field, then points per bit. */
+    minBits: 2,
+    bitPoints: 0.5,
+    homozygous: 5,
+    carrier: 1,
+    morph: 10,
+    iridescence: 6,
+    hybrid: 6,
+    signature: 8,
+    relic: 10,
+    feature: 4,
+    aether: 18,
+    /** Loci further than this from the middle (0..1) score `locusPoints` per unit beyond it. */
+    extremeLocus: 0.7,
+    locusPoints: 10,
+    perGeneration: 0.15,
+    generationCap: 4,
+    perPurity: 0.3,
+  },
   /** Proportion bells: 1 = fish3, > 1 flatter (wilder shapes), < 1 tighter. */
   spread: 1,
   /** How often a body's own looks win (fish3: 0.6). */
@@ -71,11 +93,11 @@ export const BASE_PARAMS = {
   },
   mythic: {
     /** Per-egg chance when the parents have no rarity at all. */
-    baseChance: 0.0004,
+    baseChance: 0.001,
     /** How steeply parent rarity raises the chance (per 10 points over the threshold). */
-    curve: 1.6,
+    curve: 2,
     /** Rarity points (parent mean) where the curve starts to bite. */
-    threshold: 18,
+    threshold: 24,
     /** Weight of the aether locus (mean of both parents, 0..1). */
     aetherWeight: 0.06,
     /** Line purity bonus, per purity step. */
@@ -207,3 +229,20 @@ export function chromaOf(hex) {
 
 /** A bell flattened (spread > 1) or sharpened (< 1). */
 export const spreadBell = (weights, spread) => (spread === 1 ? weights : weights.map((w) => (w > 0 ? w ** (1 / spread) : 0)));
+
+const COLOUR_FIELDS = new Set(['skin', 'markColor']);
+
+/** A field's weight for choice `ci` under params `P`, given what has been rolled so far. */
+export function weightOf(f, ci, P, set = {}) {
+  const c = f.choices[ci];
+  let w;
+  if (f.id === 'rarity') w = P.rarity?.[c.id] ?? 0;
+  else if (f.id === 'chroma') w = P.color?.chroma?.[ci] ?? (ci === 0 ? 1 : 0);
+  else if (f.feature) w = f.weightsFor(set, P.features?.[f.id] ?? 1)[ci];
+  else if (f.locus) w = spreadBell(f.weights, P.loci?.spread ?? 1)[ci];
+  else if (f.choices[0].id === 'n3' && f.weights) w = spreadBell(f.weights, P.spread ?? 1)[ci];
+  else w = f.weights?.[ci] ?? 1;
+  if (COLOUR_FIELDS.has(f.id) && P.color?.vivid && c.hex) w *= Math.exp(P.color.vivid * 10 * (chromaOf(c.hex) - 0.12));
+  const mul = P.weights?.[f.id]?.[c.id];
+  return mul == null ? w : w * mul;
+}

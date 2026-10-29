@@ -19,7 +19,7 @@ import { anim, poseAt } from '../../v2/anim/rig.js';
 import { roundUp, crop } from '../../v2/kit/sizes.js';
 import { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, FISH3_IDS, V4_IDS, FEATURE_IDS } from './genome.js';
 import { latentLoci, lociOf, LOCI } from './loci.js';
-import { resolveParams, PRESETS, DEFAULT_PRESET, chromaOf, spreadBell, paramsHash } from './params.js';
+import { resolveParams, PRESETS, DEFAULT_PRESET, paramsHash, weightOf } from './params.js';
 import { drawFish4, finishFrame, EXPRESSIONS } from './frame.js';
 import { expression, wiggle, droop, floatDead } from './motions.js';
 import { FEATURES } from './features/registry.js';
@@ -30,29 +30,17 @@ import { namesOf4 } from './names.js';
 import { extOf, bodyOf, BODY_RECORDS, NEW_FORMS } from './bodies/index.js';
 import { ecotypeFromSeed, placeOf, protoOf, speciesKey } from './ecotype.js';
 import { TERRAINS, REGIONS, NICHES } from './data/terrains.js';
+import { rarityOf, tierOf, RARITY_COLORS } from './rarity.js';
+import { reproduction, canBreed } from './reproduction.js';
+import { breed as breed4, breedClutch, breedProblem, mythicChance } from './breeding.js';
+import { valueOf, eggCost } from './economy.js';
 
-export { ecology4Of, careLine, extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
+export { rarityOf, tierOf, RARITY_COLORS, reproduction, canBreed, breed4, breedClutch, breedProblem, mythicChance, valueOf, eggCost };
+export { weightOf, ecology4Of, careLine, extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
 export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
 export { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, lociOf, LOCI, PRESETS, resolveParams, paramsHash, FEATURES, EXPRESSIONS, TIERS, TIER_LABELS, FISH3_IDS, V4_IDS, FEATURE_IDS };
 
 const T = fish4Traits;
-const COLOUR_FIELDS = new Set(['skin', 'markColor']);
-
-/** A field's weight for choice `ci` under params `P`, given what has been rolled so far. */
-export function weightOf(f, ci, P, set = {}) {
-  const c = f.choices[ci];
-  let w;
-  if (f.id === 'rarity') w = P.rarity?.[c.id] ?? 0;
-  else if (f.id === 'chroma') w = P.color?.chroma?.[ci] ?? (ci === 0 ? 1 : 0);
-  else if (f.feature) w = f.weightsFor(set, P.features?.[f.id] ?? 1)[ci];
-  else if (f.locus) w = spreadBell(f.weights, P.loci?.spread ?? 1)[ci];
-  else if (f.choices[0].id === 'n3' && f.weights) w = spreadBell(f.weights, P.spread ?? 1)[ci];
-  else w = f.weights?.[ci] ?? 1;
-  if (COLOUR_FIELDS.has(f.id) && P.color?.vivid && c.hex) w *= Math.exp(P.color.vivid * 10 * (chromaOf(c.hex) - 0.12));
-  const mul = P.weights?.[f.id]?.[c.id];
-  return mul == null ? w : w * mul;
-}
-
 /**
  * A fresh fish. Under `ecotype` params (the default) a seed picks a place and a species first:
  * see ecotype.js; `place` can pin `{ terrain, region, niche, clade }`. Under `classic`, every field rolls on its own salt (fish3's for fish3's fields), only the odds
@@ -202,7 +190,8 @@ export function profile(genome, opts) {
   const o = textOpts(opts);
   const stats = statsOf(set, o);
   const n = namesOf4(set, { look: stats.look, humour: o.humour, flavour: o.flavour });
-  return { code: T.encode(set), names: n, taxonomy: n.taxonomy, stats, rulesFired: stats.rulesFired, summary: summaryOf(stats), loci: lociOf(set), ecology: ecology4Of(set) };
+  const rarity = rarityOf(set);
+  return { code: T.encode(set), names: n, taxonomy: n.taxonomy, stats, rulesFired: stats.rulesFired, summary: summaryOf(stats), loci: lociOf(set), ecology: ecology4Of(set), rarity, reproduction: reproduction(set, undefined, stats), value: valueOf(set, { stats, rarity }) };
 }
 
 export default {
@@ -237,6 +226,17 @@ export default {
   taxonomy: (genome) => namesOf4(T.normalize(genome)).taxonomy,
   summary: (genome, opts) => summaryOf(statsOf(T.normalize(genome), textOpts(opts))),
   profile,
+  /** 0..1 like fish3's hook (the score over the Mythic threshold); rarityOf has the breakdown. */
+  rarity: (genome) => Math.min(1, rarityOf(T.normalize(genome)).points / resolveParams().rarityPoints.thresholds.myth),
+  rarityOf: (genome, params) => rarityOf(T.normalize(genome), params),
+  reproduction: (genome, params) => reproduction(T.normalize(genome), params),
+  canBreed: (genome, broodsUsed, params) => canBreed(T.normalize(genome), broodsUsed, params),
+  /** The plain hook: the child, or null when the pair cannot breed (two terrains). */
+  breed: (a, b, seed, params) => breed4(a, b, seed, params).child,
+  breedDetailed: (a, b, seed, params) => breed4(a, b, seed, params),
+  breedClutch,
+  breedProblem,
+  value: (genome, opts) => valueOf(T.normalize(genome), opts),
   fpsOf,
   anims: ANIMS,
   frame,

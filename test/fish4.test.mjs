@@ -307,3 +307,82 @@ test('terrain ecology: care in the fish\'s own medium, water fish keep fish3\'s'
   assert.ok(mean('sand', 'burrowing') > mean('water', 'burrowing') + 0.25);
   assert.ok(mean('lava', 'armour') > mean('water', 'armour') + 0.1);
 });
+
+test('rarity: continuous points, six tiers, never demoted, mostly common in the wild', async () => {
+  const { rarityOf, RARITY_COLORS } = await import('../src/v4/fish/index.js');
+  const tally = {};
+  for (let i = 0; i < 400; i++) {
+    const set = fromSeed(`rar${i}`);
+    const r = rarityOf(set);
+    assert.deepEqual(r, rarityOf(set));
+    assert.ok(r.points >= 0 && r.fraction >= 0 && r.fraction <= 1);
+    assert.ok(Math.abs(r.breakdown.reduce((a, b) => a + b.points, 0) - r.points) < 0.05);
+    assert.ok(RARITY_COLORS[r.tier]);
+    tally[r.computed] = (tally[r.computed] ?? 0) + 1;
+  }
+  assert.ok(tally.common / 400 > 0.55, JSON.stringify(tally));
+  assert.ok((tally.legendary ?? 0) + (tally.myth ?? 0) <= 8, JSON.stringify(tally));
+  // An imported Mythic stays Mythic, however plain it looks.
+  const plain = { ...fromSeed('plain', 'classic'), rarity: 'myth' };
+  assert.equal(rarityOf(plain).tier, 'myth');
+});
+
+test('breeding: terrains refuse, forms breed true, loci come from the parents, Mythic is capped', async () => {
+  const { breed4, breedClutch, mythicChance, reproduction, canBreed, resolveParams } = await import('../src/v4/fish/index.js');
+  const lava = (s) => ({ ...fromSeed(s, 'ecotype', { terrain: 'lava' }), stage: 'adult' });
+  const a = lava('ba');
+  const w = fromSeed('bw', 'ecotype', { terrain: 'water' });
+  assert.ok(breed4(a, w, 'x').problem);
+  assert.equal(breed4(a, w, 'x').child, null);
+  const b = { ...a, ...Object.fromEntries(Object.entries(lava('bb')).filter(([k]) => k.endsWith('A') || k.endsWith('B'))) };
+  let inherited = 0;
+  let total = 0;
+  for (let i = 0; i < 30; i++) {
+    const { child } = breed4(a, b, `egg${i}`);
+    assert.deepEqual(child, breed4(a, b, `egg${i}`).child);
+    assert.equal(child.form, a.form);
+    assert.equal(child.terrain, 'lava');
+    assert.equal(child.stage, 'fry');
+    for (const l of ['metabolism', 'vigor', 'energy', 'sociability']) {
+      total += 2;
+      if ([a[`${l}A`], a[`${l}B`]].includes(child[`${l}A`])) inherited += 1;
+      if ([b[`${l}A`], b[`${l}B`]].includes(child[`${l}B`])) inherited += 1;
+    }
+  }
+  assert.ok(inherited / total > 0.95, `${inherited}/${total}`);
+  const P = resolveParams();
+  const cl = breedClutch(a, b, 'c1');
+  assert.ok(cl.children.length >= P.breeding.clutchMin && cl.children.length <= P.breeding.clutchMax);
+  // Even two saturated Mythics never pass the cap.
+  const myth = (s) => ({ ...s, rarity: 'myth', aetherA: 'a15', aetherB: 'a15', morph: 'galaxy', hybrid: 'none' });
+  assert.ok(mythicChance(myth(a), myth(b), P) <= P.mythic.maxChance + 1e-12);
+  // Rarer fish get fewer broods; a fry cannot breed; a spent fish cannot either.
+  assert.ok(reproduction({ ...a, rarity: 'myth' }).broodLimit <= reproduction({ ...a, rarity: 'common' }).broodLimit);
+  assert.equal(canBreed({ ...a, stage: 'fry' }).ok, false);
+  assert.equal(canBreed(a, reproduction(a).broodLimit).ok, false);
+  assert.equal(canBreed(a, 0).ok, true);
+});
+
+test('economy: value follows the score, saturation and stage', async () => {
+  const { valueOf, rarityOf } = await import('../src/v4/fish/index.js');
+  const { genusOf } = await import('../src/v4/fish/economy.js');
+  const fish = Array.from({ length: 30 }, (_, i) => ({ ...fromSeed(`v${i}`), stage: 'adult', size: 'medium' })).sort((x, y) => rarityOf(x).points - rarityOf(y).points);
+  assert.ok(valueOf(fish[29]).credits > valueOf(fish[0]).credits);
+  const f = fish[10];
+  assert.ok(valueOf(f, { sales: [genusOf(f), genusOf(f), genusOf(f)] }).credits < valueOf(f).credits);
+  assert.ok(valueOf({ ...f, stage: 'fry' }).credits < valueOf(f).credits);
+});
+
+test('sim: pacing bands hold and no strategy dominates', async () => {
+  const { sweep } = await import('../src/v4/fish/sim.js');
+  const s = sweep({ seeds: 4, generations: 60, seed: 'pace' });
+  // A smart player plays the fastest way to each tier: bands on the best strategy's median.
+  const best = (t) => Math.min(...Object.values(s).map((x) => x.firsts[t]?.gen ?? Infinity));
+  assert.ok(best('uncommon') <= 3, `uncommon ${best('uncommon')}`);
+  assert.ok(best('rare') >= 2 && best('rare') <= 9, `rare ${best('rare')}`);
+  assert.ok(best('epic') >= 3 && best('epic') <= 15, `epic ${best('epic')}`);
+  assert.ok(best('legendary') >= 10 && best('legendary') <= 35, `legendary ${best('legendary')}`);
+  assert.ok(best('myth') >= 20, `myth ${best('myth')}`);
+  const rates = Object.values(s).map((x) => x.perHour).sort((a, b) => b - a);
+  assert.ok(rates[0] <= 1.5 * rates[1], `per hour ${rates}`);
+});
