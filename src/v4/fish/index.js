@@ -10,7 +10,7 @@ import { roller } from '../../pixel/rng.js';
 import { fish3Traits } from '../../v3/fish/genome.js';
 import { BODIES } from '../../v3/fish/bodies.js';
 import { CLASS_LEN, describeGenes } from '../../v3/fish/phenotype.js';
-import { ecologyOf } from '../../v3/fish/ecology.js';
+import { ecology4Of, careLine } from './ecology4.js';
 import { loreOf } from '../../v3/fish/lore.js';
 import { keyed } from '../../v3/fish/keys.js';
 import { ANIMS as ANIMS3 } from '../../v3/fish/index.js';
@@ -31,7 +31,7 @@ import { extOf, bodyOf, BODY_RECORDS, NEW_FORMS } from './bodies/index.js';
 import { ecotypeFromSeed, placeOf, protoOf, speciesKey } from './ecotype.js';
 import { TERRAINS, REGIONS, NICHES } from './data/terrains.js';
 
-export { extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
+export { ecology4Of, careLine, extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
 export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
 export { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, lociOf, LOCI, PRESETS, resolveParams, paramsHash, FEATURES, EXPRESSIONS, TIERS, TIER_LABELS, FISH3_IDS, V4_IDS, FEATURE_IDS };
 
@@ -202,7 +202,7 @@ export function profile(genome, opts) {
   const o = textOpts(opts);
   const stats = statsOf(set, o);
   const n = namesOf4(set, { look: stats.look, humour: o.humour, flavour: o.flavour });
-  return { code: T.encode(set), names: n, taxonomy: n.taxonomy, stats, rulesFired: stats.rulesFired, summary: summaryOf(stats), loci: lociOf(set), ecology: ecologyOf(toFish3(set), extOf(set)) };
+  return { code: T.encode(set), names: n, taxonomy: n.taxonomy, stats, rulesFired: stats.rulesFired, summary: summaryOf(stats), loci: lociOf(set), ecology: ecology4Of(set) };
 }
 
 export default {
@@ -229,7 +229,7 @@ export default {
   name: (genome) => namesOf4(T.normalize(genome)).full,
   describe: (genome) => describeGenes(f3(genome)),
   names,
-  ecology: (genome) => ecologyOf(f3(genome), ext(genome)),
+  ecology: (genome) => ecology4Of(T.normalize(genome)),
   lore: (genome) => loreOf(f3(genome), ext(genome)),
   loci: (genome) => lociOf(T.normalize(genome)),
   stats: (genome, opts) => statsOf(T.normalize(genome), textOpts(opts)),

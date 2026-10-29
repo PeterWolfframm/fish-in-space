@@ -6,8 +6,12 @@
 // loci → size and tier → traits → features → rules (data/rules.js) → clamp.
 //
 // Bump STATS_VERSION when a stat's meaning or scale changes: behaviour models key on it.
+//
+// v2: the terrain stats (heatTolerance, radiance, burrowing, armour, luminosity); body leanings;
+// for a fish of another medium (lava, sand, coolant, void), idealTempC and tempTolerance map over
+// its medium's band (`TERRAINS.tempC`) and the water stats say so (`applies: false`).
 
-export const STATS_VERSION = 1;
+export const STATS_VERSION = 2;
 
 /** The stats, in display order. `low`/`high` are the words for the ends. */
 export const STATS = [
@@ -48,7 +52,29 @@ export const STATS = [
   { id: 'lifespan', label: 'Lifespan', group: 'life', unit: 'years', real: [1, 40], digits: 0, low: 'brief', high: 'long-lived' },
   { id: 'growthRate', label: 'Growth rate', group: 'life', low: 'slow', high: 'fast' },
   { id: 'mythicPotential', label: 'Mythic potential', group: 'life', low: 'none', high: 'saturated' },
+  // terrain (v2)
+  { id: 'heatTolerance', label: 'Heat tolerance', group: 'terrain', low: 'needs it cool', high: 'fireproof' },
+  { id: 'radiance', label: 'Radiance', group: 'terrain', low: 'none', high: 'radiant (harmless)' },
+  { id: 'burrowing', label: 'Burrowing', group: 'terrain', low: 'never digs', high: 'lives buried' },
+  { id: 'armour', label: 'Armour', group: 'terrain', low: 'soft', high: 'plated' },
+  { id: 'luminosity', label: 'Luminosity', group: 'terrain', low: 'dark', high: 'lamp-bright' },
 ];
+
+/** The water stats: they only mean something in a wet medium (ecology4 WET). */
+export const WATER_ONLY = ['idealPH', 'phTolerance', 'salinityTolerance'];
+
+// ---------- terrain baselines (v2) ---------------------------------------------------------
+
+/** Heat band (ecology4 HEAT) → heat tolerance. */
+export const HEAT_TOLERANCE = { frozen: 0.1, cold: 0.15, mild: 0.25, warm: 0.35, hot: 0.55, baking: 0.72, molten: 0.9 };
+/** Baselines by terrain; water fish start low and earn these from their looks. */
+export const TERRAIN_BASE = {
+  water: { burrowing: 0.05, armour: 0.08, luminosity: 0.02 },
+  lava: { burrowing: 0.08, armour: 0.3, luminosity: 0.3 },
+  sand: { burrowing: 0.45, armour: 0.15, luminosity: 0.02 },
+  nuclear: { burrowing: 0.03, armour: 0.06, luminosity: 0.35 },
+  aether: { burrowing: 0, armour: 0.05, luminosity: 0.2 },
+};
 
 export const STAT_IDS = STATS.map((s) => s.id);
 export const statById = (id) => STATS.find((s) => s.id === id);
@@ -114,6 +140,9 @@ export const LOCUS_EFFECTS = {
   lifespan: [['longevity', 0.4], ['vigor', 0.1]],
   growthRate: [['metabolism', 0.4], ['maturation', -0.4]],
   mythicPotential: [['aether', 1, 0]],
+  heatTolerance: [['thermal', 0.2], ['vigor', 0.1]],
+  burrowing: [['zone', -0.2]],
+  armour: [['resilience', 0.1]],
 };
 
 // ---------- size and tier ------------------------------------------------------------------
@@ -137,7 +166,7 @@ export const TIER_EFFECTS = { maturationMul: 0.04, breedCooldownMul: 0.035, fert
  * (fields, ecology facts, and the extra facts morph, longfin, bubble, hybrid, sterile, male).
  */
 export const TRAIT_EFFECTS = [
-  { when: { field: 'scales', is: 'plates' }, label: 'armour plates', then: { hardiness: 0.08, swimSpeed: -0.04 } },
+  { when: { field: 'scales', is: 'plates' }, label: 'armour plates', then: { hardiness: 0.08, swimSpeed: -0.04, armour: 0.3 } },
   { when: { fact: 'morph', in: ['albino', 'leucistic', 'ghost'] }, label: 'pale morph', then: { hardiness: -0.08, stressResistance: -0.05 } },
   { when: { fact: 'morph', is: 'melanistic' }, label: 'melanistic', then: { hardiness: 0.03 } },
   { when: { fact: 'longfin', is: true }, label: 'long fins', then: { swimSpeed: -0.12, stamina: -0.08, hardiness: -0.04 } },
@@ -158,8 +187,19 @@ export const TRAIT_EFFECTS = [
   { when: { field: 'mood', is: 'derpy' }, label: 'derpy face', then: { curiosity: 0.06, boldness: 0.03 } },
   { when: { field: 'mood', is: 'sleepy' }, label: 'sleepy face', then: { energy: -0.08 } },
   { when: { field: 'mood', is: 'smug' }, label: 'smug face', then: { boldness: 0.06 } },
-  { when: { field: 'pelvic', is: 'sucker' }, label: 'sucker fins', then: { zoneBreadth: -0.1, verticalPref: -0.05 } },
+  { when: { field: 'pelvic', is: 'sucker' }, label: 'sucker fins', then: { zoneBreadth: -0.1, verticalPref: -0.05, burrowing: -0.04 } },
   { when: { field: 'pectoral', is: 'glider' }, label: 'glider fins', then: { verticalPref: 0.06, swimSpeed: 0.04 } },
   { when: { field: 'damage', in: ['scar', 'notched'] }, label: 'old scars', then: { boldness: 0.03, stressResistance: 0.03 } },
   { when: { all: [{ fact: 'male', is: true }, { fact: 'dimorphic', is: true }] }, label: 'showy male', then: { territoriality: 0.06, boldness: 0.03 } },
+  // terrain stats (v2)
+  { when: { field: 'scales', is: 'sandpaper' }, label: 'sandpaper skin', then: { armour: 0.1, burrowing: 0.06 } },
+  { when: { field: 'dorsal', in: ['spiny', 'venom', 'crest'] }, label: 'armed dorsal', then: { armour: 0.08 } },
+  { when: { field: 'glow', in: ['spots', 'edge'] }, label: 'glow', then: { luminosity: 0.2 } },
+  { when: { field: 'glow', is: 'full' }, label: 'full glow', then: { luminosity: 0.4 } },
+  { when: { field: 'markings', is: 'photophores' }, label: 'photophores', then: { luminosity: 0.2 } },
+  { when: { field: 'morph', is: 'neon' }, label: 'neon morph', then: { luminosity: 0.12, radiance: 0.05 } },
+  { when: { field: 'niche', is: 'burrower' }, label: 'burrower niche', then: { burrowing: 0.25 } },
+  { when: { field: 'niche', is: 'sifter' }, label: 'sifter niche', then: { burrowing: 0.1 } },
+  { when: { fact: 'level', is: 'bottom' }, label: 'bottom dweller', then: { burrowing: 0.05 } },
+  { when: { field: 'eye', is: 'small' }, label: 'small eyes', then: { burrowing: 0.04 } },
 ];

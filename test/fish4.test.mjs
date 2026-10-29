@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generator, fromCode } from '../src/gen/registry.js';
-import gen4, { fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, profile, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
+import gen4, { fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, STATS_VERSION, profile, ecology4Of, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
 import { namesOf } from '../src/v3/fish/names.js';
 import { fish3Traits as T3 } from '../src/v3/fish/genome.js';
 import { FEATURES } from '../src/v4/fish/features/registry.js';
@@ -140,10 +140,10 @@ test('every stat is in range, has evidence, and is the same every time', () => {
       const x = st[s.id];
       assert.ok(x.value >= 0 && x.value <= 1, `${s.id} ${x.value}`);
       assert.ok(x.because.length >= 1 && x.because[0].source === 'base', s.id);
-      if (s.real) assert.ok(x.real >= s.real[0] - 1e-9 && x.real <= s.real[1] + 1e-9, `${s.id} real`);
+      if (s.real) assert.ok(x.real >= (x.range ?? s.real)[0] - 1e-9 && x.real <= (x.range ?? s.real)[1] + 1e-9, `${s.id} real`);
     }
     const p = behaviourProfile(set);
-    assert.equal(p.v, 1);
+    assert.equal(p.v, STATS_VERSION);
     assert.ok(['top', 'mid', 'bottom'].includes(p.zone) && p.groupSize >= 1);
     assert.doesNotThrow(() => JSON.stringify(profile(set)));
   }
@@ -275,4 +275,35 @@ test('every fish4 body draws at every size, inside its window', () => {
       }
     }
   }
+});
+
+test('terrain ecology: care in the fish\'s own medium, water fish keep fish3\'s', async () => {
+  const { ecologyOf } = await import('../src/v3/fish/ecology.js');
+  const { extOf } = await import('../src/v4/fish/index.js');
+  for (let i = 0; i < 40; i++) {
+    const set = fromSeed(`w${i}`, 'classic');
+    const e3 = ecologyOf(toFish3(set), extOf(set));
+    const e4 = ecology4Of(set);
+    for (const k of Object.keys(e3)) if (k !== 'care') assert.deepEqual(e4[k], e3[k], k);
+    assert.deepEqual(e4.care.tempC, e3.care.tempC);
+    assert.equal(e4.medium.value, 'water');
+  }
+  const bands = { lava: [850, 1250], sand: [35, 70], nuclear: [40, 90] };
+  for (const [t, band] of Object.entries(bands)) {
+    for (let i = 0; i < 12; i++) {
+      const set = fromSeed(`t${t}${i}`, 'ecotype', { terrain: t });
+      const e = ecology4Of(set);
+      assert.equal(e.terrain.value, t);
+      assert.deepEqual(e.care.tempC, band);
+      const st = statsOf(set);
+      assert.ok(st.idealTempC.real >= band[0] && st.idealTempC.real <= band[1], `${t} ${st.idealTempC.real}`);
+      if (t !== 'nuclear') assert.equal(st.idealPH.applies, false);
+      if (t === 'lava') assert.ok(st.heatTolerance.value >= 0.7, `lava heat ${st.heatTolerance.value}`);
+      if (t === 'nuclear') assert.ok(st.radiance.value > 0.3 && st.luminosity.value > 0.3, 'nuclear glows');
+    }
+  }
+  // Sand fish dig more than water fish, on average.
+  const mean = (t, id) => Array.from({ length: 60 }, (_, i) => statsOf(fromSeed(`m${t}${i}`, 'ecotype', { terrain: t }))[id].value).reduce((a, b) => a + b) / 60;
+  assert.ok(mean('sand', 'burrowing') > mean('water', 'burrowing') + 0.25);
+  assert.ok(mean('lava', 'armour') > mean('water', 'armour') + 0.1);
 });

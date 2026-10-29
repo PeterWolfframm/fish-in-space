@@ -1,7 +1,7 @@
 // Nuclear bodies: fish of a starbase's cooling lake and of warm isotope springs. Radiant and
 // harmless (they glow; they do not hurt): Cherenkov blues, uranium-glass greens, a light inside.
 
-const COOLANT = { salinity: 'fresh', temp: 'tropical', hardness: 'soft', medium: 'coolant', heat: 'warm', radiance: 0.6 };
+const COOLANT = { salinity: 'fresh', temp: 'tropical', hardness: 'soft', medium: 'coolant', heat: 'hot', radiance: 0.6 };
 
 export default [
   {
