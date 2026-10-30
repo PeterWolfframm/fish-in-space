@@ -7,7 +7,7 @@
 import { fish3Traits, fromV1Code, jitterKey } from './genome.js';
 import { BODIES } from './bodies.js';
 import { phenotype, CLASS_LEN, describeGenes } from './phenotype.js';
-import { drawFish3 } from './draw.js';
+import { drawFish3, PARTS } from './draw.js';
 import { breed, breedDetailed } from './breeding.js';
 import { nameOf, namesOf } from './names.js';
 import { loreOf, loreText } from './lore.js';
@@ -144,13 +144,16 @@ export default {
   fpsOf,
   rarity: rarityScore,
   anims: ANIMS,
-  frame(genome, animId, i = 0) {
+  /** `opts.enabled(id)` toggles a part off (the studio's Anatomy panel); the window stays the full fish's. */
+  frame(genome, animId, i = 0, opts) {
     const set = T.normalize(genome);
     const a = ANIMS.find((x) => x.id === animId) ?? ANIMS[0];
     const box = windowOf(set);
-    const { img } = drawFish3(set, poseOf(set, a, i));
+    const { img } = drawFish3(set, poseOf(set, a, i), undefined, opts);
     return crop(img, box.x, box.y, box.w, box.h);
   },
+  /** Every paint-order layer id the studio's Anatomy panel can toggle or solo. */
+  layers: { ids: PARTS.map((p) => p.id) },
 };
 
 export { jitterKey };

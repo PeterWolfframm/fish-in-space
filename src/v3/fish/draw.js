@@ -101,9 +101,10 @@ export const PARTS = [
   { id: 'orbit', paint: (ctx) => orbit(ctx) },
 ];
 
-/** One frame. Returns `{ img, origin }` on the scratch canvas. */
-export function drawFish3(genome, pose, look) {
-  return paintFish(genome, pose, look, PARTS);
+/** One frame. Returns `{ img, origin }` on the scratch canvas. `opts.enabled(id)` filters parts (the studio's per-layer toggles); omitted, every part paints as before. */
+export function drawFish3(genome, pose, look, opts) {
+  const parts = opts?.enabled ? PARTS.filter((p) => opts.enabled(p.id)) : PARTS;
+  return paintFish(genome, pose, look, parts);
 }
 
 /**
