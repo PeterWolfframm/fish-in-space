@@ -60,7 +60,7 @@ const IDENTITY_FIELDS = [
   { id: 'form', label: 'Form', group: 'shape', choices: FORM_IDS.map((id) => ({ id, label: id === 'fish3' ? 'Fish3 body' : BODY_RECORDS[id].label })), salt: 2624, when: (s) => s.form === 'fish3' || BODY_RECORDS[s.form]?.terrain === s.terrain },
   { id: 'pigment', label: 'Pigment', group: 'colour', choices: PIGMENTS.map((p) => ({ id: p.id, label: p.label, hex: p.hex })), salt: 2640 },
   { id: 'markPigment', label: 'Mark pigment', group: 'colour', choices: PIGMENTS.map((p) => ({ id: p.id, label: p.label, hex: p.hex })), salt: 2656 },
-  { id: 'detail', label: 'Detail', group: 'shape', choices: [{ id: 'v3', label: 'Fish3 detail' }, { id: 'v4', label: 'Scaled detail' }], salt: 2672 },
+  { id: 'detail', label: 'Detail', group: 'shape', choices: [{ id: 'v3', label: 'Fish3 detail' }, { id: 'v4', label: 'Scaled detail' }, { id: 'v4e', label: 'Scaled detail, big eyes' }], salt: 2672 },
 ].map((f) => ({ ...f, weights: first(f.choices.length), default: f.choices[0].id, volatility: 0, dominance: 0.5 }));
 
 export const IDENTITY_IDS = IDENTITY_FIELDS.map((f) => f.id);

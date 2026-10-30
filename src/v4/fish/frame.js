@@ -63,7 +63,19 @@ export function drawFish4(set, pose, look, opts) {
     prepare(ctx) {
       ctx.v4 = set;
       // Scaled detail: past a large adult, texture pitch and ray spacing grow with the fish.
-      if (set.detail === 'v4') ctx.detailScale = Math.max(1, ctx.s / 1.5);
+      if (set.detail === 'v4' || set.detail === 'v4e') {
+        const d = Math.max(1, ctx.s / 1.5);
+        ctx.detailScale = d;
+        // And the eye with them, for `v4e`. fish3 stops at a 6 px eye, which reads as a pinhole
+        // on a 128 px giant; past a large adult the eye grows by the same measure as the
+        // texture, as far as the 8 px stamp. `eyeGrow` is what the eye wants, `eyeCap` the
+        // largest stamp there is. `v4` keeps the 6 px eye, so every fish already stored under
+        // it paints the pixels it always did.
+        if (set.detail === 'v4e') {
+          ctx.eyeCap = Math.min(8, 6 + Math.round((d - 1) * 2));
+          ctx.eyeGrow = ctx.eyeCap - 6;
+        }
+      }
     },
   });
 }

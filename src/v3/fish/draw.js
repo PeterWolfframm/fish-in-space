@@ -1025,21 +1025,30 @@ function pelvicFins(ctx, side) {
 // ---------------------------------------------------------------------------------------------
 // Eyes
 
-/** Hand-set eye stamps per size. S sclera, P pupil, H glint, h second glint, . skip. */
-const EYES = {
+/**
+ * Hand-set eye stamps per size. S sclera, P pupil, H glint, h second glint, . skip.
+ * 7 and 8 are for a fish too big for a 6 px eye; only a generator that raises `ctx.eyeCap`
+ * reaches them (fish4's giants), so fish3's fish are drawn exactly as they always were.
+ */
+export const EYES = {
   2: ['PH', 'PP'],
   3: ['SPH', 'SPP', 'SSP'],
   4: ['SPPH', 'SPPP', 'SPPP', 'SSSP'],
   5: ['.SPP.', 'SPPHP', 'SPPPP', 'SPhPP', '.SSS.'],
   6: ['.SSPP.', 'SSPPHP', 'SPPPHP', 'SPPPPP', 'SPhPPP', '.SSSS.'],
+  7: ['.SSPPP.', 'SSPPPHP', 'SPPPPHP', 'SPPPPPP', 'SPPPPPP', 'SPhPPPP', '.SSSSS.'],
+  8: ['..SSPP..', '.SSPPPH.', 'SSPPPPHP', 'SPPPPPPP', 'SPPPPPPP', 'SPPPPPPP', '.SPhPPP.', '..SSSS..'],
 };
 
 function eye(ctx) {
   const { g, ph, set, pal, colT, s, pose, rampOf } = ctx;
   const ec = colT(ph.eyeT);
   if (!ec || ec.back + ec.belly < 3) return;
-  let size = Math.max(2, Math.min(ph.eyeSize + (set.eyeMount === 'telescope' ? 1 : 0), Math.floor(ec.back + ec.belly) - 1));
-  size = Math.min(6, size);
+  // `eyeCap` defaults to 6, fish3's largest stamp. With the cap at 6, `eyeWant` clamps to
+  // `eyeSize`, so this is the same arithmetic fish3 has always done.
+  const cap = Math.min(8, ctx.eyeCap ?? 6);
+  let size = Math.max(2, Math.min(ph.eyeWant + (ctx.eyeGrow ?? 0) + (set.eyeMount === 'telescope' ? 1 : 0), Math.floor(ec.back + ec.belly) - 1));
+  size = Math.min(cap, size);
   const stamp = EYES[size];
   let top = Math.round(ec.mid - ec.back * ph.eyeUp - size / 2 + 0.5);
   const left = ec.x - size + 1;
@@ -1121,8 +1130,12 @@ function eye(ctx) {
     }
     if (mood === 'derpy' && size >= 3) {
       for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (stamp[y][x] !== '.') g.px(left + x, top + y, sclera);
-      g.px(left, top + size - 1, pupil);
-      if (size >= 4) g.px(left + 1, top + size - 1, pupil);
+      // The pupil has rolled down into the bottom corner. It grows with the eye, so a giant's
+      // derpy eye is not one flat disc with two stray pixels in it. At 6 px and under this is
+      // the two pixels fish3 has always drawn.
+      const pw = size >= 4 ? Math.max(2, size - 4) : 1;
+      const prow = size >= 7 ? 2 : 1;
+      for (let dy = 0; dy < prow; dy++) for (let dx = 0; dx < pw; dx++) g.px(left + dx, top + size - 1 - dy, pupil);
     }
   }
   if (lid > 0.01) {
