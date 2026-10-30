@@ -19,7 +19,7 @@ import { anim, poseAt } from '../../v2/anim/rig.js';
 import { roundUp, crop } from '../../v2/kit/sizes.js';
 import { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, FISH3_IDS, V4_IDS, FEATURE_IDS } from './genome.js';
 import { latentLoci, lociOf, LOCI } from './loci.js';
-import { resolveParams, PRESETS, DEFAULT_PRESET, paramsHash, weightOf } from './params.js';
+import { resolveParams, PRESETS, DEFAULT_PRESET, paramsHash, weightOf, isEcotype } from './params.js';
 import { drawFish4, finishFrame, EXPRESSIONS } from './frame.js';
 import { expression, wiggle, droop, floatDead } from './motions.js';
 import { FEATURES } from './features/registry.js';
@@ -44,6 +44,7 @@ import { PARAM_SCHEMA, PARAM_GROUPS, validateParams, setParam, schemaFor } from 
 export { characterOf, compatibility, blurbOf, textOf, textFor, TEXT_POOLS };
 export { LEVEL_OF_DIET, LINKS, KITS, linkMuls, CONSTRAINTS, violations };
 export { PARAM_SCHEMA, PARAM_GROUPS, validateParams, setParam, schemaFor };
+export { isEcotype };
 export { rarityOf, tierOf, RARITY_COLORS, reproduction, canBreed, breed4, breedClutch, breedProblem, mythicChance, valueOf, eggCost };
 export { weightOf, ecology4Of, careLine, extOf, bodyOf, BODY_RECORDS, NEW_FORMS, placeOf, protoOf, speciesKey, TERRAINS, REGIONS, NICHES };
 export { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES, taxonomyOf, ORDERS, FAMILIES, namesOf4 };
@@ -58,7 +59,7 @@ const T = fish4Traits;
  */
 export function fromSeed(seed, params, place) {
   const P = resolveParams(paramsFromOpts(params));
-  if (P.algo === 'ecotype') return ecotypeFromSeed(seed, P, weightOf, place);
+  if (isEcotype(P.algo)) return ecotypeFromSeed(seed, P, weightOf, place);
   const { weighted } = roller(seed, 0);
   const out = {};
   for (const f of T.fields) {

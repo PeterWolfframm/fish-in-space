@@ -1,0 +1,1641 @@
+[
+ {
+  "id": "rarity",
+  "salt": 16,
+  "choices": [
+   "common",
+   "uncommon",
+   "rare",
+   "myth",
+   "epic",
+   "legendary"
+  ]
+ },
+ {
+  "id": "body",
+  "salt": 32,
+  "choices": [
+   "torpedo",
+   "round",
+   "disc",
+   "eel",
+   "arrow",
+   "pufferish",
+   "shark",
+   "hatchet",
+   "piranha",
+   "boxfish",
+   "cowfish",
+   "trigger",
+   "mola",
+   "lionfish",
+   "betta",
+   "koi",
+   "catfish",
+   "angler",
+   "barracuda",
+   "needle",
+   "swordfish",
+   "discus",
+   "butterfly",
+   "clown",
+   "tetra",
+   "guppy",
+   "oarfish",
+   "sturgeon",
+   "coelacanth",
+   "blobfish",
+   "flyingfish",
+   "knifefish"
+  ]
+ },
+ {
+  "id": "size",
+  "salt": 48,
+  "choices": [
+   "tiny",
+   "small",
+   "medium",
+   "large",
+   "huge",
+   "giant"
+  ]
+ },
+ {
+  "id": "snout",
+  "salt": 64,
+  "choices": [
+   "blunt",
+   "pointed",
+   "long",
+   "under"
+  ]
+ },
+ {
+  "id": "skin",
+  "salt": 80,
+  "choices": [
+   "ember",
+   "tangerine",
+   "butter",
+   "lime",
+   "jade",
+   "teal",
+   "lagoon",
+   "cobalt",
+   "violet",
+   "orchid",
+   "coral",
+   "rose",
+   "sand",
+   "bronze",
+   "slate",
+   "pewter",
+   "ink",
+   "pearl"
+  ]
+ },
+ {
+  "id": "belly",
+  "salt": 96,
+  "choices": [
+   "none",
+   "soft",
+   "pale",
+   "white"
+  ]
+ },
+ {
+  "id": "pattern",
+  "salt": 112,
+  "choices": [
+   "plain",
+   "bars",
+   "stripe",
+   "spots",
+   "mottle",
+   "saddle",
+   "tiger",
+   "leopard",
+   "dashdot",
+   "patches",
+   "reticulate",
+   "chevron"
+  ]
+ },
+ {
+  "id": "markColor",
+  "salt": 128,
+  "choices": [
+   "soot",
+   "chalk",
+   "ember",
+   "butter",
+   "jade",
+   "lagoon",
+   "violet",
+   "coral",
+   "bronze"
+  ]
+ },
+ {
+  "id": "density",
+  "salt": 144,
+  "choices": [
+   "sparse",
+   "even",
+   "dense"
+  ]
+ },
+ {
+  "id": "dorsal",
+  "salt": 160,
+  "choices": [
+   "low",
+   "tall",
+   "spiny",
+   "sail",
+   "none",
+   "double",
+   "streamer",
+   "crest",
+   "venom",
+   "finlets",
+   "adipose"
+  ]
+ },
+ {
+  "id": "tail",
+  "salt": 176,
+  "choices": [
+   "fan",
+   "fork",
+   "round",
+   "lyre",
+   "veil",
+   "lunate",
+   "truncate",
+   "double",
+   "sword",
+   "hetero",
+   "paddle",
+   "streamer",
+   "lobed",
+   "pin"
+  ]
+ },
+ {
+  "id": "pectoral",
+  "salt": 192,
+  "choices": [
+   "small",
+   "round",
+   "long",
+   "wing",
+   "fan",
+   "glider",
+   "lobed",
+   "frilly"
+  ]
+ },
+ {
+  "id": "finTint",
+  "salt": 208,
+  "choices": [
+   "match",
+   "light",
+   "dark",
+   "accent",
+   "clear"
+  ]
+ },
+ {
+  "id": "eye",
+  "salt": 224,
+  "choices": [
+   "small",
+   "normal",
+   "big"
+  ]
+ },
+ {
+  "id": "eyeColor",
+  "salt": 240,
+  "choices": [
+   "jet",
+   "amber",
+   "copper",
+   "moss",
+   "sky",
+   "ruby"
+  ]
+ },
+ {
+  "id": "glow",
+  "salt": 256,
+  "choices": [
+   "none",
+   "spots",
+   "edge",
+   "full"
+  ]
+ },
+ {
+  "id": "sheen",
+  "salt": 272,
+  "choices": [
+   "none",
+   "pearl",
+   "metal"
+  ]
+ },
+ {
+  "id": "length",
+  "salt": 1040,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "depth",
+  "salt": 1056,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "head",
+  "salt": 1072,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "hump",
+  "salt": 1088,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "stalk",
+  "salt": 1104,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "eyePos",
+  "salt": 1120,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "quirk",
+  "salt": 1136,
+  "choices": [
+   "neat",
+   "natural",
+   "wonky"
+  ]
+ },
+ {
+  "id": "chonk",
+  "salt": 1152,
+  "choices": [
+   "lean",
+   "fit",
+   "plump",
+   "round"
+  ]
+ },
+ {
+  "id": "jaw",
+  "salt": 1168,
+  "choices": [
+   "auto",
+   "plain",
+   "piranha",
+   "fangs",
+   "underbite",
+   "beak",
+   "sucker",
+   "tube",
+   "bill",
+   "gape",
+   "lips",
+   "grin"
+  ]
+ },
+ {
+  "id": "mood",
+  "salt": 1184,
+  "choices": [
+   "content",
+   "happy",
+   "grumpy",
+   "derpy",
+   "smug",
+   "sleepy"
+  ]
+ },
+ {
+  "id": "eyeStyle",
+  "salt": 1200,
+  "choices": [
+   "round",
+   "dot",
+   "sparkle",
+   "googly"
+  ]
+ },
+ {
+  "id": "eyeMount",
+  "salt": 1216,
+  "choices": [
+   "normal",
+   "telescope",
+   "tubular"
+  ]
+ },
+ {
+  "id": "eyeColor2",
+  "salt": 1232,
+  "choices": [
+   "same",
+   "jet",
+   "amber",
+   "copper",
+   "moss",
+   "sky",
+   "ruby"
+  ]
+ },
+ {
+  "id": "blush",
+  "salt": 1248,
+  "choices": [
+   "no",
+   "yes"
+  ]
+ },
+ {
+  "id": "forehead",
+  "salt": 1264,
+  "choices": [
+   "flat",
+   "domed",
+   "wen",
+   "crested"
+  ]
+ },
+ {
+  "id": "extras",
+  "salt": 1280,
+  "choices": [
+   "auto",
+   "none",
+   "barbels",
+   "horns",
+   "nosehorn",
+   "lure",
+   "cheekspines",
+   "scutes"
+  ]
+ },
+ {
+  "id": "anal",
+  "salt": 1296,
+  "choices": [
+   "auto",
+   "none",
+   "small",
+   "ribbon",
+   "mirror",
+   "spike",
+   "sail"
+  ]
+ },
+ {
+  "id": "pelvic",
+  "salt": 1312,
+  "choices": [
+   "auto",
+   "none",
+   "small",
+   "long",
+   "feelers",
+   "spine",
+   "sucker"
+  ]
+ },
+ {
+  "id": "finPattern",
+  "salt": 1328,
+  "choices": [
+   "plain",
+   "spotted",
+   "banded",
+   "tipped",
+   "gilded"
+  ]
+ },
+ {
+  "id": "scales",
+  "salt": 1344,
+  "choices": [
+   "smooth",
+   "fine",
+   "scallops",
+   "plates",
+   "sandpaper"
+  ]
+ },
+ {
+  "id": "markings",
+  "salt": 1360,
+  "choices": [
+   "none",
+   "mask",
+   "ocellus",
+   "tailspot",
+   "cheek",
+   "lipstick",
+   "cleaner",
+   "photophores"
+  ]
+ },
+ {
+  "id": "damage",
+  "salt": 1376,
+  "choices": [
+   "none",
+   "warts",
+   "scar",
+   "notched"
+  ]
+ },
+ {
+  "id": "morph",
+  "salt": 1392,
+  "choices": [
+   "auto",
+   "galaxy",
+   "neon",
+   "chrome",
+   "ombre",
+   "split"
+  ]
+ },
+ {
+  "id": "iridescence",
+  "salt": 1408,
+  "choices": [
+   "none",
+   "shimmer",
+   "rainbow"
+  ]
+ },
+ {
+  "id": "stage",
+  "salt": 1424,
+  "choices": [
+   "fry",
+   "juvenile",
+   "adult",
+   "elder"
+  ]
+ },
+ {
+  "id": "sex",
+  "salt": 1440,
+  "choices": [
+   "f",
+   "m"
+  ]
+ },
+ {
+  "id": "swim",
+  "salt": 1456,
+  "choices": [
+   "raised",
+   "side",
+   "cartoon"
+  ]
+ },
+ {
+  "id": "gait",
+  "salt": 1472,
+  "choices": [
+   "auto",
+   "anguilliform",
+   "subcarangiform",
+   "carangiform",
+   "thunniform",
+   "ostraciiform",
+   "labriform",
+   "balistiform",
+   "amiiform"
+  ]
+ },
+ {
+  "id": "geneA",
+  "salt": 1488,
+  "choices": [
+   "wild",
+   "albino",
+   "leucistic",
+   "melanistic",
+   "axanthic",
+   "ghost",
+   "bubble",
+   "xanthic",
+   "longfin",
+   "koi"
+  ]
+ },
+ {
+  "id": "geneB",
+  "salt": 1504,
+  "choices": [
+   "wild",
+   "albino",
+   "leucistic",
+   "melanistic",
+   "axanthic",
+   "ghost",
+   "bubble",
+   "xanthic",
+   "longfin",
+   "koi"
+  ]
+ },
+ {
+  "id": "hybrid",
+  "salt": 1520,
+  "choices": [
+   "none",
+   "chompball",
+   "noodleshark",
+   "kitefish",
+   "whiskerkoi",
+   "moonblob",
+   "lancefish",
+   "pincushion",
+   "silkkoi",
+   "lanternbite",
+   "jesterbox",
+   "sawdisc",
+   "dragonling",
+   "gliderhatch",
+   "neonfan",
+   "plumpike",
+   "fossilcat"
+  ]
+ },
+ {
+  "id": "chaos",
+  "salt": 1536,
+  "choices": [
+   "stable",
+   "normal",
+   "chaotic"
+  ]
+ },
+ {
+  "id": "generation",
+  "salt": 1552,
+  "choices": [
+   "g0",
+   "g1",
+   "g2",
+   "g3",
+   "g4",
+   "g5",
+   "g6",
+   "g7",
+   "g8",
+   "g9",
+   "g10",
+   "g11",
+   "g12",
+   "g13",
+   "g14",
+   "g15",
+   "g16",
+   "g17",
+   "g18",
+   "g19",
+   "g20",
+   "g21",
+   "g22",
+   "g23",
+   "g24",
+   "g25",
+   "g26",
+   "g27",
+   "g28",
+   "g29",
+   "g30",
+   "g31",
+   "g32",
+   "g33",
+   "g34",
+   "g35"
+  ]
+ },
+ {
+  "id": "lineA",
+  "salt": 1568,
+  "choices": [
+   "l0",
+   "l1",
+   "l2",
+   "l3",
+   "l4",
+   "l5",
+   "l6",
+   "l7",
+   "l8",
+   "l9",
+   "l10",
+   "l11",
+   "l12",
+   "l13",
+   "l14",
+   "l15",
+   "l16",
+   "l17",
+   "l18",
+   "l19",
+   "l20",
+   "l21",
+   "l22",
+   "l23",
+   "l24",
+   "l25",
+   "l26",
+   "l27",
+   "l28",
+   "l29",
+   "l30",
+   "l31",
+   "l32",
+   "l33",
+   "l34",
+   "l35"
+  ]
+ },
+ {
+  "id": "lineB",
+  "salt": 1584,
+  "choices": [
+   "l0",
+   "l1",
+   "l2",
+   "l3",
+   "l4",
+   "l5",
+   "l6",
+   "l7",
+   "l8",
+   "l9",
+   "l10",
+   "l11",
+   "l12",
+   "l13",
+   "l14",
+   "l15",
+   "l16",
+   "l17",
+   "l18",
+   "l19",
+   "l20",
+   "l21",
+   "l22",
+   "l23",
+   "l24",
+   "l25",
+   "l26",
+   "l27",
+   "l28",
+   "l29",
+   "l30",
+   "l31",
+   "l32",
+   "l33",
+   "l34",
+   "l35"
+  ]
+ },
+ {
+  "id": "purity",
+  "salt": 1600,
+  "choices": [
+   "p0",
+   "p1",
+   "p2",
+   "p3",
+   "p4",
+   "p5",
+   "p6",
+   "p7",
+   "p8",
+   "p9"
+  ]
+ },
+ {
+  "id": "signature",
+  "salt": 1616,
+  "choices": [
+   "auto",
+   "crown",
+   "halo",
+   "thirdeye",
+   "runes",
+   "embers",
+   "voideye",
+   "wings",
+   "brand"
+  ]
+ },
+ {
+  "id": "relic",
+  "salt": 1632,
+  "choices": [
+   "auto"
+  ]
+ },
+ {
+  "id": "chroma",
+  "salt": 2048,
+  "choices": [
+   "c0",
+   "c1",
+   "c2",
+   "c3",
+   "c4",
+   "c5",
+   "c6"
+  ]
+ },
+ {
+  "id": "metabolismA",
+  "salt": 2064,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "metabolismB",
+  "salt": 2080,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "vigorA",
+  "salt": 2096,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "vigorB",
+  "salt": 2112,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "resilienceA",
+  "salt": 2128,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "resilienceB",
+  "salt": 2144,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "boldnessA",
+  "salt": 2160,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "boldnessB",
+  "salt": 2176,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "aggressionA",
+  "salt": 2192,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "aggressionB",
+  "salt": 2208,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "sociabilityA",
+  "salt": 2224,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "sociabilityB",
+  "salt": 2240,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "thermalA",
+  "salt": 2256,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "thermalB",
+  "salt": 2272,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "acidityA",
+  "salt": 2288,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "acidityB",
+  "salt": 2304,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "zoneA",
+  "salt": 2320,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "zoneB",
+  "salt": 2336,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "energyA",
+  "salt": 2352,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "energyB",
+  "salt": 2368,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "fertilityA",
+  "salt": 2384,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "fertilityB",
+  "salt": 2400,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "fecundityA",
+  "salt": 2416,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "fecundityB",
+  "salt": 2432,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "maturationA",
+  "salt": 2448,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "maturationB",
+  "salt": 2464,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "longevityA",
+  "salt": 2480,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "longevityB",
+  "salt": 2496,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "aetherA",
+  "salt": 2512,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "aetherB",
+  "salt": 2528,
+  "choices": [
+   "a0",
+   "a1",
+   "a2",
+   "a3",
+   "a4",
+   "a5",
+   "a6",
+   "a7",
+   "a8",
+   "a9",
+   "a10",
+   "a11",
+   "a12",
+   "a13",
+   "a14",
+   "a15"
+  ]
+ },
+ {
+  "id": "helmet",
+  "salt": 3088,
+  "choices": [
+   "none",
+   "bubble",
+   "retro",
+   "visor",
+   "antenna"
+  ]
+ },
+ {
+  "id": "terrain",
+  "salt": 2560,
+  "choices": [
+   "water",
+   "lava",
+   "sand",
+   "nuclear",
+   "aether"
+  ]
+ },
+ {
+  "id": "region",
+  "salt": 2576,
+  "choices": [
+   "unmapped",
+   "riverlands",
+   "reef",
+   "pelagic",
+   "deep",
+   "nebula",
+   "icemoon",
+   "magmasea",
+   "ventfields",
+   "dunesea",
+   "glassflats",
+   "reactorlake",
+   "isotopesprings",
+   "voiddrift"
+  ]
+ },
+ {
+  "id": "niche",
+  "salt": 2592,
+  "choices": [
+   "unmapped",
+   "grazer",
+   "school",
+   "ambush",
+   "pursuit",
+   "sifter",
+   "drifter",
+   "percher",
+   "burrower",
+   "glider",
+   "lurker",
+   "ornament"
+  ]
+ },
+ {
+  "id": "clade",
+  "salt": 2608,
+  "choices": [
+   "wild",
+   "k0",
+   "k1",
+   "k2",
+   "k3",
+   "k4",
+   "k5",
+   "k6",
+   "k7"
+  ]
+ },
+ {
+  "id": "form",
+  "salt": 2624,
+  "choices": [
+   "fish3",
+   "goby",
+   "parrotfish",
+   "tang",
+   "grouper",
+   "gar",
+   "archerfish",
+   "loach",
+   "opah",
+   "cinderback",
+   "emberdart",
+   "slagjaw",
+   "pyreel",
+   "dunefin",
+   "burrowmaw",
+   "sandskipper",
+   "glassback",
+   "glowbelly",
+   "rodfish",
+   "isotail",
+   "quarkling"
+  ]
+ },
+ {
+  "id": "pigment",
+  "salt": 2640,
+  "choices": [
+   "fish3",
+   "obsidian",
+   "basalt",
+   "magma",
+   "cinder",
+   "ash",
+   "sulfur",
+   "ochre",
+   "dune",
+   "sandstone",
+   "terracotta",
+   "desertrose",
+   "glass",
+   "uraniumglass",
+   "cherenkov",
+   "isotopeamber",
+   "thorium",
+   "radium",
+   "voidink",
+   "starlight"
+  ]
+ },
+ {
+  "id": "markPigment",
+  "salt": 2656,
+  "choices": [
+   "fish3",
+   "obsidian",
+   "basalt",
+   "magma",
+   "cinder",
+   "ash",
+   "sulfur",
+   "ochre",
+   "dune",
+   "sandstone",
+   "terracotta",
+   "desertrose",
+   "glass",
+   "uraniumglass",
+   "cherenkov",
+   "isotopeamber",
+   "thorium",
+   "radium",
+   "voidink",
+   "starlight"
+  ]
+ },
+ {
+  "id": "detail",
+  "salt": 2672,
+  "choices": [
+   "v3",
+   "v4"
+  ]
+ }
+]

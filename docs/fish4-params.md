@@ -104,7 +104,7 @@ node cli/forge.mjs fish4 --params my-params.json --count 48 --contact
 | `label` | string |  | Label |
 | `note` | string |  | Note |
 | `base` | enum (ecotype, classic, frontier, water, vivid, wild, curated, seedfall) |  | Built on preset |
-| `algo` | enum (ecotype, classic) |  | Algorithm: ecotype: places and species; classic: fish3, field by field |
+| `algo` | enum (ecotype-1, ecotype, classic) |  | Algorithm: ecotype-1: places and species; classic: fish3, field by field. Plain `ecotype` means the newest ecotype roll |
 | `rules` | rules |  | Stat rules: 'default' or an array of rules (stats-data.js) |
 
 ### places

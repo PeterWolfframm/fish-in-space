@@ -9,7 +9,7 @@
 //   setParam(p, 'clusters.cohesion', 0.5) → a new params object (for --param and sliders)
 
 import { fish4Traits as T } from './genome.js';
-import { PRESETS, resolveParams } from './params.js';
+import { PRESETS, resolveParams, isEcotype } from './params.js';
 import { STICK, terrainWeights } from './ecotype.js';
 import { TERRAIN_IDS, REGIONS, NICHE_IDS } from './data/terrains.js';
 import { BODY_RECORDS } from './bodies/index.js';
@@ -40,7 +40,7 @@ export const PARAM_SCHEMA = [
   { path: 'label', type: 'string', label: 'Label', group: 'algorithm' },
   { path: 'note', type: 'string', label: 'Note', group: 'algorithm' },
   { path: 'base', type: 'enum', choices: Object.keys(PRESETS), label: 'Built on preset', group: 'algorithm' },
-  { path: 'algo', type: 'enum', choices: ['ecotype', 'classic'], label: 'Algorithm', group: 'algorithm', note: 'ecotype: places and species; classic: fish3, field by field' },
+  { path: 'algo', type: 'enum', choices: ['ecotype-1', 'ecotype', 'classic'], label: 'Algorithm', group: 'algorithm', note: 'ecotype-1: places and species; classic: fish3, field by field. Plain `ecotype` means the newest ecotype roll' },
   { path: 'rules', type: 'rules', label: 'Stat rules', group: 'algorithm', note: "'default' or an array of rules (stats-data.js)" },
   // places
   { path: 'terrains', type: 'map', keys: TERRAIN_IDS, value: weight, label: 'Terrain odds', group: 'places', note: 'missing = the terrain’s own weight; locked terrains need `unlocked`' },
@@ -199,7 +199,7 @@ export function validateParams(p) {
   if (!errors.length) {
     const R = resolveParams(p);
     if (R.breeding.clutchMin > R.breeding.clutchMax) err('breeding.clutchMin', 'is above clutchMax');
-    if (R.algo === 'ecotype' && terrainWeights(R).every(([, w]) => !(w > 0))) err('terrains', 'every terrain is off (or locked): no fish can roll');
+    if (isEcotype(R.algo) && terrainWeights(R).every(([, w]) => !(w > 0))) err('terrains', 'every terrain is off (or locked): no fish can roll');
     if (R.batch.pyramid.every((x) => !(x > 0))) err('batch.pyramid', 'every share is 0');
   }
   return { ok: !errors.length, errors, warnings };

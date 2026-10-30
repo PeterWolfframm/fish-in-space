@@ -17,8 +17,12 @@ export const BASE_PARAMS = {
   /** Choice-weight multipliers: `{ fieldId: { choiceId: × } }`. */
   weights: {},
   /**
-   * How a seed becomes a fish: `classic` rolls every field on its own (fish3's roll), `ecotype`
+   * How a seed becomes a fish: `classic` rolls every field on its own (fish3's roll), `ecotype-1`
    * picks a place and a species first (ecotype.js) so fish cluster into kinds.
+   *
+   * The ecotype roll is versioned. A change to it that moves which fish a seed gives lands as
+   * `ecotype-2`, leaving `ecotype-1` to roll what it always rolled, so a stored seed is never
+   * silently re-mapped. Plain `ecotype` is kept as an alias for the newest one.
    */
   algo: 'classic',
   /** Terrain odds (ecotype): `{ water, lava, sand, nuclear, aether }`; missing = the terrain's default. */
@@ -146,7 +150,7 @@ const ECOTYPE = merge(BASE_PARAMS, {
   id: 'ecotype',
   label: 'Ecotype (fish4)',
   note: 'Fish come from places: terrain, region, niche and species. Lava, sand and nuclear fish included.',
-  algo: 'ecotype',
+  algo: 'ecotype-1',
 });
 
 export const PRESETS = {
@@ -206,6 +210,9 @@ export const PRESETS = {
 };
 
 /** The preset a seed rolls under when nothing is said. */
+/** Is this the ecotype roll? Matches every version of it, so `ecotype` still means the newest. */
+export const isEcotype = (algo) => algo === 'ecotype' || String(algo).startsWith('ecotype-');
+
 export const DEFAULT_PRESET = 'ecotype';
 
 /** Params from a preset id, a partial object (over `base`, else the default preset), or nothing. */

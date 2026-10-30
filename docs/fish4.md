@@ -290,9 +290,13 @@ Salts within a field's band:
 | Salts | Fields |
 |---|---|
 | 2048 | chroma |
-| 2064–2543 | loci (two alleles each) |
+| 2064–2543 | loci (two alleles each) — full: a 16th locus needs a wider range |
 | 2560–2672 | terrain, region, niche, clade, form, pigment, markPigment, detail |
 | 3072+ | feature modules (helmet 3088) |
+
+This table goes stale; the live map does not. `node scripts/fish4-salts.mjs` prints every salt in
+use with its owner and the next free one in each range, and `--check` fails on a collision. Run it
+before adding anything that rolls.
 
 ## Codes and compatibility
 
@@ -307,9 +311,16 @@ Salts within a field's band:
   break is deliberate.
 - **Terrain fish and new forms are f4-only.** `toFish3` exports them as their `kin` body, which
   loses their form and pigments.
-- **`f4` is not frozen yet.** Freeze it before the game stores fish4 codes (see the roadmap).
-- **`params.algo`** is `ecotype` or `classic`, and `paramsHash` goes into the CLI manifest.
-  Record both with any stored batch.
+- **`f4` is frozen.** Fields and choices may be **appended**; nothing may move, change salt or be
+  removed, because a code is positional. Three things enforce it:
+  `test/fish4-golden.test.mjs` (seeds × presets → codes and frame prints),
+  `test/fish4-fields.test.mjs` (the committed field-order snapshot) and
+  `scripts/fish4-salts.mjs --check`. Refresh a fixture only on purpose, with
+  `UPDATE_GOLDENS=1`, and say in the commit which fish changed and why.
+- **`params.algo`** is `ecotype-1` or `classic`, and `paramsHash` goes into the CLI manifest.
+  Record both with any stored batch. The ecotype roll is versioned: a change that moves which
+  fish a seed gives lands as `ecotype-2`, so `ecotype-1` keeps rolling what it always rolled.
+  Plain `ecotype` is an alias for the newest one.
 
 ## Tests
 
