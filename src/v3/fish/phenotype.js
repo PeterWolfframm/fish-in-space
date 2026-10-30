@@ -142,9 +142,12 @@ function build(set, stageOverride, ext) {
   // `arch.eyeUp` (fish4 bodies only) raises the eye: a sand fish keeps it on top of its head.
   const eyeUp = (arch.eyeUp ?? 0.55) + 0.06 * stepOf(set.eyePos);
 
-  // Eye stamp: grows with the fish, one step per eye trait, fry get big eyes.
+  // Eye stamp: grows with the fish, one step per eye trait, fry get big eyes. `eyeWant` is the
+  // size before fish3's 6 px cap, for a generator that has bigger stamps (fish4's giants: see
+  // `EYES` and `eyeCap` in draw.js). fish3 itself only ever reads `eyeSize`.
   const eyeBias = { small: -1, normal: 0, big: 1 }[set.eye ?? 'normal'] + (stage === 'fry' ? 1 : 0) + (stage === 'juvenile' ? 0.5 : 0);
-  const eyeSize = Math.max(2, Math.min(6, Math.round(3 + Math.log2(s) * 1.3 + eyeBias)));
+  const eyeWant = Math.max(2, Math.round(3 + Math.log2(s) * 1.3 + eyeBias));
+  const eyeSize = Math.min(6, eyeWant);
 
   const ph = {
     set,
@@ -174,6 +177,7 @@ function build(set, stageOverride, ext) {
     eyeT,
     eyeUp,
     eyeSize,
+    eyeWant,
     ...gen,
     back: (t) => height(back, t, s, beak, beakH, L),
     belly: (t) => height(belly, t, s, beak, beakH, L),
