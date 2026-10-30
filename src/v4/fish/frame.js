@@ -88,7 +88,7 @@ const lin = (v) => {
 };
 const unlin = (c) => 255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
 
-function toLab([r, g, b]) {
+export function toLab([r, g, b]) {
   const [R, G, B] = [r, g, b].map(lin);
   const l = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
   const m = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);

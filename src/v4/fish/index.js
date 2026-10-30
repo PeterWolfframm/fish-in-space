@@ -21,6 +21,7 @@ import { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, FISH3_IDS, V4_ID
 import { latentLoci, lociOf, LOCI } from './loci.js';
 import { resolveParams, PRESETS, DEFAULT_PRESET, paramsHash, weightOf, isEcotype } from './params.js';
 import { drawFish4, finishFrame, EXPRESSIONS } from './frame.js';
+import { miniOf, MINI_W, MINI_H } from './mini.js';
 import { expression, wiggle, droop, floatDead } from './motions.js';
 import { FEATURES } from './features/registry.js';
 import { TIERS, TIER_LABELS } from './rules.js';
@@ -186,6 +187,15 @@ export function frame(genome, animId, i = 0, opts) {
   const pose = poseOf(set, a, i);
   const { img } = drawFish4(set, pose, undefined, opts);
   return finishFrame(crop(img, box.x, box.y, box.w, box.h), set, pose);
+}
+
+/** The miniscule artwork (see mini.js): the grown fish as an icon, at most MINI_W × MINI_H. */
+export const MINI_ANIMS = [{ id: 'mini', frames: 1, fps: 1 }];
+export { MINI_W, MINI_H };
+export function miniFrame(genome) {
+  const set = T.normalize(genome);
+  const grown = set.stage === 'adult' || set.stage === 'elder' ? set : T.normalize({ ...set, stage: 'adult' });
+  return miniOf(frame(grown, 'swim', 0));
 }
 
 const f3 = (genome) => toFish3(T.normalize(genome));
