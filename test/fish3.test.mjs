@@ -196,7 +196,12 @@ test('fish3 breeding: two commons never make a signature except by a sport', () 
   }
   const ra = T.normalize({ ...a, rarity: 'rare', signature: 'crown' });
   const rb = T.normalize({ ...b, rarity: 'rare', signature: 'halo' });
-  const kids = Array.from({ length: 40 }, (_, i) => phenotype(breedDetailed(ra, rb, `sr-${i}`).child).signature);
+  // Two signature rares always pass one on, except to a myth child: a myth outgrows signatures
+  // (see 'rare signatures draw every frame' above), so it is not a counter-example here.
+  const kids = Array.from({ length: 40 }, (_, i) => breedDetailed(ra, rb, `sr-${i}`).child)
+    .filter((c) => c.rarity !== 'myth')
+    .map((c) => phenotype(c).signature);
+  assert.ok(kids.length > 20, 'most children of two rares stay rare');
   assert.ok(kids.every((s) => s !== 'none'));
   assert.ok(kids.includes('crown') && kids.includes('halo'));
 });
@@ -209,7 +214,9 @@ test('fish3 lore: complete, stable, no stray tokens, not the camera', () => {
     assert.equal(l.codex.length, 3);
     assert.ok(l.codex[0].key.startsWith('diet.'));
     assert.ok(l.edict.text);
-    assert.equal(Boolean(l.legend), ['rare', 'myth'].includes(T.normalize(g).rarity));
+    // Only rares carry a legend: it tells the story of the signature, and relics were removed
+    // (`RELICS` is empty in genome.js), so a myth has neither a signature nor a relic to tell.
+    assert.equal(Boolean(l.legend), T.normalize(g).rarity === 'rare');
     const text = loreText(g);
     assert.doesNotMatch(text, /\{\w+\}/, text);
   }

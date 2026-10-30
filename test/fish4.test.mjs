@@ -6,9 +6,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generator, fromCode } from '../src/gen/registry.js';
 import gen4, { validateParams, setParam, PARAM_SCHEMA, batch, violations, linkMuls, CONSTRAINTS, KITS, breed4, textFor, fromSeed, frame, fish4Traits as T, toFish3, PRESETS, paramsHash, lociOf, statsOf, behaviourProfile, STATS, STATS_VERSION, profile, ecology4Of, DEFAULT_RULES, NEW_FORMS, speciesKey, windowOf } from '../src/v4/fish/index.js';
-import { namesOf } from '../src/v3/fish/names.js';
+import { namesOf, saysTwice } from '../src/v3/fish/names.js';
+import { EYES } from '../src/v3/fish/draw.js';
 import { fish3Traits as T3 } from '../src/v3/fish/genome.js';
 import { FEATURES } from '../src/v4/fish/features/registry.js';
+import { namesOf4 } from '../src/v4/fish/names.js';
+import { extOf } from '../src/v4/fish/bodies/index.js';
 import { test as when, TIERS } from '../src/v4/fish/rules.js';
 
 const gen3 = generator('fish3');
@@ -263,6 +266,66 @@ test('ecotype: a place can be pinned, and mutation pressure raises the sport rat
   assert.ok(neon({ base: 'ecotype', mutation: { sport: 0.3 } }) > neon({ base: 'ecotype', mutation: { sport: 0 } }) + 20);
 });
 
+test('region water: a fish is as warm as where it lives, not only what it descends from', () => {
+  const temps = (region) => Array.from({ length: 2000 }, (_, i) => {
+    const st = statsOf(fromSeed(`warm-${i}`, undefined, { region }));
+    assert.ok(st.idealTempC.because.some((b) => b.source === 'region'), `${region} says where its water came from`);
+    return st.idealTempC.real;
+  });
+  const median = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
+  const ice = temps('icemoon');
+  const [i, d, p, r] = [ice, temps('deep'), temps('pelagic'), temps('reef')].map(median);
+  assert.ok(i < d && d < p && p < r, `cold to warm: icemoon ${i} < deep ${d} < pelagic ${p} < reef ${r}`);
+  assert.equal(ice.filter((t) => t > 18).length, 0, 'nothing under the ice likes warm water');
+});
+
+test('niche diet: a hunter hunts and a sifter sifts, whatever jaw it was dealt', () => {
+  const diets = (region, niche, n) => {
+    const counts = {};
+    for (let i = 0; i < n; i++) {
+      const set = fromSeed(`diet-${region}-${i}`, undefined, { region, niche });
+      const d = ecology4Of(set).diet.value;
+      counts[d] = (counts[d] ?? 0) + 1;
+      if (niche === 'ambush' && set.form === 'grouper') assert.notEqual(d, 'detritivore', `a grouper ambusher eats detritus (seed diet-${region}-${i})`);
+    }
+    return counts;
+  };
+  // A reef grouper lies in wait on the bottom, and a bottom fish with an underbite used to read as
+  // a detritus eater: 70% of them did. The niche's diet odds are what keep the jaw off that rule.
+  const ambush = diets('reef', 'ambush', 2000);
+  assert.ok((ambush.piscivore ?? 0) + (ambush.carnivore ?? 0) > 1800, `reef ambushers hunt: ${JSON.stringify(ambush)}`);
+  const share = (c) => (d) => (c[d] ?? 0) / Object.values(c).reduce((a, b) => a + b, 0);
+  const graze = share(diets('reef', 'grazer', 600));
+  assert.ok(graze('herbivore') + graze('durophage') > 0.85, 'grazers crop');
+  const sift = share(diets('riverlands', 'sifter', 600));
+  assert.ok(sift('detritivore') > sift('piscivore') + sift('carnivore'), 'sifters mostly eat what has settled');
+});
+
+test('names: no fish says the same thing twice, and no other fish is renamed', () => {
+  let repeats = 0;
+  let changed = 0;
+  for (let i = 0; i < 5000; i++) {
+    const set = fromSeed(`name-${i}`);
+    const g3 = toFish3(set);
+    const ext = extOf(set);
+    const common = namesOf4(set).common;
+    if (saysTwice(common.split(' '))) {
+      repeats++;
+      if (repeats < 4) assert.fail(`"${common}" says the same thing twice (seed name-${i})`);
+    }
+    // Only a name that repeated may move: every other fish keeps the name it has always had.
+    const was = namesOf(g3, ext).common;
+    if (was !== namesOf(g3, ext, { dedupe: true }).common) {
+      changed++;
+      assert.ok(saysTwice(was.split(' ')), `"${was}" was renamed but said nothing twice (seed name-${i})`);
+    }
+  }
+  assert.equal(repeats, 0);
+  assert.ok(changed > 20, `the de-duplication does something: ${changed} of 5000 renamed`);
+  // fish3 asks for none of this, and keeps its names.
+  assert.equal(namesOf(toFish3(fromSeed('name-7'))).common, namesOf(toFish3(fromSeed('name-7')), undefined, { dedupe: false }).common);
+});
+
 test('every fish4 body draws at every size, inside its window', () => {
   for (const b of NEW_FORMS) {
     for (const size of ['tiny', 'small', 'medium', 'large', 'huge', 'giant']) {
@@ -394,7 +457,10 @@ test('scaled detail: the same fish below large, coarser texture on giants; ecoty
   const fish = (size, detail) => frame({ body: 'carp', scales: 'plates', tail: 'fan', size, stage: 'adult', detail }, 'swim', 2);
   for (const size of ['tiny', 'small', 'medium', 'large']) assert.ok(same(fish(size, 'v3'), fish(size, 'v4')), size);
   assert.ok(!same(fish('giant', 'v3'), fish('giant', 'v4')));
-  assert.equal(fromSeed('detail-1').detail, 'v4');
+  // `v4e` is `v4` plus the big eye stamps. It is a choice of its own so that every fish stored
+  // under `v4` keeps painting the pixels it was saved with.
+  assert.ok(!same(fish('giant', 'v4'), fish('giant', 'v4e')));
+  assert.equal(fromSeed('detail-1').detail, 'v4e');
   assert.equal(fromSeed('detail-1', 'classic').detail, 'v3');
 });
 
@@ -547,4 +613,41 @@ test('params schema: every preset validates, every knob is described, typos and 
   const P = setParam({ base: 'ecotype' }, 'links.strength', 0);
   assert.equal(P.links.strength, 0);
   assert.notDeepEqual(fromSeed('steer-1', P), fromSeed('steer-1'));
+});
+
+test('eye stamps: a fish4 giant looks you in the eye, and nothing smaller changes', () => {
+  // Every stamp is square, and only sclera, pupil, glint and skip ever appear in one.
+  for (const [n, rows] of Object.entries(EYES)) {
+    assert.equal(rows.length, Number(n), `stamp ${n} has ${rows.length} rows`);
+    for (const row of rows) {
+      assert.equal(row.length, Number(n), `stamp ${n}: "${row}"`);
+      assert.match(row, /^[SPHh.]+$/, `stamp ${n}: "${row}"`);
+    }
+  }
+  assert.ok(EYES[7] && EYES[8], 'the 7 and 8 px stamps fish4 giants need');
+
+  for (const seed of ['eye-1', 'eye-3', 'eye-4', 'eye-5']) {
+    const fish = fromSeed(seed);
+    // Under the 6 px cap, `v4e` is `v4`: a small fish is painted exactly as it was.
+    for (const size of ['tiny', 'small', 'medium']) {
+      const set = { ...fish, size };
+      assert.ok(same(frame({ ...set, detail: 'v4e' }, 'swim', 0), frame({ ...set, detail: 'v4' }, 'swim', 0)), `${seed} ${size} moved`);
+    }
+    // A giant's texture is the same either way, so whatever moved is the eye, and it is at
+    // least 7 px across.
+    const giant = { ...fish, size: 'giant' };
+    const a = frame({ ...giant, detail: 'v4' }, 'swim', 0);
+    const b = frame({ ...giant, detail: 'v4e' }, 'swim', 0);
+    assert.equal(`${a.w}x${a.h}`, `${b.w}x${b.h}`, `${seed}: the crop moved`);
+    let x0 = Infinity, x1 = -1, y0 = Infinity, y1 = -1;
+    for (let y = 0; y < a.h; y++) {
+      for (let x = 0; x < a.w; x++) {
+        const i = y * a.w + x;
+        if (a.data[i] === b.data[i] && String(a.palette[a.data[i]]) === String(b.palette[b.data[i]])) continue;
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+      }
+    }
+    assert.ok(x1 >= 0, `${seed}: a giant's eye did not grow at all`);
+    assert.ok(x1 - x0 + 1 >= 7 && y1 - y0 + 1 >= 7, `${seed}: the eye grew to ${x1 - x0 + 1}x${y1 - y0 + 1}`);
+  }
 });
