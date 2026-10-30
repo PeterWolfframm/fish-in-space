@@ -17,6 +17,7 @@
 import { roller } from '../../pixel/rng.js';
 import { oklab } from '../../v3/fish/colors.js';
 import { BODIES } from '../../v3/fish/bodies.js';
+import { DIET_BY_JAW } from '../../v3/fish/ecology-data.js';
 import { fish4Traits, jitterKey, IDENTITY_IDS } from './genome.js';
 import { latentLoci } from './loci.js';
 import { applyLinks } from './links.js';
@@ -60,6 +61,29 @@ function stack(into, w, pow = 1) {
 }
 
 /**
+ * Which choices decide a diet. A niche says what it eats (`diet` in data/terrains.js); the jaw and
+ * the extras are what actually settle it (see v3/fish/ecology.js), so a niche's diet odds land on
+ * them. An underbite only reads as detritus on a bottom fish, but a bottom fish is most of what
+ * rolls one, so it counts here.
+ */
+const DIET_SOURCES = {
+  jaw: { ...DIET_BY_JAW, underbite: 'detritivore' },
+  extras: { barbels: 'detritivore', lure: 'piscivore' },
+};
+
+/** A niche's `diet` odds, as multipliers on the fields that decide the diet. */
+function dietWeights(diet) {
+  const out = {};
+  for (const [field, byChoice] of Object.entries(DIET_SOURCES)) {
+    for (const [choice, d] of Object.entries(byChoice)) {
+      if (diet[d] == null) continue;
+      (out[field] ??= {})[choice] = diet[d];
+    }
+  }
+  return out;
+}
+
+/**
  * The leanings of a place: terrain → region → niche, palette (raised to `palette.strength`) and
  * mutation pressure on the chaos odds.
  */
@@ -67,6 +91,7 @@ function leaningsOf(regionId, nicheId, P) {
   const region = REGIONS[regionId];
   const niche = NICHES[nicheId] ?? NICHES.unmapped;
   const out = {};
+  stack(out, dietWeights(niche.diet ?? {}));
   stack(out, niche.weights);
   stack(out, region.weights);
   stack(out, region.niches?.[nicheId]?.weights);
@@ -249,12 +274,17 @@ export function protoOf(place, P, weightOf) {
   return proto;
 }
 
-/** Niche-shifted locus odds: the bell's centre moves `loci[locus]` allele steps. */
-function lociWeights(nicheId, P, weightOf) {
-  const shifts = NICHES[nicheId]?.loci ?? {};
+/**
+ * Place-shifted locus odds: the bell's centre moves `loci[locus]` allele steps. A region and a
+ * niche both get a say and their shifts add up — an icemoon lurker is colder than either on its
+ * own. The shift moves which alleles a *new* fish rolls; a stored code already holds its own.
+ */
+function lociWeights(where, P, weightOf) {
+  const region = REGIONS[where.region]?.loci ?? {};
+  const niche = NICHES[where.niche]?.loci ?? {};
   const k = P.clusters?.lociStrength ?? 1;
   return (f, ci) => {
-    const shift = Math.round((shifts[f.locus] ?? 0) * k);
+    const shift = Math.round(((region[f.locus] ?? 0) + (niche[f.locus] ?? 0)) * k);
     const j = Math.max(0, Math.min(f.choices.length - 1, ci - shift));
     return weightOf(f, j, P);
   };
@@ -272,8 +302,8 @@ export function ecotypeFromSeed(seed, P, weightOf, place) {
   const cohesion = P.clusters?.cohesion ?? 0.9;
   const stick = { ...STICK, ...(P.clusters?.stick ?? {}) };
 
-  // fish4-native fish draw with scaled detail.
-  const out = { ...where, detail: 'v4' };
+  // fish4-native fish draw with scaled detail, eyes included.
+  const out = { ...where, detail: 'v4e' };
   const kept = new Set(PLACED);
   for (const f of T.fields) {
     if (f.locus || PLACED.has(f.id)) continue;
@@ -299,7 +329,7 @@ export function ecotypeFromSeed(seed, P, weightOf, place) {
 
   // Links over what this fish rolled itself (its species was linked already), then the guard.
   let set = T.normalize(linkAndGuard(out, ctx, weighted, (f) => f.salt + 17, kept));
-  Object.assign(set, latentLoci(jitterKey(set), lociWeights(where.niche, P, weightOf)));
+  Object.assign(set, latentLoci(jitterKey(set), lociWeights(where, P, weightOf)));
   set = T.normalize(set);
   return set;
 }

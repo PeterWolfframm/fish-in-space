@@ -32,6 +32,7 @@ export const NICHES = {
     label: 'Grazer',
     note: 'crops algae, crust and film off every surface',
     weights: { jaw: { beak: 2, lips: 2, sucker: 1.5, fangs: 0.3 }, size: { small: 1.2, medium: 1.3 }, mood: { content: 1.4 } },
+    diet: { herbivore: 2.5, durophage: 1.5, detritivore: 0.3, planktivore: 0.3, piscivore: 0.15, carnivore: 0.2 },
     loci: { metabolism: 2, aggression: -2, sociability: 1 },
   },
   school: {
@@ -44,18 +45,21 @@ export const NICHES = {
     label: 'Ambusher',
     note: 'waits, perfectly still, then strikes',
     weights: { size: { large: 1.6, huge: 1.4, tiny: 0.4 }, mood: { grumpy: 1.6 }, pattern: { mottle: 1.8, saddle: 1.4 }, tail: { round: 1.5 }, jaw: { gape: 2, fangs: 1.5 } },
+    diet: { piscivore: 2, carnivore: 2, detritivore: 0.1, durophage: 0.3, herbivore: 0.2, planktivore: 0.2 },
     loci: { aggression: 2, energy: -3, sociability: -2 },
   },
   pursuit: {
     label: 'Pursuer',
     note: 'runs its food down in open water',
     weights: { tail: { lunate: 2.2, fork: 2, round: 0.4, veil: 0.2 }, size: { large: 1.5, huge: 1.5, giant: 1.2, tiny: 0.3 }, chonk: { lean: 1.8, round: 0.3 } },
+    diet: { piscivore: 2.5, carnivore: 1.5, detritivore: 0.1, durophage: 0.2, herbivore: 0.2, planktivore: 0.2 },
     loci: { energy: 4, vigor: 1, aggression: 1 },
   },
   sifter: {
     label: 'Sifter',
     note: 'sifts the bottom for what has settled',
     weights: { extras: { barbels: 2.5 }, snout: { under: 2 }, eye: { small: 1.4 } },
+    diet: { detritivore: 8, herbivore: 0.5, durophage: 0.3, planktivore: 0.2, piscivore: 0.2, carnivore: 0.2 },
     loci: { zone: -4, energy: -1, sociability: 1 },
   },
   drifter: {
@@ -117,6 +121,7 @@ export const REGIONS = {
     },
     palette: { skin: { jade: 1.5, lime: 1.4, bronze: 1.4, sand: 1.3, tangerine: 1.2 }, markColor: { soot: 1.4, butter: 1.2 } },
     weights: { scales: { fine: 1.3 } },
+    loci: { thermal: 2 }, // warm lowland water
     mutation: 1,
   },
   reef: {
@@ -130,6 +135,7 @@ export const REGIONS = {
       percher: { bodies: { goby: 3, cowfish: 1 } },
     },
     palette: { skin: { coral: 1.6, tangerine: 1.4, butter: 1.5, cobalt: 1.4, orchid: 1.3, violet: 1.3 }, markColor: { chalk: 1.5, soot: 1.2, butter: 1.3 } },
+    loci: { thermal: 2 }, // warm shallow water
     mutation: 1,
   },
   pelagic: {
@@ -143,6 +149,7 @@ export const REGIONS = {
     },
     palette: { skin: { cobalt: 1.6, lagoon: 1.5, pewter: 1.4, slate: 1.3 }, markColor: { chalk: 1.4 } },
     weights: { belly: { white: 2, pale: 1.5 } },
+    loci: { thermal: -1 }, // open water, a touch cool
     mutation: 0.9,
   },
   deep: {
@@ -156,6 +163,7 @@ export const REGIONS = {
     },
     palette: { skin: { ink: 1.8, slate: 1.5, violet: 1.3, rose: 1.2 }, markColor: { lagoon: 1.4, violet: 1.3 } },
     weights: { glow: { spots: 2, edge: 1.5 }, eye: { big: 1.4 } },
+    loci: { thermal: -3 }, // cold under pressure
     mutation: 1.1,
   },
   nebula: {
@@ -169,6 +177,7 @@ export const REGIONS = {
     },
     palette: { skin: { violet: 1.8, orchid: 1.7, cobalt: 1.4, rose: 1.4, pearl: 1.2 }, markColor: { chalk: 1.4, violet: 1.3, coral: 1.2 } },
     weights: { finTint: { clear: 1.5, light: 1.4 } },
+    loci: { thermal: 1 }, // mild cloud seas
     mutation: 1.3,
     sports: { morph: { galaxy: 3 } },
   },
@@ -183,6 +192,7 @@ export const REGIONS = {
     },
     palette: { skin: { pearl: 1.8, lagoon: 1.5, teal: 1.4, slate: 1.3 }, markColor: { chalk: 1.5, lagoon: 1.3 } },
     weights: { glow: { spots: 1.8, edge: 1.4 } },
+    loci: { thermal: -4 }, // ocean under the ice
     mutation: 1.15,
     sports: { geneA: { ghost: 3 } },
   },

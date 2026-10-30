@@ -10,8 +10,9 @@
 // v2: the terrain stats (heatTolerance, radiance, burrowing, armour, luminosity); body leanings;
 // for a fish of another medium (lava, sand, coolant, void), idealTempC and tempTolerance map over
 // its medium's band (`TERRAINS.tempC`) and the water stats say so (`applies: false`).
+// v3: a region's water sets idealTempC (REGION_THERMAL), so the same body runs cold under the ice.
 
-export const STATS_VERSION = 2;
+export const STATS_VERSION = 3;
 
 /** The stats, in display order. `low`/`high` are the words for the ends. */
 export const STATS = [
@@ -98,6 +99,16 @@ export const CURRENT_ENERGY = { still: 0.3, gentle: 0.45, strong: 0.65, torrent:
 export const CIRCADIAN = { diurnal: 0.15, crepuscular: 0.5, nocturnal: 0.82, sleepless: 0.5 };
 export const SALINITY_TOLERANCE = { fresh: 0.25, brackish: 0.8, marine: 0.3, any: 1 };
 export const TEMP_TOLERANCE = { tropical: 0.35, temperate: 0.6, cold: 0.5, volcanic: 0.3, polar: 0.4 };
+/**
+ * How much a region's water decides a fish's ideal temperature. A region's `loci.thermal` shift
+ * (data/terrains.js) doubles as how warm it is: `step` is one allele step in stat space (0.083 of
+ * idealTempC's 2–38 °C band, so about 3 °C), and `blend` is how far a fish is pulled off its
+ * body's own preference and toward its region's. An angler under the ice runs cold whatever
+ * anglers elsewhere like, but its body still decides where in that cold water it sits.
+ */
+export const REGION_THERMAL = { step: 0.083, blend: 0.75 };
+/** The word for a region's water, by its thermal shift. */
+export const thermalWord = (n) => (n <= -3 ? 'cold water' : n < 0 ? 'cool water' : n >= 2 ? 'warm water' : 'mild water');
 /** Starting points for stats with no ecology fact behind them. */
 export const FLAT_BASE = {
   hardiness: 0.5, stressResistance: 0.5, boldness: 0.5, zoneBreadth: 0.4, stamina: 0.5, swimSpeed: 0.4, appetite: 0.5,

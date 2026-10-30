@@ -4,8 +4,8 @@
 //
 //   statsOf(set, { rules?, tier? }) → { [stat]: { value 0..1, real?, unit?, display, word, because } }
 //
-// Order: body baseline (fish3's ecology, the terrain) → family priors → body leanings → loci →
-// size, tier → traits → features → rules → clamp. Pure: the same fish and rules always give the
+// Order: body baseline (fish3's ecology, the terrain) → family priors → body leanings → the
+// region's water → loci → size, tier → traits → features → rules → clamp. Pure: the same fish and rules always give the
 // same numbers.
 //
 // A fish of another medium (lava, sand, coolant, void) maps idealTempC and tempTolerance over its
@@ -19,9 +19,9 @@ import { SCALES, PH, MARINE_PH } from '../../v3/fish/ecology-data.js';
 import {
   STATS, STAT_IDS, STATS_VERSION, statById, TEMPER_AGGRESSION, PREDATION_BY_DIET, DIET_BREADTH, SOCIAL, LEVEL_Y, CURRENT_ENERGY,
   CIRCADIAN, SALINITY_TOLERANCE, TEMP_TOLERANCE, FLAT_BASE, LOCUS_EFFECTS, SIZE_EFFECTS, TIER_EFFECTS, TRAIT_EFFECTS,
-  WATER_ONLY, HEAT_TOLERANCE, TERRAIN_BASE,
+  WATER_ONLY, HEAT_TOLERANCE, TERRAIN_BASE, REGION_THERMAL, thermalWord,
 } from './stats-data.js';
-import { TERRAINS } from './data/terrains.js';
+import { TERRAINS, REGIONS } from './data/terrains.js';
 import { terrainOf, heatOf, radianceOf, WET } from './ecology4.js';
 import DEFAULT_RULES from './data/rules.js';
 import { lociOf } from './loci.js';
@@ -150,32 +150,42 @@ export function statsOf(set, opts = {}) {
   for (const [stat, d] of Object.entries(FAMILIES[family]?.priors ?? {})) add(stat, d, 'family', family);
   for (const [stat, d] of Object.entries(rec.leanings ?? {})) add(stat, d, 'body', rec.label);
 
-  // --- 3. loci --------------------------------------------------------------------------------
+  // --- 3. the region's water ------------------------------------------------------------------
+  // A region's warmth pulls idealTempC toward the water the fish actually lives in. It comes last
+  // of the baselines and before the loci, so a fish's own genes still move it inside that water.
+  const thermal = REGIONS[set.region]?.loci?.thermal ?? 0;
+  if (thermal && 'idealTempC' in v) {
+    const target = 0.5 + thermal * REGION_THERMAL.step;
+    const label = `from ${REGIONS[set.region].label.toLowerCase()}: ${thermalWord(thermal)}`;
+    add('idealTempC', (target - v.idealTempC) * REGION_THERMAL.blend, 'region', label);
+  }
+
+  // --- 4. loci --------------------------------------------------------------------------------
   for (const [stat, effects] of Object.entries(LOCUS_EFFECTS)) {
     for (const [locus, w, centre = 0.5] of effects) add(stat, (loci[locus].value - centre) * w, 'locus', locus);
   }
 
-  // --- 4. size and tier -------------------------------------------------------------------------
+  // --- 5. size and tier -------------------------------------------------------------------------
   const step = SIZE_ORDER.indexOf(set.size) - 2;
   if (step) for (const [stat, d] of Object.entries(SIZE_EFFECTS)) add(stat, d * step, 'size', set.size);
   const rank = tierRank(tier);
   if (rank) for (const [stat, d] of Object.entries(TIER_EFFECTS)) add(stat, d * rank, 'tier', tier);
 
-  // --- 5. traits --------------------------------------------------------------------------------
+  // --- 6. traits --------------------------------------------------------------------------------
   const preLook = lookFor(set, { facts, loci, family, tier });
   for (const t of TRAIT_EFFECTS) {
     if (!test(t.when, preLook, key)) continue;
     for (const [stat, d] of Object.entries(t.then)) add(stat, d, 'trait', t.label);
   }
 
-  // --- 6. features ------------------------------------------------------------------------------
+  // --- 7. features ------------------------------------------------------------------------------
   for (const f of FEATURES) {
     const value = set[f.id];
     if (!value || value === f.none) continue;
     for (const [stat, map] of Object.entries(f.influences?.stats ?? {})) add(stat, map[value] ?? map['*'] ?? 0, 'feature', `${f.id}: ${value}`);
   }
 
-  // --- 7. rules (against the stats as they stand now) -------------------------------------------
+  // --- 8. rules (against the stats as they stand now) -------------------------------------------
   const pre = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clamp01(x)]));
   const look = lookFor(set, { facts, loci, family, tier, stats: pre });
   const fired = [];
@@ -194,7 +204,7 @@ export function statsOf(set, opts = {}) {
     }
   }
 
-  // --- 8. clamp and present -----------------------------------------------------------------------
+  // --- 9. clamp and present -----------------------------------------------------------------------
   const out = {};
   for (const s of STATS) {
     const value = clamp01(v[s.id]);
