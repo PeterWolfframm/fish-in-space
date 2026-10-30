@@ -59,13 +59,32 @@ const poseOf = (set, a, i) => keyed(
   i,
 );
 
+// Probing a window paints every frame of every anim, so a cached box is worth far more than the
+// memory it costs: evict the least recently used one rather than dropping all of them at once.
+const BOX_MAX = 2000;
 const boxCache = new Map();
+const boxPut = (code, box) => {
+  if (boxCache.size >= BOX_MAX) boxCache.delete(boxCache.keys().next().value);
+  boxCache.set(code, box);
+  return box;
+};
+
+/**
+ * Seed a window the caller already knows — from a persisted cache, say — so the next frame() for
+ * this genome skips the probe entirely. The box must have come from windowOf on the same genome
+ * and the same generator version, or the art re-frames.
+ */
+export const primeWindow = (set, box) => boxPut(T.encode(set), box);
 
 /** Every frame shares one window. The stem base stays centred and the soil stays at the bottom. */
-function windowOf(set) {
+export function windowOf(set) {
   const code = T.encode(set);
   const hit = boxCache.get(code);
-  if (hit) return hit;
+  if (hit) {
+    boxCache.delete(code);
+    boxCache.set(code, hit);
+    return hit;
+  }
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -116,15 +135,14 @@ function windowOf(set) {
   if (x + w > W) w = W - x;
   if (y + h > H) h = H - y;
   const box = { x, y, w: Math.max(1, w), h: Math.max(1, h) };
-  if (boxCache.size > 300) boxCache.clear();
-  boxCache.set(code, box);
-  return box;
+  return boxPut(code, box);
 }
 
-const SIZES = Object.keys(CLASS_H).map((id) => {
+let SIZES_MEMO = null;
+const sizesOf = () => (SIZES_MEMO ??= Object.keys(CLASS_H).map((id) => {
   const { w, h } = windowOf(normalizePlant({ species: 'flower', form: 'flower', size: id, bloom: 'daisy' }));
   return { id, w, h };
-});
+})));
 
 function frameOf(set, pose) {
   const box = windowOf(set);
@@ -139,8 +157,12 @@ export default {
   generation: 'old',
   label: 'Garden plants v3',
   game: 'plantasia',
-  size: SIZES.find((s) => s.id === 'shrub'),
-  sizes: SIZES,
+  get size() {
+    return sizesOf().find((s) => s.id === 'shrub');
+  },
+  get sizes() {
+    return sizesOf();
+  },
   sizeField: 'size',
   sizeOf: (genome) => {
     const { w, h } = windowOf(normalizePlant(genome));

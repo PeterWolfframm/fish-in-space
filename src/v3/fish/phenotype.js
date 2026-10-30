@@ -13,6 +13,22 @@ import { paletteOf } from './colors.js';
 export const CLASS_LEN = { tiny: 14, small: 20, medium: 27, large: 38, huge: 52, giant: 72 };
 export const STAGES = ['fry', 'juvenile', 'adult', 'elder'];
 
+/**
+ * When set, adult/elder fish paint at this body length regardless of size class; fry/juveniles
+ * paint smaller, capped here. `null` (default) keeps class-scaled canvases ("bigger class, bigger
+ * canvas"). Games that show size via zoom rather than pixel budget call `configurePhenotype`.
+ */
+let GROWN_PAINT_LEN = null;
+
+/** @param {{ paintLen?: number | null }} opts */
+export function configurePhenotype(opts = {}) {
+  if ('paintLen' in opts) GROWN_PAINT_LEN = opts.paintLen ?? null;
+}
+
+export function grownPaintLen() {
+  return GROWN_PAINT_LEN;
+}
+
 const RECESSIVE = ['albino', 'leucistic', 'melanistic', 'axanthic', 'ghost', 'bubble'];
 /** Which recessive colour wins when a fish expresses two (only possible for … never, with two
  * slots — but sports and koi are layered on in this order). */
@@ -102,14 +118,27 @@ function build(set, stageOverride, ext) {
     saturation = male ? 1.25 : 0.85;
     if (!male) chonkStep = Math.min(3, chonkStep + 1);
   }
-  const stageLen = { fry: 0.45, juvenile: 0.7, adult: 1, elder: 1.05 }[stage];
+  const stageLenClassic = { fry: 0.45, juvenile: 0.7, adult: 1, elder: 1.05 }[stage];
   const headMul = { fry: 1.3, juvenile: 1.12, adult: 1, elder: 1 }[stage];
   if (stage === 'fry') finMul *= 0.7;
 
   // --- size and proportions -------------------------------------------------------------------
   const classLen = CLASS_LEN[set.size] ?? 27;
-  const s = Math.max(0.3, (classLen * stageLen) / 27);
-  const L = Math.max(8, Math.round(classLen * stageLen * arch.length * (1 + 0.07 * stepOf(set.length))));
+  let s;
+  let L;
+  if (GROWN_PAINT_LEN != null) {
+    const lengthStep = 1 + 0.07 * stepOf(set.length);
+    const stageLen = { fry: 0.45, juvenile: 0.7 }[stage];
+    const young = stageLen != null ? Math.min(classLen * stageLen, GROWN_PAINT_LEN) : null;
+    const youth = { fry: 0.86, juvenile: 0.93, adult: 1, elder: 1.02 }[stage];
+    s = young != null ? Math.max(0.3, young / 27) : GROWN_PAINT_LEN / 27;
+    L = young != null
+      ? Math.max(8, Math.round(young * arch.length * lengthStep))
+      : Math.max(8, Math.round(GROWN_PAINT_LEN * youth * arch.length * lengthStep));
+  } else {
+    s = Math.max(0.3, (classLen * stageLenClassic) / 27);
+    L = Math.max(8, Math.round(classLen * stageLenClassic * arch.length * (1 + 0.07 * stepOf(set.length))));
+  }
   const depth = 1 + 0.08 * stepOf(set.depth);
   const head = (1 + 0.07 * stepOf(set.head)) * headMul;
   const hump = 0.45 * stepOf(set.hump);

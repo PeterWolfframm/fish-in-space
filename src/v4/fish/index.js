@@ -132,11 +132,31 @@ const windowKey = (set, opts) => {
  * Every frame shares one window: fish3's (the union of where its own anims paint), so imported
  * fish crop exactly as before. The new anims and features only widen it if they would not fit.
  */
+// Probing a window paints every frame of every anim, so a cached box is worth far more than the
+// memory it costs: evict the least recently used one rather than dropping all of them at once.
+const BOX_MAX = 2000;
 const boxCache = new Map();
+const boxPut = (code, box) => {
+  if (boxCache.size >= BOX_MAX) boxCache.delete(boxCache.keys().next().value);
+  boxCache.set(code, box);
+  return box;
+};
+
+/**
+ * Seed a window the caller already knows — from a persisted cache, say — so the next frame() for
+ * this genome skips the probe entirely. The box must have come from windowOf on the same genome
+ * and the same generator version, or the art re-frames.
+ */
+export const primeWindow = (set, box, opts) => boxPut(windowKey(set, opts), box);
+
 export function windowOf(set, opts) {
   const code = windowKey(set, opts);
   const hit = boxCache.get(code);
-  if (hit) return hit;
+  if (hit) {
+    boxCache.delete(code);
+    boxCache.set(code, hit);
+    return hit;
+  }
   const ext = () => ({ x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity });
   const base = ext();
   const all = ext();
@@ -170,15 +190,14 @@ export function windowOf(set, opts) {
   // The dead float is flipped after the crop: mirrored, it must fit too.
   const inside = (b) => all.x0 >= b.x && all.x1 < b.x + b.w && all.y0 >= b.y && all.y1 < b.y + b.h;
   if (!inside(box)) box = fit(all);
-  if (boxCache.size > 300) boxCache.clear();
-  boxCache.set(code, box);
-  return box;
+  return boxPut(code, box);
 }
 
-const SIZES = Object.keys(CLASS_LEN).map((id) => {
+let SIZES_MEMO = null;
+const sizesOf = () => (SIZES_MEMO ??= Object.keys(CLASS_LEN).map((id) => {
   const { w, h } = windowOf(T.normalize({ body: 'torpedo', size: id }));
   return { id, w, h };
-});
+})));
 
 /** One frame, cropped to the fish's window. `opts`: studio part toggles and feature params. */
 export function frame(genome, animId, i = 0, opts) {
@@ -248,8 +267,12 @@ export default {
   generation: 'old',
   label: 'Fish v4',
   game: 'fish.',
-  size: SIZES.find((s) => s.id === 'medium'),
-  sizes: SIZES,
+  get size() {
+    return sizesOf().find((s) => s.id === 'medium');
+  },
+  get sizes() {
+    return sizesOf();
+  },
   sizeField: 'size',
   sizeOf: (genome) => {
     const { w, h } = windowOf(T.normalize(genome));

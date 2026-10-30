@@ -104,10 +104,11 @@ function windowOf(set) {
 }
 
 /** One representative canvas per class, from a plain torpedo of that size. */
-const SIZES = Object.keys(CLASS_LEN).map((id) => {
+let SIZES_MEMO = null;
+const sizesOf = () => (SIZES_MEMO ??= Object.keys(CLASS_LEN).map((id) => {
   const { w, h } = windowOf(T.normalize({ body: 'torpedo', size: id }));
   return { id, w, h };
-});
+})));
 
 export default {
   id: 'fish3',
@@ -116,8 +117,12 @@ export default {
   generation: 'old',
   label: 'Fish v3',
   game: 'fish.',
-  size: SIZES.find((s) => s.id === 'medium'),
-  sizes: SIZES,
+  get size() {
+    return sizesOf().find((s) => s.id === 'medium');
+  },
+  get sizes() {
+    return sizesOf();
+  },
   sizeField: 'size',
   sizeOf: (genome) => {
     const { w, h } = windowOf(T.normalize(genome));

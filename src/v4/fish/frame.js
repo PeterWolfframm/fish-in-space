@@ -6,6 +6,7 @@
 
 import { PARTS, paintFish } from '../../v3/fish/draw.js';
 import { INK } from '../../v3/fish/colors.js';
+import { CLASS_LEN, grownPaintLen } from '../../v3/fish/phenotype.js';
 import { partsWith } from './features/registry.js';
 import { toFish3 } from './genome.js';
 import { extOf } from './bodies/index.js';
@@ -64,7 +65,9 @@ export function drawFish4(set, pose, look, opts) {
       ctx.v4 = set;
       // Scaled detail: past a large adult, texture pitch and ray spacing grow with the fish.
       if (set.detail === 'v4' || set.detail === 'v4e') {
-        const d = Math.max(1, ctx.s / 1.5);
+        const d = grownPaintLen() != null
+          ? Math.max(1, (CLASS_LEN[set.size] ?? 27) / 27 / 1.5)
+          : Math.max(1, ctx.s / 1.5);
         ctx.detailScale = d;
         // And the eye with them, for `v4e`. fish3 stops at a 6 px eye, which reads as a pinhole
         // on a 128 px giant; past a large adult the eye grows by the same measure as the
