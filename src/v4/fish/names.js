@@ -14,7 +14,9 @@ import DEFAULT_FLAVOUR from './data/flavour.js';
 /** Every name for a fish4 set; `look` (from stats.js lookFor) answers flavour conditions. */
 export function namesOf4(set, { look, humour = 0.5, flavour } = {}) {
   const ext = extOf(set);
-  const base = namesOf3(toFish3(set), ext);
+  // `dedupe`: fish4's terrains name their colours after their places, so a plain fish3 name can
+  // come out as "Dune-tailed Dune-hopper". fish3's own names are left as they are.
+  const base = namesOf3(toFish3(set), ext, { dedupe: true });
   let { common, binomial } = base;
   const keys = [...base.keys];
   for (const f of FEATURES) {
