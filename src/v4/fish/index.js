@@ -20,11 +20,10 @@ import { roundUp, crop } from '../../v2/kit/sizes.js';
 import { fish4Traits, toFish3, fromFish3, decodeAny, jitterKey, FISH3_IDS, V4_IDS, FEATURE_IDS } from './genome.js';
 import { latentLoci, lociOf, LOCI } from './loci.js';
 import { resolveParams, PRESETS, DEFAULT_PRESET, paramsHash, weightOf, isEcotype } from './params.js';
-import { drawFish4, finishFrame, EXPRESSIONS } from './frame.js';
+import { drawFish4, finishFrame, EXPRESSIONS, partsFor } from './frame.js';
 import { miniOf, MINI_W, MINI_H } from './mini.js';
 import { expression, wiggle, droop, floatDead } from './motions.js';
 import { FEATURES } from './features/registry.js';
-import { PARTS } from '../../v3/fish/draw.js';
 import { ANATOMY } from './parts/anatomy.js';
 import { TIERS, TIER_LABELS } from './rules.js';
 import { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES } from './stats.js';
@@ -266,12 +265,12 @@ export default {
   placeFields: ['terrain', 'region', 'niche', 'clade'],
   params: { presets: PRESETS, schema: PARAM_SCHEMA, groups: PARAM_GROUPS, validate: validateParams, set: setParam, resolve: resolveParams, hash: paramsHash },
   /**
-   * Every paint-order layer id the studio's Anatomy panel can toggle or solo: fish3's own parts,
-   * the feature modules (helmet, …) and the anatomy parts fish4 bodies add. `opts.enabled(id)`
-   * already filters all three (frame.js `partsFor`); this just lists what there is to filter.
+   * Every layer id in true paint order (fish3's own parts, the feature modules and the anatomy
+   * parts, spliced at their real anchors) — `partsFor({})` is the same list `frame()` paints
+   * with. The studio's Anatomy panel toggles and solos these through `opts.enabled(id)`.
    */
   layers: {
-    ids: [...PARTS.map((p) => p.id), ...FEATURES.map((f) => f.id), ...ANATOMY.map((a) => a.id)],
+    ids: partsFor({}).map((p) => p.id),
     labelOf: (id) => FEATURES.find((f) => f.id === id)?.label ?? ANATOMY.find((a) => a.id === id)?.label ?? id,
   },
   fromCode: decodeAny,
