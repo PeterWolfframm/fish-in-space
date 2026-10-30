@@ -118,7 +118,7 @@ export function loreOf(genome, ext) {
   const e = edictLines.length ? pick(edictLines, 40) : null;
   const edict = e ? { key: e.key, text: fill(textOf(e.l), t) } : { key: 'care', text: FALLBACK.edict(eco, t) };
 
-  // --- legend: rare and myth only ---------------------------------------------------------------
+  // --- legend: rares only (a signature's story; relics were removed) ----------------------------
   let legend = null;
   const legendKeys = [ph.relic !== 'none' && `relic.${ph.relic}`, ph.signature !== 'none' && `signature.${ph.signature}`].filter(Boolean);
   if (legendKeys.length) {

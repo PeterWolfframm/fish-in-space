@@ -32,7 +32,7 @@ export const QUOTES = {};
 /** One keeper's instruction or warning, keyed by temperament, sociality or level. */
 export const EDICTS = {};
 
-/** Rare and myth only: the story of the signature or relic. */
+/** Rares only: the story of the signature. (Relic keys are kept for codes that still carry one.) */
 export const LEGENDS = {};
 
 /** The catalogue header's class words per rarity tier, e.g. a classification or threat grade. */
