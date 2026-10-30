@@ -197,7 +197,7 @@ let SIZES_MEMO = null;
 const sizesOf = () => (SIZES_MEMO ??= Object.keys(CLASS_LEN).map((id) => {
   const { w, h } = windowOf(T.normalize({ body: 'torpedo', size: id }));
   return { id, w, h };
-})));
+}));
 
 /** One frame, cropped to the fish's window. `opts`: studio part toggles and feature params. */
 export function frame(genome, animId, i = 0, opts) {

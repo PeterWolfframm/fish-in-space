@@ -108,7 +108,7 @@ let SIZES_MEMO = null;
 const sizesOf = () => (SIZES_MEMO ??= Object.keys(CLASS_LEN).map((id) => {
   const { w, h } = windowOf(T.normalize({ body: 'torpedo', size: id }));
   return { id, w, h };
-})));
+}));
 
 export default {
   id: 'fish3',

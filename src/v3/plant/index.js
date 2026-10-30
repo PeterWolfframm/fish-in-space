@@ -142,7 +142,7 @@ let SIZES_MEMO = null;
 const sizesOf = () => (SIZES_MEMO ??= Object.keys(CLASS_H).map((id) => {
   const { w, h } = windowOf(normalizePlant({ species: 'flower', form: 'flower', size: id, bloom: 'daisy' }));
   return { id, w, h };
-})));
+}));
 
 function frameOf(set, pose) {
   const box = windowOf(set);
