@@ -1635,7 +1635,94 @@
   "salt": 2672,
   "choices": [
    "v3",
-   "v4"
+   "v4",
+   "v4e"
+  ]
+ },
+ {
+  "id": "finEdge",
+  "salt": 2688,
+  "choices": [
+   "smooth",
+   "scalloped",
+   "serrated",
+   "notched",
+   "frayed",
+   "pennant",
+   "spiked"
+  ]
+ },
+ {
+  "id": "dorsalH",
+  "salt": 2704,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "analH",
+  "salt": 2720,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "pelvicL",
+  "salt": 2736,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "finRake",
+  "salt": 2752,
+  "choices": [
+   "n3",
+   "n2",
+   "n1",
+   "0",
+   "p1",
+   "p2",
+   "p3"
+  ]
+ },
+ {
+  "id": "dorsal2",
+  "salt": 2768,
+  "choices": [
+   "none",
+   "adipose",
+   "spike",
+   "sailet",
+   "finlets"
+  ]
+ },
+ {
+  "id": "keel",
+  "salt": 2784,
+  "choices": [
+   "none",
+   "keel",
+   "spines",
+   "finlets"
   ]
  }
 ]

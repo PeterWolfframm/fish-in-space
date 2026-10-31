@@ -151,6 +151,8 @@ const ECOTYPE = merge(BASE_PARAMS, {
   label: 'Ecotype (fish4)',
   note: 'Fish come from places: terrain, region, niche and species. Lava, sand and nuclear fish included.',
   algo: 'ecotype-1',
+  // fish3's fin odds put half of all fish on their body's default anal and pelvic fin: spread them.
+  weights: { anal: { auto: 0.4 }, pelvic: { auto: 0.3, small: 0.5, long: 1.3, feelers: 1.3 } },
 });
 
 export const PRESETS = {

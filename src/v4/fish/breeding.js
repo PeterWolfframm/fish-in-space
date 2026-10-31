@@ -5,7 +5,9 @@
 //              often carries the very same copy, so lines fix
 //   identity   terrain is shared (parents of two terrains cannot breed); region, niche, form and
 //              pigments come from one parent as a kit; two species make a `wild` clade
-//   features   one parent's (the helmet)
+//   features   one parent's (helmet, desert and forge kits, spice eyes, mutations)
+//   fin dress  heights and rake blend, edge and extra fins from one parent
+//   mutation   a nuclear child may hatch with a new mutation in a free slot (more if chaotic)
 //   rarity     the child's own score, plus what the parents pass on (pulled back toward the
 //              population by `mythic.regression`), and a Mythic egg roll capped at
 //              `mythic.maxChance`: reachable, never on tap
@@ -19,6 +21,9 @@ import { roller } from '../../pixel/rng.js';
 import { inheritKits } from './links.js';
 import { breedDetailed } from '../../v3/fish/breeding.js';
 import { fish4Traits, toFish3, FISH3_IDS, FEATURE_IDS } from './genome.js';
+import { FIN_IDS, FIN_STEP_IDS } from './fins.js';
+import { MUTATIONS, MUTATION_SLOTS, CHAOS } from './features/mutations.js';
+import { STEP_IDS } from '../../v3/fish/genome.js';
 import { LOCI, alleleIds, ALLELE_STEPS, lociOf } from './loci.js';
 import { BODY_RECORDS, bodyOf } from './bodies/index.js';
 import { TERRAINS } from './data/terrains.js';
@@ -138,6 +143,25 @@ function hatch(A, B, seed, P, chanceOfMyth) {
   FEATURE_IDS.forEach((f, i) => {
     child[f] = A[f] === B[f] ? A[f] : chance(0.5, 110 + i) ? A[f] : B[f];
   });
+
+  // --- fin dress: heights and rake blend (± a step), the cut and the extra fins from one parent ---
+  FIN_IDS.forEach((f, i) => {
+    if (FIN_STEP_IDS.includes(f)) {
+      const mid = (STEP_IDS.indexOf(A[f] ?? '0') + STEP_IDS.indexOf(B[f] ?? '0')) / 2;
+      const nudge = r(120 + i) < 0.2 ? (r(140 + i) < 0.5 ? -1 : 1) : 0;
+      child[f] = STEP_IDS[clamp(Math.round(mid + (r(160 + i) - 0.5) * 0.98) + nudge, 0, STEP_IDS.length - 1)];
+    } else child[f] = A[f] === B[f] ? A[f] : chance(0.5, 120 + i) ? A[f] : B[f];
+  });
+
+  // --- mutation: the hot zone keeps writing; a nuclear child may hatch with something new -----------
+  const free = child.terrain === 'nuclear' && MUTATION_SLOTS.find((k) => !child[k] || child[k] === 'none');
+  if (free && chance(0.12 * (CHAOS[child.chaos] ?? 1), 180)) {
+    const worn = MUTATION_SLOTS.map((k) => child[k]);
+    const fresh = MUTATIONS.filter(([id]) => !worn.includes(id));
+    const [id, label] = fresh[Math.floor(r(181) * fresh.length)];
+    child[free] = id;
+    say('mutation', `a new mutation: ${label.toLowerCase()}`);
+  }
 
   // --- rarity: the child's own, what the parents pass on, and the Mythic egg ------------------------
   let out = T.normalize(child);

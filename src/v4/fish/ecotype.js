@@ -31,11 +31,11 @@ const T = fish4Traits;
 /** How a field travels with its species. Fields not listed are `other`. */
 const GROUPS = {
   fixed: ['body', 'form', 'hybrid'],
-  bell: ['length', 'depth', 'head', 'hump', 'stalk', 'eyePos', 'size'],
+  bell: ['length', 'depth', 'head', 'hump', 'stalk', 'eyePos', 'size', 'dorsalH', 'analH', 'pelvicL', 'finRake'],
   colour: ['skin', 'markColor', 'eyeColor', 'pigment', 'markPigment'],
   pattern: ['pattern', 'density', 'markings', 'finPattern', 'scales', 'belly', 'finTint', 'glow', 'sheen', 'iridescence'],
   shape: ['snout', 'dorsal', 'tail', 'pectoral', 'anal', 'pelvic', 'jaw', 'extras', 'forehead', 'gait', 'swim', 'chonk'],
-  face: ['eye', 'eyeStyle', 'eyeMount', 'eyeColor2', 'blush', 'quirk'],
+  face: ['eye', 'eyeStyle', 'eyeMount', 'eyeColor2', 'blush', 'quirk', 'finEdge', 'dorsal2', 'keel'],
   free: ['rarity', 'mood', 'sex', 'stage', 'damage', 'morph', 'geneA', 'geneB', 'chaos', 'generation', 'lineA', 'lineB', 'purity', 'signature', 'relic', 'chroma', 'detail'],
 };
 const GROUP_OF = Object.fromEntries(Object.entries(GROUPS).flatMap(([g, ids]) => ids.map((id) => [id, g])));

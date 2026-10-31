@@ -438,18 +438,23 @@ test('economy: value follows the score, saturation and stage', async () => {
 
 test('sim: pacing bands hold and no strategy dominates', async () => {
   const { sweep } = await import('../src/v4/fish/sim.js');
-  const s = sweep({ seeds: 4, generations: 60, seed: 'pace' });
+  // One sweep's fastest strategy is luck-heavy (one pinned seed swung legendary from 7 to 27), so
+  // bands sit on the median over five sweeps.
+  const runs = ['pace', 'pace-2', 'pace-3', 'pace-4', 'pace-5'].map((seed) => sweep({ seeds: 4, generations: 60, seed }));
+  const median = (xs) => xs.sort((a, b) => a - b)[Math.floor(xs.length / 2)];
   // A smart player plays the fastest way to each tier: bands on the best strategy's median.
-  const best = (t) => Math.min(...Object.values(s).map((x) => x.firsts[t]?.gen ?? Infinity));
+  const best = (t) => median(runs.map((s) => Math.min(...Object.values(s).map((x) => x.firsts[t]?.gen ?? Infinity))));
   assert.ok(best('uncommon') <= 3, `uncommon ${best('uncommon')}`);
   assert.ok(best('rare') >= 2 && best('rare') <= 9, `rare ${best('rare')}`);
   assert.ok(best('epic') >= 3 && best('epic') <= 15, `epic ${best('epic')}`);
   assert.ok(best('legendary') >= 10 && best('legendary') <= 35, `legendary ${best('legendary')}`);
   // Mythic is luck as much as play: one lucky run must not set the band, so count misses too.
-  const mythMedian = Math.min(...Object.values(s).map((x) => x.firsts.myth?.medianGen ?? Infinity));
+  const mythMedian = median(runs.map((s) => Math.min(...Object.values(s).map((x) => x.firsts.myth?.medianGen ?? Infinity))));
   assert.ok(mythMedian >= 20, `myth ${mythMedian}`);
-  const rates = Object.values(s).map((x) => x.perHour).sort((a, b) => b - a);
-  assert.ok(rates[0] <= 1.5 * rates[1], `per hour ${rates}`);
+  for (const s of runs) {
+    const rates = Object.values(s).map((x) => x.perHour).sort((a, b) => b - a);
+    assert.ok(rates[0] <= 1.5 * rates[1], `per hour ${rates}`);
+  }
 });
 
 test('scaled detail: the same fish below large, coarser texture on giants; ecotype fish use it', () => {

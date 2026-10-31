@@ -78,8 +78,8 @@ export const PARTS = [
   { id: 'relicBehind', paint: (ctx) => relicBehind(ctx) },
   { id: 'pelvicFar', paint: (ctx) => pelvicFins(ctx, 'far') },
   { id: 'tailFin', paint: (ctx) => tailFin(ctx) },
-  { id: 'dorsalFin', paint: (ctx) => dorsalFin(ctx) },
-  { id: 'analFin', paint: (ctx) => analFin(ctx) },
+  { id: 'dorsalFin', paint: (ctx) => withFinRole(ctx, 'dorsal', dorsalFin) },
+  { id: 'analFin', paint: (ctx) => withFinRole(ctx, 'anal', analFin) },
   { id: 'smallFins', paint: (ctx) => smallFins(ctx) },
   { id: 'body', paint: (ctx) => body(ctx) },
   { id: 'scales', paint: (ctx) => scales(ctx) },
@@ -321,8 +321,20 @@ function tailFin(ctx) {
 // Dorsal, anal, finlets
 
 /** A fin along the back (dir −1) or belly (dir 1), from t0 to t1, `height(u)` px at u 0..1. */
-function edgeFin(ctx, dir, t0, t1, height, opts = {}) {
+/**
+ * Paint one fin part as `role` ('dorsal' / 'anal'). A later generator's fin dress
+ * (`ctx.finDress`, fish4's fins.js) cuts only these; without one, nothing changes.
+ */
+function withFinRole(ctx, role, paint) {
+  ctx.finRole = role;
+  paint(ctx);
+  ctx.finRole = undefined;
+}
+
+export function edgeFin(ctx, dir, t0, t1, height, opts = {}) {
   const { g, K, edges, bodyCols, pose, gait, fin } = ctx;
+  const dress = ctx.finRole ? ctx.finDress : undefined;
+  const role = ctx.finRole;
   const cols = bodyCols.filter((c) => c.t >= Math.min(t0, t1) && c.t <= Math.max(t0, t1));
   if (cols.length < 2) return [];
   const ripple = pose.ripple ?? 0;
@@ -333,7 +345,8 @@ function edgeFin(ctx, dir, t0, t1, height, opts = {}) {
   cols.forEach((c, i) => {
     const u = cols.length === 1 ? 0 : i / (cols.length - 1);
     const wave = Math.sin(TAU * (ripple - (1 - c.t) * 2.4));
-    const h = Math.max(0, height(u) * (1 + rAmp * wave));
+    let h = Math.max(0, height(dress ? dress.warp(u, role) : u) * (1 + rAmp * wave));
+    if (dress) h = Math.max(0, dress.shape(h, u, i, cols.length, role));
     const { yb, yv } = edges(c);
     const base = dir < 0 ? yb + 1 : yv - 1;
     const tipY = base + dir * (h + 1);
@@ -359,7 +372,9 @@ function edgeFin(ctx, dir, t0, t1, height, opts = {}) {
       if (Math.abs(ry - inner[i][1]) > 1 && g.get(Math.round(x), ry)) g.px(Math.round(x), ry, rim);
     });
   }
-  return outer.map((p, i) => ({ outer: p, inner: inner[i] }));
+  const tops = outer.map((p, i) => ({ outer: p, inner: inner[i] }));
+  if (dress) dress.after(ctx, tops, dir, role);
+  return tops;
 }
 
 function dorsalFin(ctx) {
@@ -978,7 +993,7 @@ function pelvicFins(ctx, side) {
   if (!pc || pc.belly < 1) return;
   const far = side === 'far';
   if (far && (ph.pelvic === 'sucker' || ph.pelvic === 'spine')) return;
-  const k = s * Math.min(1.5, ph.finMul);
+  const k = s * Math.min(1.5, ph.finMul) * (ctx.finDress?.pelvicMul ?? 1);
   const flutter = (pose.pelvic ?? 0) * 0.35;
   const x0 = pc.x - (far ? 1 : 0);
   const y0 = pc.mid + pc.belly - 1;
@@ -1153,7 +1168,9 @@ function eye(ctx) {
     const bx = left - Math.max(1, Math.round(s));
     for (let k = 0; k < Math.max(1, Math.round(1.5 * s)); k++) if (ctx.onBody(bx + k, by)) g.px(bx + k, by, blush);
   }
-  ctx.eyeBox = { left, top, size };
+  // The palette entries as painted, for v4's eye recolours (googly eyes are plain white).
+  const white = style === 'googly' && sclera !== pupil ? g.color('#f4f1e6') : sclera;
+  ctx.eyeBox = { left, top, size, sclera: white, pupil, glint };
 }
 
 // ---------------------------------------------------------------------------------------------

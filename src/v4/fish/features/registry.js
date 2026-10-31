@@ -2,8 +2,12 @@
 // the code, and its salt is its roll stream. See .claude/skills/extend-fish4.
 
 import helmet from './helmet.js';
+import desertKit from './desertKit.js';
+import spiceEyes from './spiceEyes.js';
+import { mutA, mutB, mutC } from './mutations.js';
+import forgeKit from './forgeKit.js';
 
-export const FEATURES = [helmet];
+export const FEATURES = [helmet, desertKit, spiceEyes, mutA, mutB, mutC, forgeKit];
 
 export const featureById = (id) => FEATURES.find((f) => f.id === id) ?? null;
 
@@ -19,18 +23,22 @@ export function partsWith(base, { paramsOf = (id) => featureById(id)?.defaults ?
   const parts = base.filter((p) => enabled(p.id));
   for (const f of FEATURES) {
     if (!enabled(f.id)) continue;
-    const [where, anchor] = f.layer.split(':');
-    const part = {
-      id: f.id,
-      feature: true,
-      paint: (ctx) => {
-        const value = ctx.v4?.[f.id];
-        if (value && value !== f.none) f.draw(ctx, value, { ...f.defaults, ...paramsOf(f.id) });
-      },
-    };
-    let i = parts.findIndex((p) => p.id === anchor);
-    if (i < 0) i = parts.length - 1;
-    parts.splice(where === 'before' ? i : i + 1, 0, part);
+    const painters = [[f.id, f.layer, f.draw]];
+    if (f.behind) painters.push([`${f.id}Behind`, f.behind.layer, f.behind.draw]);
+    for (const [id, layer, draw] of painters) {
+      const [where, anchor] = layer.split(':');
+      const part = {
+        id,
+        feature: true,
+        paint: (ctx) => {
+          const value = ctx.v4?.[f.id];
+          if (value && value !== f.none) draw(ctx, value, { ...f.defaults, ...paramsOf(f.id) });
+        },
+      };
+      let i = parts.findIndex((p) => p.id === anchor);
+      if (i < 0) i = parts.length - 1;
+      parts.splice(where === 'before' ? i : i + 1, 0, part);
+    }
   }
   return parts;
 }

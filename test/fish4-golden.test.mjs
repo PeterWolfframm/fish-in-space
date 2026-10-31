@@ -68,7 +68,10 @@ test('fish4 frozen codes: a stored code still opens as the fish it was', () => {
   assert.ok(Object.keys(frozen).length > 50, 'the frozen code set went missing');
   for (const [code, want] of Object.entries(frozen)) {
     const set = T.normalize(T.decode(code));
-    assert.equal(T.encode(set), code, `${code} does not round-trip`);
+    // Fields may be appended: a stored code re-encodes as itself plus the new fields' defaults.
+    const re = T.encode(set);
+    const tail = T.encode(T.defaults()).slice(code.length);
+    assert.equal(re, code + tail, `${code} does not round-trip`);
     for (const a of ANIMS) assert.equal(print(gen4.frame(set, a, 0)), want[a], `${code} paints a different ${a} than it used to`);
   }
 });

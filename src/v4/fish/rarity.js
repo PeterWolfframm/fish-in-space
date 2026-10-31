@@ -108,7 +108,7 @@ export function rarityOf(set, params) {
   // --- features (the helmet, and any later module) -------------------------------------------------
   for (const f of FEATURES) {
     const v = set[f.id];
-    if (v && v !== f.none) add('feature', `${f.id}: ${v}`, R.feature);
+    if (v && v !== f.none) add('feature', `${f.id}: ${v}`, f.points ?? R.feature);
   }
 
   // --- where it lives: terrain and form ------------------------------------------------------------

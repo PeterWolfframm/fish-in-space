@@ -9,6 +9,8 @@
 //                 markPigment (fish4's swatches) and detail (how giants are drawn). All default
 //                 to fish3's meaning, so an f3. or v1 code, or an f4. code written before these
 //                 fields, is a water fish of fish3's body and colour drawn as fish3 drew it.
+//   fin dress     edge, heights, rake, rear dorsal, keel (fins.js), salts 2688..; their first
+//                 choice / centre step paints nothing new
 //
 // Rarity gains Epic and Legendary, appended so fish3's digits stay valid; tier order lives in
 // rules.js TIERS. Append only, salts fixed: a code is a fish's identity.
@@ -17,6 +19,7 @@ import { defineTraits } from '../../pixel/traits.js';
 import { fish3Traits, fromV1Code, jitterKey as jitterKey3 } from '../../v3/fish/genome.js';
 import { LOCUS_FIELDS, latentLoci } from './loci.js';
 import { FEATURE_FIELDS } from './features/registry.js';
+import { FIN_FIELDS } from './fins.js';
 import { tierRank } from './rules.js';
 import { TERRAIN_IDS, REGION_IDS, NICHE_IDS, REGIONS } from './data/terrains.js';
 import { FORM_IDS, BODY_RECORDS, isNewForm } from './bodies/index.js';
@@ -84,6 +87,8 @@ export const fish4Traits = defineTraits({
     // later feature goes after it.
     ...FEATURE_FIELDS.slice(0, EARLY_FEATURES),
     ...IDENTITY_FIELDS,
+    ...FIN_FIELDS,
+    // Every feature module after the helmet: new modules append here, at the end of the code.
     ...FEATURE_FIELDS.slice(EARLY_FEATURES),
   ],
 });

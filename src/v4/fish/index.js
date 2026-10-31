@@ -9,7 +9,7 @@
 import { roller } from '../../pixel/rng.js';
 import { fish3Traits } from '../../v3/fish/genome.js';
 import { BODIES } from '../../v3/fish/bodies.js';
-import { CLASS_LEN, describeGenes } from '../../v3/fish/phenotype.js';
+import { CLASS_LEN, describeGenes, grownPaintLen } from '../../v3/fish/phenotype.js';
 import { ecology4Of, careLine } from './ecology4.js';
 import { loreOf } from '../../v3/fish/lore.js';
 import { keyed } from '../../v3/fish/keys.js';
@@ -25,6 +25,7 @@ import { miniOf, MINI_W, MINI_H } from './mini.js';
 import { expression, wiggle, droop, floatDead } from './motions.js';
 import { FEATURES } from './features/registry.js';
 import { ANATOMY } from './parts/anatomy.js';
+import { FIN_PARTS } from './fins.js';
 import { TIERS, TIER_LABELS } from './rules.js';
 import { statsOf, behaviourProfile, summaryOf, STATS, STATS_VERSION, DEFAULT_RULES } from './stats.js';
 import { taxonomyOf, ORDERS, FAMILIES } from './taxonomy.js';
@@ -125,7 +126,8 @@ const windowKey = (set, opts) => {
   const plain = { ...set };
   for (const id of NOT_GEOMETRY) plain[id] = T.fieldById(id).default ?? T.fieldById(id).choices[0].id;
   if (plain.rarity === 'epic' || plain.rarity === 'legendary') plain.rarity = 'rare';
-  return `${T.encode(plain)}|${opts?.key ?? ''}`;
+  // The paint budget changes every frame's size, so a box probed under one must never serve another.
+  return `${T.encode(plain)}|${opts?.key ?? ''}|pl${grownPaintLen() ?? 'x'}`;
 };
 
 /**
@@ -294,7 +296,7 @@ export default {
    */
   layers: {
     ids: partsFor({}).map((p) => p.id),
-    labelOf: (id) => FEATURES.find((f) => f.id === id)?.label ?? ANATOMY.find((a) => a.id === id)?.label ?? id,
+    labelOf: (id) => FEATURES.find((f) => f.id === id)?.label ?? ANATOMY.find((a) => a.id === id)?.label ?? FIN_PARTS.find((f) => f.id === id)?.label ?? id,
   },
   fromCode: decodeAny,
   normalize: T.normalize,

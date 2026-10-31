@@ -4,13 +4,14 @@
 // A fish4 set is drawn as its fish3 kin (toFish3) so every fish3 pixel is kept; the parts see the
 // fish4 set as `ctx.v4`. With chroma c0, no features and no expression, the frame is fish3's.
 
-import { PARTS, paintFish } from '../../v3/fish/draw.js';
+import { PARTS, paintFish, edgeFin } from '../../v3/fish/draw.js';
 import { INK } from '../../v3/fish/colors.js';
-import { CLASS_LEN, grownPaintLen } from '../../v3/fish/phenotype.js';
+import { grownPaintLen } from '../../v3/fish/phenotype.js';
 import { partsWith } from './features/registry.js';
 import { toFish3 } from './genome.js';
 import { extOf } from './bodies/index.js';
 import { withAnatomy } from './parts/anatomy.js';
+import { FIN_PARTS, finDressOf } from './fins.js';
 
 /** Face per expression: the fish3 mood its eye and mouth are drawn with. */
 export const EXPRESSIONS = {
@@ -44,13 +45,24 @@ const face = (part) => ({
   },
 });
 
+/** fins.js's extra fins, each right after the fish3 fin it sits beside. */
+function withFins(parts, { enabled = () => true } = {}) {
+  const out = [...parts];
+  for (const f of FIN_PARTS) {
+    if (!enabled(f.id)) continue;
+    const i = out.findIndex((p) => p.id === f.after);
+    out.splice(i < 0 ? out.length : i + 1, 0, { id: f.id, fin: true, paint: (ctx) => f.paint(edgeFin, ctx) });
+  }
+  return out;
+}
+
 const partCache = new Map();
 /** The part list for some studio options (cached per options key). */
 export function partsFor(opts = {}) {
   const key = opts.key ?? '';
   let parts = partCache.get(key);
   if (!parts) {
-    parts = withAnatomy(partsWith(PARTS, opts), opts).map((p) => (p.id === 'eye' || p.id === 'mouth' ? face(p) : p));
+    parts = withFins(withAnatomy(partsWith(PARTS, opts), opts), opts).map((p) => (p.id === 'eye' || p.id === 'mouth' ? face(p) : p));
     if (partCache.size > 50) partCache.clear();
     partCache.set(key, parts);
   }
@@ -63,10 +75,13 @@ export function drawFish4(set, pose, look, opts) {
     ext: extOf(set),
     prepare(ctx) {
       ctx.v4 = set;
+      ctx.finDress = finDressOf(set);
       // Scaled detail: past a large adult, texture pitch and ray spacing grow with the fish.
       if (set.detail === 'v4' || set.detail === 'v4e') {
+        // Under a fixed paint budget every adult paints at that one length, so detail follows the
+        // budget too (not the size class): a tiny adult and a giant one are the same picture.
         const d = grownPaintLen() != null
-          ? Math.max(1, (CLASS_LEN[set.size] ?? 27) / 27 / 1.5)
+          ? Math.max(1, grownPaintLen() / 27 / 1.5)
           : Math.max(1, ctx.s / 1.5);
         ctx.detailScale = d;
         // And the eye with them, for `v4e`. fish3 stops at a 6 px eye, which reads as a pinhole
