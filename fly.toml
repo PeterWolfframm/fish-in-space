@@ -2,7 +2,7 @@
 # (`fly deploy --ha=false`). Two machines cannot share the database file.
 # If the app name is taken, change `app` here to match `fly apps create`.
 
-app = "fish-in-space"
+app = "pixelforge"
 primary_region = "fra"
 
 [build]

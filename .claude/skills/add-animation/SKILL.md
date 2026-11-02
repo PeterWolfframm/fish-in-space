@@ -1,6 +1,6 @@
 ---
 name: add-animation
-description: Add a named animation to a fish-in-space asset (a v2 generator) — e.g. "/add-animation fish2 eat" or "add a wave anim to the tank plants". Picks or writes loop-safe motions, adds pose channels if needed, registers the anim, tests it and renders a check sheet at every size.
+description: Add a named animation to a PixelForge asset (a v2 generator) — e.g. "/add-animation fish2 eat" or "add a wave anim to the tank plants". Picks or writes loop-safe motions, adds pose channels if needed, registers the anim, tests it and renders a check sheet at every size.
 argument-hint: <asset> <animation> [description]
 ---
 
@@ -8,7 +8,7 @@ argument-hint: <asset> <animation> [description]
 
 `$ARGUMENTS` = `<asset> <animation> [what it should look like]`.
 
-In fish-in-space v2 an animation is **data**: a list of motions that set pose channels over a phase.
+In PixelForge v2 an animation is **data**: a list of motions that set pose channels over a phase.
 The renderer reads only the pose. Adding an anim is usually one line in a generator, plus maybe
 one motion. Only touch the renderer when a channel does not exist yet.
 

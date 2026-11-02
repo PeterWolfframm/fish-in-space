@@ -14,53 +14,18 @@ changes.
 
 ## Where it lives
 
-**The canonical game repo, `~/Code/aquarium`, as a second Vite entry.** Two reasons:
+**This repo (`~/Code/pixelforge`), as `studio.html` + `studio/` (Preact + Vite).** The studio reads and writes generator source under `src/` via the `@studio-forge` alias. Styling matches the forge app (`@keypad/ui` + `styles/fis-keypad.css`).
 
-1. The "My aquarium" panel reads the game save from IndexedDB, which is only visible on the same
-   origin. Serving the studio from the game's own dev server gives it that origin for free.
-2. The game already imports fish4 through `@forge/v4/fish` (`src/game/fish.ts`), and its
-   `Fish3` type already describes the generator.
-
-**The problem:** the studio writes generator data, and the generator's source lives in
-`~/Code/pixelforge/src`. Also, `scripts/vendor-forge.mjs` only works when `../src` exists, which
-is true for `pixelforge/aquarium` but not for the standalone checkout.
-
-**The fix:**
-
-- Add a `--src <dir>` flag (and a `PIXELFORGE_SRC` env var) to `scripts/vendor-forge.mjs`, which
-  overrides `PARENT_SRC`.
-- In the studio's Vite config, resolve the pixelforge source in this order:
-  1. `PIXELFORGE_SRC`
-  2. `../src`, if `../src/v4/fish` exists
-  3. `~/Code/pixelforge/src`, if it exists
-- Alias `@studio-forge` to that source, so the studio sees live source with HMR. Fall back to the
-  vendored `./forge` (read-only mode, with a banner) when no source is found.
-- The game itself keeps importing `@forge`, the vendored copy. Shipping a change to the game is
-  then an explicit "Vendor to game" button, not a side effect of tuning.
+Downstream games may vendor `src/` on their own release cadence. PixelForge is the source of truth for generator code in this repo only.
 
 ## Setup (milestone 0)
 
-- `studio.html` at the repo root, next to `index.html`. It mounts `studio/main.tsx`.
-- `package.json`: add `"studio": "vite --open /studio.html"`.
+- `studio.html` at the repo root. It mounts `studio/main.tsx` and loads `studio/built.css`.
+- `package.json`: `"studio": "vite --open /studio.html"`, `"css"` builds both `app/built.css` and `studio/built.css`.
 - `vite.config.ts`:
-  - Keep `build.rollupOptions.input` as `index.html` only, so `vite build` and the PWA never
-    include the studio. Add a test (or a check in `npm run build` output) that `dist/` has no
-    `studio` file.
-  - Register `studio/vite-plugin-studio.ts` with `apply: 'serve'`.
-  - Add the `@studio-forge` alias described above.
-- `studio/vite-plugin-studio.ts` adds `configureServer` middleware. It only listens on
-  localhost, and it checks `Origin` against the dev server's own origin.
-  - `GET /api/studio/info`: the source path, whether it is writable, and the git branch and
-    dirty state of pixelforge.
-  - `POST /api/studio/save`: `{ file, content }`. It writes only into an allowlist of data files
-    under `src/v4/fish/data/` (see "Saving" below), and rejects any path that escapes the
-    allowlist.
-  - `POST /api/studio/vendor`: runs `vendor-forge.mjs --src <src>` and returns its output.
-  - `POST /api/studio/test`: runs `node --test test/fish4.test.mjs` in pixelforge and streams
-    its output (so a save can be checked without leaving the page).
-  - `POST /api/textgen`: added by the Haiku plan (`02-haiku-text.md`).
-- Stack: Preact + `@preact/signals` (both already dependencies), plain CSS that reuses the game's
-  tokens from `src/ui/theme.css`. No new UI library.
+  - Alias `@studio-forge` → `./src`.
+  - Register `studio/vite-plugin-studio.ts` with `apply: 'serve'` (localhost-only `/api/studio/*`).
+- Stack: Preact + `@preact/signals`, Keypad CSS kit (same as `app/`).
 - Heavy work runs in a Web Worker (`studio/worker.ts`) behind a small RPC: `simulate`, `sweep`,
   1,000-seed histograms, atlas grids and batch rolls. The UI thread only draws.
 

@@ -55,14 +55,7 @@ export function serve(port = Number(process.env.PORT) || Number(process.env.APP_
       proxyToPocketBase(req, res);
       return;
     }
-    if (url.pathname === '/aquarium') {
-      res.writeHead(301, { location: '/aquarium/' }).end();
-      return;
-    }
-    const aquariumRoot = join(ROOT, 'aquarium', 'dist');
-    const path = url.pathname.startsWith('/aquarium/')
-      ? normalize(join(aquariumRoot, decodeURIComponent(url.pathname.slice('/aquarium/'.length))))
-      : normalize(join(ROOT, url.pathname === '/' ? 'pixelgenerator.space/index.html' : decodeURIComponent(url.pathname)));
+    let path = normalize(join(ROOT, url.pathname === '/' ? 'pixelgenerator.space/index.html' : decodeURIComponent(url.pathname)));
     if (!path.startsWith(ROOT) || /\/\.(pocketbase|git)(\/|$)/.test(path)) {
       res.writeHead(403).end();
       return;
@@ -86,5 +79,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const port = Number(process.argv[2]) || Number(process.env.PORT) || Number(process.env.APP_PORT) || 8017;
   const host = process.env.HOST || '127.0.0.1';
   await serve(port, host);
-  console.log(`app → http://${host}:${port}/app/`);
+  console.log(`landing → http://${host}:${port}/`);
+  console.log(`forge   → http://${host}:${port}/app/#forge`);
 }

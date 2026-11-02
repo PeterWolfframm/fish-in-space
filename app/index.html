@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>FISH IN SPACE — the best AI pixel art generation</title>
-  <meta name="description" content="Fish in Space is the best AI pixel art generation. Swipe a fish you want to keep and it swims in your aquarium.">
+  <title>PixelForge — procedural pixel generators</title>
+  <meta name="description" content="Roll, edit, animate, and export procedural pixel art — fish, plants, pilots, and more.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Pixelify+Sans:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -12,16 +12,10 @@
     /* Set the theme before first paint. app.js keeps this in sync when the switch is used. */
     (function () {
       try {
-        var key = 'fish-in-space.theme';
-        var legacy = 'pixelforge.theme';
+        var key = 'pixelforge.theme';
+        var legacy = 'fish-in-space.theme';
         var saved = localStorage.getItem(key);
-        if (saved == null) {
-          saved = localStorage.getItem(legacy);
-          if (saved != null) {
-            localStorage.setItem(key, saved);
-            localStorage.removeItem(legacy);
-          }
-        }
+        if (saved == null) saved = localStorage.getItem(legacy);
         var theme = saved === 'light' || saved === 'dark'
           ? saved
           : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -33,7 +27,7 @@
 </head>
 <body>
   <header class="top">
-    <a class="logo" href="#forge">FISH IN SPACE</a>
+    <a class="logo" href="/">PixelForge</a>
     <nav class="tabs" id="tabs" aria-label="Views">
       <a href="#forge" data-view="forge">Forge</a>
       <a href="#swipe" data-view="swipe" data-member hidden>Swipe</a>
@@ -55,11 +49,11 @@
   <main class="view home" id="home">
     <div class="home-col">
       <section class="hero">
-        <h1>The best AI pixel art generation.</h1>
-        <p>Fish in Space rolls pixel sprites from a seed. Swipe a fish you want to keep, and the aquarium unlocks with that fish in it.</p>
+        <h1>Procedural pixels, one Forge.</h1>
+        <p>Every generator shares the same workflow: roll from a seed, tweak traits, export PNGs. Members can swipe rolls to train models and keep a personal tank.</p>
         <div class="hero-actions">
-          <a class="btn primary" href="#swipe">Start swiping</a>
-          <a class="btn" href="#tank">The aquarium</a>
+          <a class="btn primary" href="#forge">Open Forge</a>
+          <a class="btn" href="#swipe">Swipe (members)</a>
         </div>
       </section>
 
@@ -204,7 +198,7 @@
   <main class="view tank" id="tank" hidden>
     <div class="tank-col">
       <div class="section-head">
-        <h1>The aquarium</h1>
+        <h1>Your tank</h1>
         <span class="hint" id="tankLine"></span>
       </div>
       <div class="tank-stage" id="tankStage">

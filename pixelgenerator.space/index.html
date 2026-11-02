@@ -3,36 +3,71 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PixelGenerator.space — Make a little world</title>
-  <meta name="description" content="Make expressive pixel art creatures from a seed. Roll, tweak, animate, and save the little worlds you make.">
+  <title>PixelForge — procedural pixel generators</title>
+  <meta name="description" content="Roll, animate, and export pixel art from seeds — fish, plants, pilots, and every generator in one place.">
   <link rel="stylesheet" href="/landing/landing.css">
 </head>
 <body>
   <div class="wrap">
     <header class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">✳</span>pixelgenerator.space</a>
-      <nav class="nav" aria-label="Main navigation"><a href="#how">How it works</a><a href="/aquarium/">Aquarium</a><a href="#about">About</a><a class="nav-cta" href="/app/#forge">Open Fish in Space <span>↗</span></a></nav>
+      <a class="brand" href="/"><span class="brand-mark">✳</span>PixelForge</a>
+      <nav class="nav" aria-label="Main navigation">
+        <a href="#generators">Generators</a>
+        <a href="/studio.html">Studio</a>
+        <a class="nav-cta" href="/app/#forge">Open Forge <span>↗</span></a>
+      </nav>
     </header>
     <main>
       <section class="hero">
         <div>
-          <p class="eyebrow"><i></i> A tiny creature generator</p>
-          <h1>Make a little <em>world.</em></h1>
-          <p class="hero-copy">Roll a seed. Meet a creature. Keep turning the tiny details until it feels like yours. Pixel art with a little life in it.</p>
-          <div class="hero-actions"><a class="button" href="/app/#forge">Make something <span>→</span></a><a class="text-link" href="#how">See how it works <span>↓</span></a><a class="text-link" href="/aquarium/">Play the aquarium <span>↗</span></a></div>
-          <p class="fineprint">FREE TO PLAY · NO ART SKILLS NEEDED</p>
+          <p class="eyebrow"><i></i> Procedural pixel art</p>
+          <h1>Try every <em>generator.</em></h1>
+          <p class="hero-copy">Fourteen algorithms across fish, garden plants, tank plants, and pilots — from frozen v1 classics to fish4 and plant4. Roll a seed on this page, then open any one in the Forge or Studio.</p>
+          <div class="hero-actions">
+            <button class="button" type="button" data-reroll-all>Reroll all previews <span>↻</span></button>
+            <a class="text-link" href="#generators">Browse the list <span>↓</span></a>
+          </div>
+          <p class="fineprint">LOCAL DEV · <code>npm run app:static</code> → localhost:8017</p>
         </div>
-        <div class="studio" aria-label="Pixel creature generator preview">
-          <div class="studio-bar"><span class="dots"><i></i><i></i><i></i></span><span>CREATURE FORGE / FISH V3</span><span>● LIVE</span></div>
-          <div class="sprite-stage"><span class="spark one">✳</span><canvas width="160" height="100" data-fish-demo="hero" aria-label="Animated pixel fish"></canvas><span class="spark two">✦</span></div>
-          <div class="studio-meta"><div><span class="seed-label">Your seed</span><span class="seed-value" data-seed>coral-dream</span></div><button class="reroll" type="button" data-reroll aria-label="Generate another fish">↻</button></div>
+        <div class="studio" aria-label="Featured generator preview">
+          <div class="studio-bar"><span class="dots"><i></i><i></i><i></i></span><span id="heroGenLabel">FISH V3</span><span>● LIVE</span></div>
+          <div class="sprite-stage"><span class="spark one">✳</span><canvas width="160" height="100" data-gen-demo="fish3" aria-label="Animated preview"></canvas><span class="spark two">✦</span></div>
+          <div class="studio-meta">
+            <div><span class="seed-label">Seed</span><span class="seed-value" data-seed>pixelforge</span></div>
+            <a class="reroll link-btn" href="/app/#fish3" data-hero-forge>Open in Forge</a>
+          </div>
         </div>
       </section>
-      <div class="proof" aria-label="What you can make"><div class="proof-item"><strong>Every roll is yours</strong><span>Shareable seeds, endless variations</span></div><div class="proof-item"><strong>Small art, big character</strong><span>Pixel creatures with their own look</span></div><div class="proof-item"><strong>Ready to take with you</strong><span>Save sprites and animation sheets</span></div></div>
-      <section class="section" id="how"><div class="section-head"><p class="eyebrow"><i></i> The little loop</p><h2>Three steps from blank seed to new favorite.</h2><p>Every creature starts with a code you can keep, share, and revisit whenever inspiration strikes.</p></div><div class="steps"><article class="step"><span class="step-no">01</span><h3>Roll a creature</h3><p>Start with a seed and see what the generator dreams up. Fish, plants, portraits, and more.</p></article><article class="step"><span class="step-no">02</span><h3>Tune the details</h3><p>Explore traits, lock the bits you love, and reroll everything else until it clicks.</p></article><article class="step"><span class="step-no">03</span><h3>Save your find</h3><p>Export crisp PNGs, sprite sheets, and codes that bring the same little creature back.</p></article></div></section>
-      <section class="cta-band" id="about"><div><h2>Your next favorite is one roll away.</h2><p>Come make something strange, sweet, or a little bit both.</p></div><a class="button" href="/app/#forge">Open PixelGenerator.space <span>→</span></a></section>
+
+      <div class="proof" aria-label="What PixelForge includes">
+        <div class="proof-item"><strong>14 generators</strong><span>One registry, one Forge UI</span></div>
+        <div class="proof-item"><strong>Shareable codes</strong><span>Seeds and genomes round-trip</span></div>
+        <div class="proof-item"><strong>Export ready</strong><span>PNG, sheets, JSON from the Forge</span></div>
+      </div>
+
+      <section class="section" id="generators">
+        <div class="section-head">
+          <p class="eyebrow"><i></i> The registry</p>
+          <h2>Pick a generator and roll.</h2>
+          <p>Each card animates live from the same seed. Links open the Forge on that kind with the seed in the URL when possible.</p>
+        </div>
+        <div id="genFamilies" class="gen-families"></div>
+      </section>
+
+      <section class="cta-band">
+        <div>
+          <h2>Need knobs and git history?</h2>
+          <p>Algorithm Studio loads live source from <code>src/</code> — params, anatomy layers, version diffs.</p>
+        </div>
+        <a class="button" href="/studio.html">Open Studio <span>→</span></a>
+      </section>
     </main>
-    <footer><div class="footer-inner"><a class="brand" href="/"><span class="brand-mark">✳</span>pixelgenerator.space</a><span>Made of pixels, seeds, and happy accidents.</span></div></footer>
+    <footer>
+      <div class="footer-inner">
+        <a class="brand" href="/"><span class="brand-mark">✳</span>PixelForge</a>
+        <span>Procedural pixels — no aquarium required.</span>
+      </div>
+    </footer>
   </div>
   <script type="module" src="/landing/demo.js"></script>
 </body>

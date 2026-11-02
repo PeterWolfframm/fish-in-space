@@ -1,7 +1,7 @@
 {
   "name": "@fis/algorithms",
   "version": "0.0.0",
-  "description": "FISH IN SPACE procedural generators (pixel, gen, v2–v4, pixelgen)",
+  "description": "PixelForge procedural generators (pixel, gen, v2–v4, pixelgen)",
   "type": "module",
   "private": true,
   "exports": {

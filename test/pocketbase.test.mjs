@@ -41,7 +41,7 @@ async function guest(tag) {
   const su = await adminClient(URL_, SU);
   const pb = new PocketBase(URL_);
   pb.autoCancellation(false);
-  const email = `guest-${tag}-${Date.now()}@guest.fish-in-space.local`;
+  const email = `guest-${tag}-${Date.now()}@guest.pixelforge.local`;
   const password = `pw-${tag}-0123456789`;
   await su.collection('users').create({ email, password, passwordConfirm: password, guest: true, name: `Guest ${tag}`, emailVisibility: false });
   await pb.collection('users').authWithPassword(email, password);

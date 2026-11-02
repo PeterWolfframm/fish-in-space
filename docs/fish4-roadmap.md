@@ -55,7 +55,7 @@ fish4 plan). Docs: [fish4.md](fish4.md), [fish4-params.md](fish4-params.md),
 
 ## 2. Game integration (aquarium)
 
-- **Import fish4** through the vendored `aquarium/forge/v4`:
+- **Import fish4** through the vendored copy in the standalone game repo (`~/Code/aquarium/forge/v4`):
   - `fromSeed(seed, 'seedfall')` for wild fish
   - `batch` for shop stock and wild catches, so each shop day is one terrain and one balanced
     shoal

@@ -1,7 +1,7 @@
 {
-  "name": "fish-in-space",
+  "name": "pixelforge",
   "version": "0.1.0",
-  "description": "FISH IN SPACE — procedural pixel art (especially fish).",
+  "description": "PixelForge — procedural pixel art generators (fish, plants, pilots).",
   "type": "module",
   "private": true,
   "exports": {
@@ -15,8 +15,11 @@
     "forge": "cli/forge.mjs"
   },
   "scripts": {
-    "css": "tailwindcss -i app/app.css -o app/built.css",
+    "css": "tailwindcss -i app/app.css -o app/built.css && tailwindcss -i studio/studio.css -o studio/built.css",
     "css:watch": "tailwindcss -i app/app.css -o app/built.css --watch",
+    "studio": "vite --open /studio.html",
+    "typecheck:studio": "tsc --noEmit",
+    "e2e:studio": "STUDIO=1 playwright test e2e/studio.spec.ts",
     "app": "node scripts/run-app.mjs",
     "app:static": "npm run css && node server/static.mjs 8017",
     "pb": "node scripts/get-pocketbase.mjs && .pocketbase/pocketbase serve --http 127.0.0.1:8090 --dir .pocketbase/pb_data --migrationsDir pb_migrations",
@@ -30,7 +33,7 @@
     "goldens:pilot": "node scripts/make-goldens.mjs pilot",
     "goldens:v1": "node scripts/make-goldens.mjs v1",
     "goldens:v2": "node scripts/make-goldens.mjs v2",
-    "goldens:fish": "cd ../fish. && node_modules/.bin/vite-node ../fish-in-space/scripts/make-goldens.mjs fish"
+    "goldens:fish": "node scripts/make-goldens.mjs fish"
   },
   "engines": {
     "node": ">=20"
@@ -46,10 +49,17 @@
   },
   "dependencies": {
     "@eurobase/sdk": "0.12.0",
-    "@keypad/ui": "link:../kahootclone/packages/keypad"
+    "@keypad/ui": "link:../kahootclone/packages/keypad",
+    "@preact/signals": "^2.11.4",
+    "preact": "^11.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@preact/preset-vite": "^2.10.6",
     "@tailwindcss/cli": "^4.3.3",
-    "tailwindcss": "^4.3.3"
+    "@types/node": "^26.6.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5"
   }
 }

@@ -1,9 +1,0 @@
-node_modules
-dist
-.pocketbase
-test-results
-playwright-report
-.git
-_v2
-e2e
-test

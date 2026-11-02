@@ -1,6 +1,6 @@
 // Algorithm Version History: named checkpoints in each generator family's art and roll history,
 // for the Studio's Versions mode. The seed entries below are hand-written, drawn from this repo's
-// (and, where noted, aquarium's) real git history. `versions.studio.json` holds anything forked
+// real git history. `versions.studio.json` holds anything forked
 // from the Studio ("fork as new version") — merged in below, so that file is never clobbered by
 // an edit here, and this module is never clobbered by a Studio save.
 //
@@ -26,6 +26,17 @@ const SEED_VERSIONS = [
     howItWorks: 'A callsign rolls the same person v1 would (same fields, same rolls) via fromV1Code, so a v1 code reopens as the same pilot; appended fields (helmet style, scar, freckles, framing) roll from that seed too. Drawing goes through a shared pose rig (anim/rig.js) so expressions and talk/blink motions are lists of motions, not separate sprite sheets.',
     changes: ['Added lighting, four framings, and pose-rig animation (expression, talk, shake, glance, blink).', 'v1 codes still decode, as remasters.'],
     customize: [],
+  },
+  {
+    id: 'pilot-v3', family: 'pilot', generator: 'pilot3', date: '2026-10-31',
+    title: 'Pilots v3 — people', summary: 'v1’s flat 32×32 radio portrait opened up to anyone: kids to elders, every skin, sixteen hairstyles, headwear, glasses, beards and thirteen outfits.',
+    howItWorks: 'Same look as v1 (flat colours, one shade per part, dark outline) and v1’s eyes, brows and expressions, but measured from the head (geometry() in draw.js), so age and face shape move everything together. Painted back to front: torso → back hair → neck → face → facial hair/mouth → front hair → headwear → eyewear. Hair under a hat paints through a clip, so tall styles tuck under it. The seed roll adds a little sense on top of the trait roll (elders mostly grey, flight suits mostly helmeted).',
+    changes: ['Anyone, not just crew: age, build, face shape, kin, 16 hairstyles, 13 headwear, 8 eyewear, facial hair, marks, earrings, lips, 13 outfits.', 'v1’s pilot survives as flight suit + helmet (with the oxygen mask).', 'c3. codes; v1 c codes decode as the same face in a flight suit and helmet, colours snapped to the nearest v3 swatch.'],
+    customize: [
+      { path: 'age', note: 'kid → elder: a kid’s face sits lower and rounder; middle/elder add wrinkles.' },
+      { path: 'headwear', note: 'helmet + flightsuit draws v1’s oxygen mask; hats clip tall hair.' },
+      { path: 'outfit', note: 'thirteen torsos, coloured by cloth + accent.' },
+    ],
   },
 
   // fish ---------------------------------------------------------------------------------------
@@ -73,14 +84,14 @@ const SEED_VERSIONS = [
     ],
   },
   {
-    id: 'fish-v4-aquarium-fit', family: 'fish', generator: 'fish4', date: '2026-10-30', commit: '4a35270',
-    title: 'Fish v4 — aquarium paint budget + young-fish sizing', summary: 'A standing, aquarium-only fork of phenotype.js: adults paint at a uniform full-detail budget (no pixelated tiny-class adults), while fry/juveniles paint small again.',
-    howItWorks: 'scripts/forge-paint-len.patch (re-applied on every `vendor-forge.mjs` run) adds PAINT_LEN=38: adult/elder always paint at that budget regardless of size class, with size shown instead via whole-number on-screen zoom (src/game/fish.ts’s zoomForStageSize/CLASS_VIEW) so no pixels are lost. Fry/juveniles restore the pre-regression stageLen formula ({fry:.45, juvenile:.7}), capped at PAINT_LEN so a young fish can never be bigger than its own adult art. This conflicts with pixelforge’s own “bigger class, bigger canvas” design and the v4e eye-cap feature, so it deliberately stays a standing patch rather than going upstream into this repo’s own phenotype.js.',
-    changes: ['Fixed a regression (pixelated tiny-class adults) without re-breaking fry/juvenile sizing.', 'Adults: full-detail paint at every size class; shown smaller via integer zoom only in the big UI views.', 'Fry/juveniles: painted small again, capped at the adult paint length.'],
+    id: 'fish-v4-ui-zoom-fit', family: 'fish', generator: 'fish4', date: '2026-10-30', commit: '4a35270',
+    title: 'Fish v4 — UI paint budget + young-fish sizing', summary: 'Adults paint at a uniform full-detail budget (no pixelated tiny-class adults), while fry/juveniles paint small again; size class can be shown with integer zoom in large previews.',
+    howItWorks: 'PAINT_LEN=38: adult/elder always paint at that budget regardless of size class, with size shown instead via whole-number on-screen zoom so no pixels are lost. Fry/juveniles use stageLen multipliers ({fry:.45, juvenile:.7}), capped at PAINT_LEN. Conflicts with “bigger class, bigger canvas” in Forge; tune in Studio Growth when previewing game-style sizing.',
+    changes: ['Fixed pixelated tiny-class adults without re-breaking fry/juvenile sizing.', 'Adults: full-detail paint at every size class; optional integer zoom in large UI views.', 'Fry/juveniles: painted small again, capped at the adult paint length.'],
     customize: [
-      { path: 'PAINT_LEN', note: 'forge/v3/fish/phenotype.js — the adult/elder paint budget in pixels (38). Aquarium-only; lives in the standing patch, not pixelforge src.' },
-      { path: 'stageLen.fry / stageLen.juvenile', note: 'forge/v3/fish/phenotype.js — young-fish paint-size multipliers (.45 / .7) against the size class’s own length, capped at PAINT_LEN.' },
-      { path: 'CLASS_VIEW', note: 'src/game/fish.ts — per-size-class zoom multiplier for the big UI views (tiny .5 … huge/giant 1). Tunable right in the Studio’s Growth panel.' },
+      { path: 'PAINT_LEN', note: 'Adult/elder paint budget in pixels (38).' },
+      { path: 'stageLen.fry / stageLen.juvenile', note: 'Young-fish paint-size multipliers (.45 / .7), capped at PAINT_LEN.' },
+      { path: 'CLASS_VIEW', note: 'Per-size-class zoom in Studio Growth (tiny .5 … huge/giant 1).' },
     ],
   },
 
@@ -128,6 +139,17 @@ const SEED_VERSIONS = [
     howItWorks: 'The painter reads a pose; motions set the pose; the habit decides the shape of the bend. phenotype.js turns a genome into the physical numbers a habit’s stroke needs. A v1 `g…` code still opens as the same plant.',
     changes: ['Replaced v1/v2’s procedural skeleton with 16 named species across nine bend habits.', 'Added Mendelian pigment genes, three rendering looks, and name generation.', 'Still reads v1 plant codes.'],
     customize: [],
+  },
+  {
+    id: 'plant-v4', family: 'plant', generator: 'plant4', date: '2026-10-31',
+    title: 'Plants v4', summary: 'One architecture engine for every plant: 50 forms from radishes and wheat to oaks, palms, kelp and sea fans, at five sizes from 16 to 96 px, with an ecotype roll, farm stats, rarity and breeding.',
+    howItWorks: 'A form is data, not a painter: how many axes rise from the ground, how each branching order makes children (phyllotaxis, angle, a length profile that makes a cone or a dome), how stiff and heavy each order is, and which organs hang where. engine/arch.js grows the topology from a sprout seed; engine/pose.js walks a sway wave up every axis (air and water are different media); engine/draw.js paints into a material/tone buffer and finishes it with selective outlines. The genome bends the form (height, spread, branching, leaf size, density, thickness, droop, lean) and the ecotype roll goes realm → region → form → size → colours.',
+    changes: ['Trees at last: branching orders, crowns of foliage clumps, conifers, palms, willows, acacias.', 'Underwater forms (kelp, ribbon grass, sword plants, coral, sea grapes, glowstalks) sway as in a current.', 'Stardew-style crops with growth stages, ripening, seasons and farm stats (days, regrowth, yield, sell price).', 'p4. codes; plant3 codes are not read (different species model).'],
+    customize: [
+      { path: 'realms', note: 'farm / wild / water odds' },
+      { path: 'rare', note: '×odds of variegation, glow and swapped organs' },
+      { path: 'shapeSpread', note: 'how far the shape genes stray from the form' },
+    ],
   },
 ];
 

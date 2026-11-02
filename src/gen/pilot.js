@@ -1,4 +1,4 @@
-// Pilots (Burn-Through crew): the 32×32 radio portraits as a fish-in-space generator.
+// Pilots (Burn-Through crew): the 32×32 radio portraits as a PixelForge generator.
 //
 // The drawing is pilot-pixel.js, a byte-identical port of the game's. On top of it this wraps
 // the rolled spec in a trait system, so a crew member can be edited field by field, bred and

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Algorithm Studio — PixelForge</title>
+    <meta name="description" content="Dev tool: inspect, tune and breed PixelForge procedural generators." />
+    <script>
+      (function () {
+        try {
+          var key = 'pixelforge.theme';
+          var saved = localStorage.getItem(key) ?? localStorage.getItem('fish-in-space.theme');
+          var theme = saved === 'light' || saved === 'dark'
+            ? saved
+            : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/studio/built.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>Algorithm Studio needs JavaScript.</noscript>
+    <script type="module" src="/studio/main.tsx"></script>
+  </body>
+</html>

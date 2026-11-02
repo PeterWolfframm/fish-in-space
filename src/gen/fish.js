@@ -1,4 +1,4 @@
-// Fish (fish.): the 48×32 swimmers as a fish-in-space generator. The genome, palettes and renderer
+// Fish (fish.): the 48×32 swimmers as a PixelForge generator. The genome, palettes and renderer
 // in fish/ are byte-identical ports of the game's src/fish/, so fish codes decode to the same fish.
 
 import { fishTraits, fishFromSeed, breed, rarityScore } from './fish/genome.js';

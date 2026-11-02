@@ -78,8 +78,7 @@ argument-hint: <kind> <id> [description]
 - `NEW_FORMS` order is the `form` digit in the code: append only.
 - Deterministic: no `Math.random`, no `Date`, no iteration over object keys whose order could
   change. Rolls use `roller` or `hash01` with a salt.
-- Edit `src/` only, then run `node aquarium/scripts/vendor-forge.mjs`. Never edit
-  `aquarium/forge` directly.
+- Edit `src/` only in this repo. Downstream games vendor on their own schedule.
 - Text follows `docs/lore-writing-guide.md` (Seedfall tone; nuclear fish are harmless).
 
 **Common steps** for every kind:
@@ -92,7 +91,7 @@ argument-hint: <kind> <id> [description]
 5. Run `npm test`. All fish3, fish4, golden and field tests must pass. If a golden changes, stop:
    the change was not append-only. Fix it rather than regenerating goldens, unless the user
    explicitly asks for a breaking change.
-6. Run `node aquarium/scripts/vendor-forge.mjs`, then `--check`.
+6. Run `npm test` and spot-check in Studio.
 7. **Look at it.** Render a check sheet with `node cli/forge.mjs` (sizes × stages × anims for
    the new item, using pinned seeds or place pins that show it) and open the PNG. If the studio
    is running, give the studio URL with the right hash instead.

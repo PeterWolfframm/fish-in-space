@@ -6,7 +6,7 @@
 //
 //   kind       v1: pilot | fish | waterplant | plant | plant32
 //              v2: pilot2 | fish2 | waterplant2 | plant2
-//              v3: fish3 (tiny … giant, --set swim=raised|side|cartoon)
+//              v3: fish3 (tiny … giant, --set swim=raised|side|cartoon), pilot3 (people)
 //              (`list` prints them all)
 //   --size     v2: a size class (fish2: tiny … giant), or `all` for every class of each genome
 //   --count    how many genomes, seeded <seed>-0 … <seed>-(n-1)

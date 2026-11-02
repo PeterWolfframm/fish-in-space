@@ -1,4 +1,4 @@
-// The fish-in-space app: pick a generator, roll or edit a genome, watch it animate, breed from a
+// PixelForge app: pick a generator, roll or edit a genome, watch it animate, breed from a
 // gallery, export PNGs, sheets and JSON. Written once against the generator contract in
 // src/gen/registry.js, so a new generator shows up here without touching this file.
 //
@@ -42,15 +42,12 @@ const state = {
   beautify: 'off', // which model restyles rolls: off | public | personal | blend
   view: 'forge',
 };
-const FORGE_KEY = 'fish-in-space.forge';
+const FORGE_KEY = 'pixelforge.forge';
 const migrateStorageKey = (key) => {
   try {
-    const legacy = key.replace(/^fish-in-space\./, 'pixelforge.');
-    const v = localStorage.getItem(key) ?? localStorage.getItem(legacy);
-    if (v != null && localStorage.getItem(key) == null) {
-      localStorage.setItem(key, v);
-      localStorage.removeItem(legacy);
-    }
+    const legacy = key.replace(/^pixelforge\./, 'fish-in-space.');
+    const v = localStorage.getItem(key) ?? (legacy !== key ? localStorage.getItem(legacy) : null);
+    if (v != null && localStorage.getItem(key) == null) localStorage.setItem(key, v);
     return v;
   } catch {
     return null;
@@ -670,7 +667,7 @@ function tick(now) {
 
 // Light is Keypad's own theme. Dark overrides the same tokens. Nothing saved follows the OS,
 // which index.html also applies before first paint.
-const THEME_KEY = 'fish-in-space.theme';
+const THEME_KEY = 'pixelforge.theme';
 const themeMedia = matchMedia('(prefers-color-scheme: dark)');
 const savedTheme = () => {
   try {

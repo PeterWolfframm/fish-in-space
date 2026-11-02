@@ -1,6 +1,0 @@
-node_modules/
-dist/
-.pocketbase/
-test-results/
-playwright-report/
-undefined/

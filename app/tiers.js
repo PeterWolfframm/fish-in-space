@@ -1,8 +1,8 @@
 // Local ranking of catches. Approved swipes land in the bucket until dragged onto a row.
 // A baby kept from the matchmaker is `local` and is not a server like.
 
-const KEY = 'fish-in-space.tiers';
-const LEGACY_KEY = 'pixelforge.tiers';
+const KEY = 'pixelforge.tiers';
+const LEGACY_KEY = 'fish-in-space.tiers';
 export const RANKS = ['S', 'A', 'B', 'C', 'D', 'pool'];
 
 const listeners = new Set();

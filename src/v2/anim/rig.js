@@ -72,6 +72,19 @@ export const CHANNELS = {
     season: [-1, 'season override, -1 = summer, 0 spring .. 3 winter'],
     sheen: [0, 'highlight sweep, 0..1'],
   },
+  // Plant v4: one sway field that travels up every axis (see src/v4/plant/engine/pose.js),
+  // the growth clock, flowers, and the season the painter dresses the plant for.
+  plant4: {
+    wind: [0, 'sway phase, turns (integers loop)'],
+    sway: [1, 'sway amplitude, 1 = a breeze (or a current, under water)'],
+    lean: [0, 'steady push, -1..1 (a gust)'],
+    flutter: [0, 'leaf flutter phase, turns (integers loop)'],
+    bloom: [1, 'flowers open, 0 shut .. 1 open'],
+    growth: [1, 'growth t, 0 seed .. 1 grown (fruit ripens last)'],
+    glow: [0.5, 'glow strength, 0..1'],
+    droop: [0, 'extra downward bend, 0..1 (a wilt, or a heavy crop)'],
+    season: [-1, 'season, -1 = summer, 0 spring .. 3 winter'],
+  },
 };
 
 /** The rest pose of a family. */
